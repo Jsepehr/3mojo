@@ -23,7 +23,7 @@ lib/features/<nome>/
     widgets/       cmp_<nome>.dart            (classe CmpXxx)
 ```
 
-Per una feature nuova: copia `lib/features/_template/` e rinomina.
+Per una feature nuova: copia la struttura di `lib/features/profile/` o `lib/features/nearby/` (vedi sotto) e rinomina.
 
 ## Convenzioni di naming
 

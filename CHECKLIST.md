@@ -70,8 +70,8 @@ Se non sai rispondere a questa, fermati prima di scegliere la cartella — il re
 
 ## 9. Sto creando una feature intera da zero?
 
-- [ ] Hai copiato `lib/features/_template/` e rinominato, invece di creare le cartelle a mano?
-- [ ] Hai guardato `lib/features/todos/` come riferimento per la versione "completa" (con datasource remoto+locale, validazione, entity+model separati)?
+- [ ] Hai copiato la struttura di `lib/features/profile/` o `lib/features/nearby/` e rinominato, invece di creare le cartelle a mano?
+- [ ] Hai guardato `lib/features/nearby/` come riferimento per la versione "completa" (datasource remoto+locale, validazione, entity+model separati)?
 
 ## 10. Sto usando lo strumento giusto per lo stato?
 
