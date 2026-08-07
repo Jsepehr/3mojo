@@ -1,0 +1,56 @@
+{
+  "@@locale": "en",
+  "appTitle": "ThreeMojo App",
+  "@appTitle": {
+    "description": "The application title shown in the OS task switcher"
+  },
+  "profilePageTitle": "Profile",
+  "@profilePageTitle": {
+    "description": "Title of the profile page and its bottom navigation label"
+  },
+  "profileNameLabel": "Name",
+  "@profileNameLabel": {
+    "description": "Label for the profile name field"
+  },
+  "profileAgeLabel": "Age",
+  "@profileAgeLabel": {
+    "description": "Label for the profile age field"
+  },
+  "profileBioLabel": "Bio",
+  "@profileBioLabel": {
+    "description": "Label for the profile bio field"
+  },
+  "profileSaveButton": "Save",
+  "@profileSaveButton": {
+    "description": "Label of the button that saves profile changes"
+  },
+  "nearbyPageTitle": "Nearby",
+  "@nearbyPageTitle": {
+    "description": "Title of the nearby people page and its bottom navigation label"
+  },
+  "nearbyEmptyMessage": "No one within 100 meters right now",
+  "@nearbyEmptyMessage": {
+    "description": "Shown when no nearby people are found within the radius"
+  },
+  "nearbyDistanceLabel": "{meters} m",
+  "@nearbyDistanceLabel": {
+    "description": "Distance in meters shown next to a nearby person",
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "nearbyMeetingChanceLow": "Low chance to meet",
+  "@nearbyMeetingChanceLow": {
+    "description": "Low bucket of the meeting chance, based on how long the person has stayed in place"
+  },
+  "nearbyMeetingChanceMedium": "Medium chance to meet",
+  "@nearbyMeetingChanceMedium": {
+    "description": "Medium bucket of the meeting chance, based on how long the person has stayed in place"
+  },
+  "nearbyMeetingChanceHigh": "High chance to meet",
+  "@nearbyMeetingChanceHigh": {
+    "description": "High bucket of the meeting chance, based on how long the person has stayed in place"
+  }
+}

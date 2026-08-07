@@ -1,0 +1,15 @@
+{
+  "@@locale": "it",
+  "appTitle": "ThreeMojo App",
+  "profilePageTitle": "Profilo",
+  "profileNameLabel": "Nome",
+  "profileAgeLabel": "Età",
+  "profileBioLabel": "Bio",
+  "profileSaveButton": "Salva",
+  "nearbyPageTitle": "Vicinanze",
+  "nearbyEmptyMessage": "Nessuno nel raggio di 100 metri, per ora",
+  "nearbyDistanceLabel": "{meters} m",
+  "nearbyMeetingChanceLow": "Probabilità bassa",
+  "nearbyMeetingChanceMedium": "Probabilità media",
+  "nearbyMeetingChanceHigh": "Probabilità alta"
+}
