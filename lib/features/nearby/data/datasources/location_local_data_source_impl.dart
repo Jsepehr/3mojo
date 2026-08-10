@@ -1,7 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 
 import '/core/errors/exceptions.dart';
-import '../../domain/entities/geo_location.dart';
+import '/features/nearby/domain/entities/geo_location.dart';
 import 'location_local_data_source.dart';
 
 class LocationLocalDataSourceImpl implements LocationLocalDataSource {

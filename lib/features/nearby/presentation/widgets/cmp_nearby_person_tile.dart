@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
-import '../../domain/entities/nearby_person.dart';
 
 class CmpNearbyPersonTile extends StatelessWidget {
   const CmpNearbyPersonTile({super.key, required this.person});

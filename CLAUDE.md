@@ -23,7 +23,7 @@ lib/features/<nome>/
     widgets/       cmp_<nome>.dart            (classe CmpXxx)
 ```
 
-Per una feature nuova: copia la struttura di `lib/features/profile/` o `lib/features/nearby/` (vedi sotto) e rinomina.
+Per una feature nuova: copia la struttura di `lib/features/nearby/` o `lib/features/encounters/` (vedi sotto) e rinomina.
 
 ## Convenzioni di naming
 
@@ -75,8 +75,9 @@ Se ti accorgi di dover importare qualcosa da `data/` dentro `domain/`, hai sbagl
 
 ## Esempi di riferimento nel codice
 
-- `lib/features/profile/` — validazione reale in uno use case (`UpdateProfileUseCase`: nome non vuoto, età ≥ 18), data source locale finto.
+- `lib/features/session/` — **niente account permanente**: "chi sei" è solo `OnlineSession` (selfie + genere + preferenza), fatto e disfatto a ogni Start/End, persistito con `shared_preferences` solo per la durata della sessione online (mai un `deviceId` fisso: non serve, i finti datasource non lo usano). Nessun `Model`/JSON (come `counter` a suo tempo): il datasource legge/scrive l'entity direttamente. Validazione reale in `StartSessionUseCase` (serve un selfie). `UiHome` è un'unica pagina che cambia aspetto in base a `ProSession.isOnline` — non due pagine separate.
 - `lib/features/nearby/` — due data source, uno **reale** (`LocationLocalDataSourceImpl`, pacchetto `geolocator`, per la posizione del proprio telefono) e uno **finto** (`NearbyRemoteDataSourceImpl`, simula un backend non ancora esistente, con fallimenti casuali e uno stato di presenza per persona che cambia a ogni fetch — non è una lista statica). Uno use case (`GetNearbyPeopleUseCase`) compone un altro use case (`GetCurrentLocationUseCase`) invece di dipendere direttamente dal suo repository — pattern accettabile quando un'azione è un sotto-passo genuino di un'altra. La regola di business "raggio massimo 100 metri" è una costante nello use case, non un parametro configurabile dall'esterno.
 - Regola di business su `NearbyPerson.meetingChancePercent`: sale da 0 a 100 in 5 minuti di presenza ferma nello stesso posto, si azzera se la persona esce dal raggio, e la persona resta invisibile in lista finché non ha almeno 1 minuto di presenza. È calcolata **lato server** (richiede la storia di posizione di un'altra persona, che il client non può conoscere) — il client riceve solo il valore già pronto.
-
-Nota: `profile` e `nearby` hanno ciascuna la propria entity per "una persona" (`Profile` vs `NearbyPerson`) — deliberatamente **non condivisa** tra le due feature, per tenerle disaccoppiate. Riconsiderare solo se in futuro nascerà logica duplicata (non solo campi duplicati).
+- `lib/features/encounters/` — richiesta d'interesse tra due persone (tap sulla foto in `nearby` → richiesta in uscita; l'altro la vede in entrata e risponde sì/no). Regola di business reale in `RespondToEncounterRequestUseCase`: accettarne una **cancella automaticamente tutte le altre** (in entrata e in uscita) — un solo incontro attivo alla volta. Il rifiuto è visibile a chi ha chiesto (scelta deliberata, diversa dalla convenzione delle app di dating classiche — qui ha senso perché ci si potrebbe incontrare fisicamente). Data source finto e **stateful** (simula sia risposte in arrivo alle tue richieste sia richieste finte che ricevi tu, e applica da solo la stessa regola di esclusività quando è "il finto altro" ad accettare — coerente con come si comporterebbe un vero backend), con polling periodico nel provider (`Timer.periodic`).
+- `lib/features/chat/` — niente scadenza a tempo: la conversazione dura finché nessuno dei due la termina esplicitamente (`EndMatchUseCase`, con conferma obbligatoria in UI — "perderai il contatto"). Storage **locale** (`shared_preferences`, JSON codificato) — coerente con "il server fa solo da postino, non conserva nulla".
+- Flusso app (`app.dart`): **niente `_AppRoot` con gate sequenziali** — `UiHome` decide da sola cosa mostrare in base a `ProSession.isOnline`. Sopra tutto, `_MatchGate` osserva `ProEncounters.activeMatch`: appena un match scatta (da qualsiasi punto dell'app), spinge `UiActiveMatch` a schermo intero sopra qualunque pagina — è così che "un solo incontro alla volta" si ottiene gratis dallo stack di `Navigator`, senza dover disabilitare manualmente le altre pagine.

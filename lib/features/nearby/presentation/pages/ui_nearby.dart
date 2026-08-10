@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '/l10n/generated/app_localizations.dart';
+import '../../../encounters/presentation/providers/pro_encounters.dart';
 import '../providers/pro_nearby.dart';
 import '../widgets/cmp_nearby_person_tile.dart';
 
@@ -45,8 +46,21 @@ class _NearbyBody extends StatelessWidget {
 
     return ListView.builder(
       itemCount: proNearby.people.length,
-      itemBuilder: (context, index) =>
-          CmpNearbyPersonTile(person: proNearby.people[index]),
+      itemBuilder: (context, index) {
+        final person = proNearby.people[index];
+        return InkWell(
+          onTap: () {
+            context.read<ProEncounters>().sendRequest(
+              person.id,
+              person.photoUrl,
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l10n.nearbyRequestSentMessage)),
+            );
+          },
+          child: CmpNearbyPersonTile(person: person),
+        );
+      },
     );
   }
 }
