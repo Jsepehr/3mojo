@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/errors/failures.dart';
-import '../../../../core/usecases/usecase.dart';
+import '/core/errors/failures.dart';
+import '/core/usecases/usecase.dart';
 import '../entities/chat_message.dart';
 import '../repositories/chat_repository.dart';
 
@@ -16,6 +16,7 @@ class SendMessageParams extends Equatable {
   List<Object?> get props => [conversationId, text];
 }
 
+/// Azione: manda un messaggio. Valida che non sia vuoto prima di scriverlo.
 class SendMessageUseCase implements UseCase<ChatMessage, SendMessageParams> {
   const SendMessageUseCase(this._repository);
 

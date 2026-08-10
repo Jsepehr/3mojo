@@ -5,6 +5,7 @@ import '../../domain/entities/encounter_request.dart';
 import '../../domain/repositories/encounter_repository.dart';
 import '../datasources/encounter_remote_data_source.dart';
 
+/// Passacarte verso il datasource finto, traducendo le eccezioni in `Failure`.
 class EncounterRepositoryImpl implements EncounterRepository {
   const EncounterRepositoryImpl(this._remoteDataSource);
 

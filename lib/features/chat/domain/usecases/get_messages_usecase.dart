@@ -5,6 +5,7 @@ import '/core/usecases/usecase.dart';
 import '../entities/chat_message.dart';
 import '../repositories/chat_repository.dart';
 
+/// Azione: leggi i messaggi di una conversazione.
 class GetMessagesUseCase implements UseCase<List<ChatMessage>, String> {
   const GetMessagesUseCase(this._repository);
 

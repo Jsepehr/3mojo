@@ -4,6 +4,10 @@ import '/core/errors/exceptions.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import 'nearby_remote_data_source.dart';
 
+/// Implementazione **finta** (nessun backend vero): simula 5 persone la cui
+/// presenza cambia a ogni chiamata — entrano, restano, escono — con
+/// fallimento casuale di rete e la percentuale d'incontro calcolata dal
+/// tempo di permanenza simulato.
 class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   final Random _random = Random();
 

@@ -19,6 +19,9 @@ class RespondToEncounterRequestParams extends Equatable {
   List<Object?> get props => [requestId, accepted];
 }
 
+/// Azione: rispondi sì/no a una richiesta in arrivo. Un sì innesca la
+/// regola di business "un solo match alla volta": cancella tutte le altre
+/// richieste pendenti (viste sopra, `cancelOtherPendingRequests`).
 class RespondToEncounterRequestUseCase
     implements UseCase<EncounterRequest, RespondToEncounterRequestParams> {
   const RespondToEncounterRequestUseCase(this._repository);

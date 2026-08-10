@@ -2,10 +2,12 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
-import '../../domain/entities/geo_location.dart';
-import '../../domain/repositories/location_repository.dart';
-import '../datasources/location_local_data_source.dart';
+import '/features/nearby/data/datasources/location_local_data_source.dart';
+import '/features/nearby/domain/entities/geo_location.dart';
+import '/features/nearby/domain/repositories/location_repository.dart';
 
+/// Traduce le eccezioni del datasource GPS (permesso negato, GPS
+/// disattivato) nei corrispondenti `Failure`.
 class LocationRepositoryImpl implements LocationRepository {
   const LocationRepositoryImpl(this._localDataSource);
 

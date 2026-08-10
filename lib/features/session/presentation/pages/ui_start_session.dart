@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../l10n/generated/app_localizations.dart';
-import '../../domain/entities/online_session.dart';
-import '../../domain/usecases/start_session_usecase.dart';
-import '../providers/pro_session.dart';
+import '/features/session/domain/entities/online_session.dart';
+import '/features/session/domain/usecases/start_session_usecase.dart';
+import '/features/session/presentation/providers/pro_session.dart';
+import '/l10n/generated/app_localizations.dart';
 
+/// Wizard aperto da "Start": prima il selfie (scatta e confermi), poi
+/// genere/preferenza. Alla fine avvia la sessione e torna alla home.
 class UiStartSession extends StatefulWidget {
   const UiStartSession({super.key});
 

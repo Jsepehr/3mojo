@@ -1,6 +1,7 @@
 import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
 
+/// Contratto per salvare/leggere conversazioni e messaggi sul dispositivo.
 abstract class ChatLocalDataSource {
   Future<ConversationModel> getOrCreateConversation({
     required String otherPersonId,

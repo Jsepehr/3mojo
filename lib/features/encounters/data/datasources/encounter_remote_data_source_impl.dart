@@ -1,10 +1,14 @@
 import 'dart:math';
 
-import '../../../../core/errors/exceptions.dart';
+import '/core/errors/exceptions.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../models/encounter_request_model.dart';
 import 'encounter_remote_data_source.dart';
 
+/// Implementazione **finta** (nessun backend vero): tiene in memoria le
+/// richieste in entrata/uscita, simula risposte casuali dopo qualche
+/// secondo, e applica da sola la regola di esclusività quando è "l'altro"
+/// ad accettare — come farebbe un vero server.
 class EncounterRemoteDataSourceImpl implements EncounterRemoteDataSource {
   final Random _random = Random();
   final List<EncounterRequestModel> _incoming = [];

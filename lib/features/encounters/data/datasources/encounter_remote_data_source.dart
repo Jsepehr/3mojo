@@ -1,5 +1,6 @@
 import '../models/encounter_request_model.dart';
 
+/// Contratto per lo scambio di richieste d'interesse con un backend.
 abstract class EncounterRemoteDataSource {
   Future<EncounterRequestModel> sendRequest({
     required String otherPersonId,

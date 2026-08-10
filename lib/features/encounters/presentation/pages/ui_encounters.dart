@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../l10n/generated/app_localizations.dart';
+import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../providers/pro_encounters.dart';
 import '../widgets/cmp_incoming_request_tile.dart';
 import '../widgets/cmp_outgoing_request_tile.dart';
 
+/// Pagina "Richieste" (Like): sezione richieste in arrivo da confermare,
+/// sezione richieste mandate con il loro stato.
 class UiEncounters extends StatelessWidget {
   const UiEncounters({super.key});
 
@@ -57,6 +59,7 @@ class UiEncounters extends StatelessWidget {
   }
 }
 
+/// Titoletto di sezione, riusato per "in arrivo"/"le tue richieste".
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title});
 

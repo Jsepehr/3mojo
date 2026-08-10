@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
 
+/// Riga della lista "Vicinanze": foto, nome, distanza, e la percentuale
+/// d'incontro tradotta in Bassa/Media/Alta (con colore) invece del numero.
 class CmpNearbyPersonTile extends StatelessWidget {
   const CmpNearbyPersonTile({super.key, required this.person});
 

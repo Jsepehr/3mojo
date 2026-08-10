@@ -8,6 +8,8 @@ import '../../domain/usecases/get_messages_usecase.dart';
 import '../../domain/usecases/get_or_create_conversation_usecase.dart';
 import '../../domain/usecases/send_message_usecase.dart';
 
+/// Stato della chat aperta: messaggi, se sta caricando, polling ogni 2s
+/// per vedere l'autoreply finto senza dover ricaricare manualmente.
 class ProChat extends ChangeNotifier {
   ProChat({
     required GetOrCreateConversationUseCase getOrCreateConversationUseCase,
@@ -37,7 +39,10 @@ class ProChat extends ChangeNotifier {
     required String otherSelfiePath,
   }) async {
     _isLoading = true;
-    notifyListeners();
+    // Deferred: open() is called from UiActiveMatch.initState(), which runs
+    // while _MatchGate's own build is still in progress — notifying
+    // synchronously here would try to rebuild during that build.
+    scheduleMicrotask(notifyListeners);
 
     final result = await _getOrCreateConversationUseCase(
       GetOrCreateConversationParams(

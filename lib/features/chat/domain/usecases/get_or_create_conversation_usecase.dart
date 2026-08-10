@@ -19,6 +19,8 @@ class GetOrCreateConversationParams extends Equatable {
   List<Object?> get props => [otherPersonId, otherSelfiePath];
 }
 
+/// Azione: apri la conversazione con questa persona (creandola se è la
+/// prima volta che vi scrivete).
 class GetOrCreateConversationUseCase
     implements UseCase<Conversation, GetOrCreateConversationParams> {
   const GetOrCreateConversationUseCase(this._repository);

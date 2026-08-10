@@ -4,6 +4,8 @@ import '/core/errors/exceptions.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import 'location_local_data_source.dart';
 
+/// Implementazione **reale**: usa il pacchetto `geolocator` per controllare
+/// permessi/GPS attivo e leggere la posizione vera del telefono.
 class LocationLocalDataSourceImpl implements LocationLocalDataSource {
   @override
   Future<GeoLocation> getCurrentLocation() async {

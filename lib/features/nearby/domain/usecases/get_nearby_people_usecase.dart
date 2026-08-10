@@ -2,10 +2,13 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
-import '../entities/nearby_person.dart';
-import '../repositories/nearby_repository.dart';
+import '/features/nearby/domain/entities/nearby_person.dart';
+import '/features/nearby/domain/repositories/nearby_repository.dart';
 import 'get_current_location_usecase.dart';
 
+/// Azione: prendi la mia posizione, poi chiedi chi c'è entro `radiusMeters`
+/// (100, regola di business fissa). Compone `GetCurrentLocationUseCase`
+/// invece di dipendere direttamente da `LocationRepository`.
 class GetNearbyPeopleUseCase implements UseCase<List<NearbyPerson>, NoParams> {
   const GetNearbyPeopleUseCase({
     required GetCurrentLocationUseCase getCurrentLocationUseCase,

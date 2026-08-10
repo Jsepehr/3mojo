@@ -1,5 +1,7 @@
 import '../../domain/entities/encounter_request.dart';
 
+/// Versione "remota" di `EncounterRequest` (nessun JSON per ora, ma la
+/// forma è pronta per quando ci sarà un vero backend).
 class EncounterRequestModel extends EncounterRequest {
   const EncounterRequestModel({
     required super.id,

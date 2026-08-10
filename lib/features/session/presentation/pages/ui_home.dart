@@ -3,14 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../l10n/generated/app_localizations.dart';
-import '../../../encounters/presentation/pages/ui_encounters.dart';
-import '../../../encounters/presentation/providers/pro_encounters.dart';
-import '../../../nearby/presentation/pages/ui_nearby.dart';
-import '../providers/pro_session.dart';
-import '../widgets/cmp_radar_background.dart';
+import '/features/encounters/presentation/pages/ui_encounters.dart';
+import '/features/encounters/presentation/providers/pro_encounters.dart';
+import '/features/nearby/presentation/pages/ui_nearby.dart';
+import '/features/session/presentation/providers/pro_session.dart';
+import '/features/session/presentation/widgets/cmp_radar_background.dart';
+import '/l10n/generated/app_localizations.dart';
 import 'ui_start_session.dart';
 
+/// Pagina iniziale dell'app: un'unica pagina che cambia aspetto in base a
+/// `ProSession.isOnline`, non due pagine separate.
 class UiHome extends StatelessWidget {
   const UiHome({super.key});
 
@@ -26,6 +28,7 @@ class UiHome extends StatelessWidget {
   }
 }
 
+/// Stato offline: claim + bottone Start, sfondo radar decorativo.
 class _OfflineHome extends StatelessWidget {
   const _OfflineHome();
 
@@ -73,6 +76,9 @@ class _OfflineHome extends StatelessWidget {
   }
 }
 
+/// Stato online: la tua foto al centro col radar, bottone End, e due
+/// icone per navigare a "Vicinanze"/"Richieste" (con badge sulle richieste
+/// in attesa).
 class _OnlineHome extends StatelessWidget {
   const _OnlineHome();
 

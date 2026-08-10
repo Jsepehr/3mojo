@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/usecases/usecase.dart';
+import '/core/usecases/usecase.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../../domain/usecases/end_match_usecase.dart';
 import '../../domain/usecases/get_incoming_requests_usecase.dart';
@@ -10,6 +10,10 @@ import '../../domain/usecases/get_outgoing_requests_usecase.dart';
 import '../../domain/usecases/respond_to_encounter_request_usecase.dart';
 import '../../domain/usecases/send_encounter_request_usecase.dart';
 
+/// Stato di richieste in entrata/uscita, con polling periodico (ogni 3s)
+/// per sentirsi "vivo" senza un vero push da un backend. `activeMatch`
+/// espone la prima richiesta accettata trovata — usata da `_MatchGate`
+/// in app.dart per aprire la pagina di chat a schermo intero.
 class ProEncounters extends ChangeNotifier {
   ProEncounters({
     required SendEncounterRequestUseCase sendEncounterRequestUseCase,

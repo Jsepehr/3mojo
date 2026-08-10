@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../l10n/generated/app_localizations.dart';
+import '/l10n/generated/app_localizations.dart';
 import '../../../chat/presentation/providers/pro_chat.dart';
 import '../../../chat/presentation/widgets/cmp_chat_message_bubble.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../providers/pro_encounters.dart';
 
+/// Pagina a schermo intero per il match attivo: chat con la persona,
+/// apre da sola (vedi `_MatchGate` in app.dart) e blocca l'uscita
+/// (tasto indietro o bottone "Termina") dietro una conferma, perché
+/// uscire termina per sempre il match.
 class UiActiveMatch extends StatefulWidget {
   const UiActiveMatch({super.key, required this.request});
 

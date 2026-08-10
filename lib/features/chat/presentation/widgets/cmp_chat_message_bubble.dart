@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/chat_message.dart';
 
+/// Un fumetto di chat: a destra ed evidenziato se è tuo, a sinistra altrimenti.
 class CmpChatMessageBubble extends StatelessWidget {
   const CmpChatMessageBubble({super.key, required this.message});
 

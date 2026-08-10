@@ -1,5 +1,7 @@
 import '../../domain/entities/conversation.dart';
 
+/// Versione di `Conversation` con `fromJson`/`toJson`, stessa ragione di
+/// `ChatMessageModel`.
 class ConversationModel extends Conversation {
   const ConversationModel({
     required super.id,

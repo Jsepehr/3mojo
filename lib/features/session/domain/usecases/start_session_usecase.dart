@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/errors/failures.dart';
-import '../../../../core/usecases/usecase.dart';
-import '../entities/online_session.dart';
-import '../repositories/session_repository.dart';
+import '/core/errors/failures.dart';
+import '/core/usecases/usecase.dart';
+import '/features/session/domain/entities/online_session.dart';
+import '/features/session/domain/repositories/session_repository.dart';
 
 class StartSessionParams extends Equatable {
   const StartSessionParams({
@@ -21,6 +21,8 @@ class StartSessionParams extends Equatable {
   List<Object?> get props => [selfiePath, gender, genderPreference];
 }
 
+/// Azione: vai online. Valida che ci sia un selfie prima di salvare la
+/// sessione — è la regola di business, non un dettaglio della UI.
 class StartSessionUseCase
     implements UseCase<OnlineSession, StartSessionParams> {
   const StartSessionUseCase(this._repository);

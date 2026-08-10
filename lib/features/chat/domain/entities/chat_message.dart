@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+/// Un singolo messaggio dentro una conversazione di match.
 class ChatMessage extends Equatable {
   const ChatMessage({
     required this.id,

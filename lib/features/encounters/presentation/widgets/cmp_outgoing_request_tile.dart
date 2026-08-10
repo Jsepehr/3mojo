@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../../../l10n/generated/app_localizations.dart';
+import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 
+/// Riga di una richiesta mandata da te, con il suo stato testuale.
 class CmpOutgoingRequestTile extends StatelessWidget {
   const CmpOutgoingRequestTile({super.key, required this.request});
 

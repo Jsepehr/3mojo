@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+/// Sfondo decorativo: cerchi concentrici animati che pulsano verso
+/// l'esterno, come un radar. Usato sia offline (schermata Start) che
+/// online (dietro la tua foto), solo effetto visivo.
 class CmpRadarBackground extends StatefulWidget {
   const CmpRadarBackground({super.key});
 
@@ -35,6 +38,7 @@ class _CmpRadarBackgroundState extends State<CmpRadarBackground>
   }
 }
 
+/// Disegna i 3 anelli del radar, sfumati in trasparenza verso il bordo.
 class _RadarPainter extends CustomPainter {
   _RadarPainter({required this.progress, required this.color});
 

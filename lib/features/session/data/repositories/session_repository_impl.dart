@@ -1,10 +1,11 @@
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/errors/failures.dart';
-import '../../domain/entities/online_session.dart';
-import '../../domain/repositories/session_repository.dart';
-import '../datasources/session_local_data_source.dart';
+import '/core/errors/failures.dart';
+import '/features/session/data/datasources/session_local_data_source.dart';
+import '/features/session/domain/entities/online_session.dart';
+import '/features/session/domain/repositories/session_repository.dart';
 
+/// Passacarte verso il datasource locale, traducendo le eccezioni in `Failure`.
 class SessionRepositoryImpl implements SessionRepository {
   const SessionRepositoryImpl(this._localDataSource);
 

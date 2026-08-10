@@ -5,6 +5,7 @@ import '/core/usecases/usecase.dart';
 import '../entities/encounter_request.dart';
 import '../repositories/encounter_repository.dart';
 
+/// Azione: le richieste che hai mandato tu, con il loro stato.
 class GetOutgoingRequestsUseCase
     implements UseCase<List<EncounterRequest>, NoParams> {
   const GetOutgoingRequestsUseCase(this._repository);

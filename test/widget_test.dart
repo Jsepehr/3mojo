@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:threemojo_app/app.dart';
 
+// Smoke test: l'app si avvia senza eccezioni e mostra la home offline
+// (bottone Start) quando non c'è ancora nessuna sessione salvata.
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});

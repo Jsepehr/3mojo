@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 
+/// Scheda "qualcuno vuole conoscerti": foto + bottoni sì/no.
 class CmpIncomingRequestTile extends StatelessWidget {
   const CmpIncomingRequestTile({
     super.key,

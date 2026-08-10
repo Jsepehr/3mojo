@@ -1,5 +1,7 @@
 import '../../domain/entities/chat_message.dart';
 
+/// Versione di `ChatMessage` con `fromJson`/`toJson`, per salvarlo in
+/// `shared_preferences` come JSON codificato.
 class ChatMessageModel extends ChatMessage {
   const ChatMessageModel({
     required super.id,

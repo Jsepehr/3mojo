@@ -1,9 +1,10 @@
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/errors/failures.dart';
-import '../../../../core/usecases/usecase.dart';
+import '/core/errors/failures.dart';
+import '/core/usecases/usecase.dart';
 import '../repositories/encounter_repository.dart';
 
+/// Azione: termina volontariamente un match attivo (irreversibile).
 class EndMatchUseCase implements UseCase<Unit, String> {
   const EndMatchUseCase(this._repository);
 

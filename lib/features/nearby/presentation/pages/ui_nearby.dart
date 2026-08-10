@@ -6,6 +6,8 @@ import '../../../encounters/presentation/providers/pro_encounters.dart';
 import '../providers/pro_nearby.dart';
 import '../widgets/cmp_nearby_person_tile.dart';
 
+/// Pagina "Vicinanze": lista delle persone presenti ora. Un tap su una
+/// persona manda una richiesta d'incontro (feature `encounters`).
 class UiNearby extends StatelessWidget {
   const UiNearby({super.key});
 

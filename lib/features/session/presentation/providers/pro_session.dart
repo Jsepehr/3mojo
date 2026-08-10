@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/usecases/usecase.dart';
-import '../../domain/entities/online_session.dart';
-import '../../domain/usecases/end_session_usecase.dart';
-import '../../domain/usecases/get_current_session_usecase.dart';
-import '../../domain/usecases/start_session_usecase.dart';
+import '/core/usecases/usecase.dart';
+import '/features/session/domain/entities/online_session.dart';
+import '/features/session/domain/usecases/end_session_usecase.dart';
+import '/features/session/domain/usecases/get_current_session_usecase.dart';
+import '/features/session/domain/usecases/start_session_usecase.dart';
 
+/// Stato di sessione: online/offline, dati della sessione corrente.
+/// `UiHome` osserva `isOnline` per decidere quale schermata mostrare.
 class ProSession extends ChangeNotifier {
   ProSession({
     required GetCurrentSessionUseCase getCurrentSessionUseCase,

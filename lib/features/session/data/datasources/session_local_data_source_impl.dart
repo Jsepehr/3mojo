@@ -1,8 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/entities/online_session.dart';
+import '/features/session/domain/entities/online_session.dart';
 import 'session_local_data_source.dart';
 
+/// Implementazione **reale**: salva selfie/genere/preferenza con
+/// `shared_preferences`. `endSession` li rimuove — nessuna traccia resta
+/// tra un End e il prossimo Start.
 class SessionLocalDataSourceImpl implements SessionLocalDataSource {
   static const String _selfiePathKey = 'session_selfie_path';
   static const String _genderKey = 'session_gender';

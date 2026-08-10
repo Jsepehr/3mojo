@@ -1,5 +1,9 @@
 import 'package:equatable/equatable.dart';
 
+// Errori "di dominio": quello che un repository ritorna (dentro un Either)
+// quando un'operazione fallisce. È il linguaggio degli errori che domain/
+// e presentation/ capiscono — mai un'eccezione tecnica grezza.
+
 abstract class Failure extends Equatable {
   const Failure(this.message);
 

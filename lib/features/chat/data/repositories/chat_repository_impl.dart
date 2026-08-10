@@ -1,11 +1,12 @@
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/errors/failures.dart';
+import '/core/errors/failures.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/chat_local_data_source.dart';
 
+/// Passacarte verso il datasource locale, traducendo le eccezioni in `Failure`.
 class ChatRepositoryImpl implements ChatRepository {
   const ChatRepositoryImpl(this._localDataSource);
 

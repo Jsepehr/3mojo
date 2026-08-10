@@ -7,6 +7,10 @@ import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
 import 'chat_local_data_source.dart';
 
+/// Implementazione **reale** per il salvataggio (JSON in `shared_preferences`
+/// — il server farebbe solo da postino, non conserva nulla), ma con un
+/// autoreply **finto** dopo ogni messaggio, per sentire la chat viva senza
+/// un vero interlocutore dall'altra parte.
 class ChatLocalDataSourceImpl implements ChatLocalDataSource {
   static const String _conversationsKey = 'chat_conversations';
   static const String _messagesKeyPrefix = 'chat_messages_';

@@ -19,6 +19,7 @@ class SendEncounterRequestParams extends Equatable {
   List<Object?> get props => [otherPersonId, otherSelfiePath];
 }
 
+/// Azione: manda una richiesta d'interesse a una persona vista in "Vicinanze".
 class SendEncounterRequestUseCase
     implements UseCase<EncounterRequest, SendEncounterRequestParams> {
   const SendEncounterRequestUseCase(this._repository);

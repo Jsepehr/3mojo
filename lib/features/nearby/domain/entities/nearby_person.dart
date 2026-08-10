@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+/// Una persona vista nella lista "Vicinanze": chi è, quanto è distante, e
+/// quanto è probabile incontrarla (in base a quanto è rimasta ferma lì).
 class NearbyPerson extends Equatable {
   const NearbyPerson({
     required this.id,

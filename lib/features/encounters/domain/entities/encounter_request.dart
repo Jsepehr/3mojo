@@ -1,7 +1,11 @@
 import 'package:equatable/equatable.dart';
 
+/// Ciclo di vita di una richiesta: in attesa, accettata (= match),
+/// rifiutata, annullata (perché ne hai accettata un'altra), o terminata
+/// (match chiuso manualmente).
 enum EncounterRequestStatus { pending, accepted, declined, cancelled, ended }
 
+/// Una richiesta d'interesse tra due persone, in entrata o in uscita.
 class EncounterRequest extends Equatable {
   const EncounterRequest({
     required this.id,

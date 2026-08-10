@@ -43,6 +43,9 @@ import 'features/session/presentation/pages/ui_home.dart';
 import 'features/session/presentation/providers/pro_session.dart';
 import 'l10n/generated/app_localizations.dart';
 
+/// Widget radice: registra tutti i provider (uno per feature, dal
+/// datasource al ChangeNotifier) e apre su `UiHome`, avvolta da
+/// `_MatchGate` così un match può prendere il controllo da qualsiasi punto.
 class App extends StatelessWidget {
   const App({super.key});
 
