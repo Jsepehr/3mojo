@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
-import '/features/nearby/presentation/pages/ui_nearby.dart';
+import '/features/nearby/presentation/widgets/cmp_nearby_list.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_radar_background.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -76,9 +76,10 @@ class _OfflineHome extends StatelessWidget {
   }
 }
 
-/// Stato online: la tua foto al centro col radar, bottone End, e due
-/// icone per navigare a "Vicinanze"/"Richieste" (con badge sulle richieste
-/// in attesa).
+/// Stato online: un'unica pagina — AppBar con bottone End (rosso), body con
+/// la lista delle persone vicine, e bottom app bar con la tua foto profilo
+/// (piccola, solo a titolo di conferma "sei online con questa foto") e
+/// l'icona "Richieste" con badge sulle richieste in attesa.
 class _OnlineHome extends StatelessWidget {
   const _OnlineHome();
 
@@ -90,33 +91,25 @@ class _OnlineHome extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        title: Text(l10n.nearbyPageTitle),
         actions: [
           TextButton(
             onPressed: () => context.read<ProSession>().end(),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(l10n.homeEndButton),
           ),
         ],
       ),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Positioned.fill(child: CmpRadarBackground()),
-          CircleAvatar(
-            radius: 72,
-            backgroundImage: FileImage(File(session.selfiePath)),
-          ),
-        ],
-      ),
+      body: const CmpNearbyList(),
       bottomNavigationBar: BottomAppBar(
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton.filledTonal(
-              icon: const Icon(Icons.list),
-              tooltip: l10n.nearbyPageTitle,
-              onPressed: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const UiNearby())),
+            CircleAvatar(
+              radius: 18,
+              backgroundImage: FileImage(File(session.selfiePath)),
             ),
             IconButton.filledTonal(
               icon: pendingCount == 0

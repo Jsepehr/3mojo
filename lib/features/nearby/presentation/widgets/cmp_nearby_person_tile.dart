@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
 
-/// Riga della lista "Vicinanze": foto, nome, distanza, e la percentuale
-/// d'incontro tradotta in Bassa/Media/Alta (con colore) invece del numero.
+/// Riga della lista "Vicinanze": nessun nome (l'app non lo chiede), solo
+/// una foto grande, la distanza, e lo stadio di probabilità d'incontro
+/// (Bassa/Media/Alta, con colore) — niente barra di caricamento, dato che
+/// sono solo tre stadi discreti, non un valore continuo.
 class CmpNearbyPersonTile extends StatelessWidget {
   const CmpNearbyPersonTile({super.key, required this.person});
 
@@ -13,48 +15,42 @@ class CmpNearbyPersonTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final percent = person.meetingChancePercent;
 
     return ListTile(
       leading: CircleAvatar(
+        radius: 40,
         backgroundImage: person.photoUrl.isEmpty
             ? null
             : NetworkImage(person.photoUrl),
         child: person.photoUrl.isEmpty ? const Icon(Icons.person) : null,
       ),
-      title: Text(person.name),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _meetingChanceLabel(l10n, percent),
-            style: TextStyle(color: _meetingChanceColor(percent)),
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percent / 100,
-              minHeight: 4,
-              color: _meetingChanceColor(percent),
-            ),
-          ),
-        ],
+      title: Text(
+        _meetingChanceLabel(l10n, person.meetingChance),
+        style: TextStyle(color: _meetingChanceColor(person.meetingChance)),
       ),
       trailing: Text(l10n.nearbyDistanceLabel(person.distanceMeters.round())),
     );
   }
 
-  String _meetingChanceLabel(AppLocalizations l10n, int percent) {
-    if (percent < 34) return l10n.nearbyMeetingChanceLow;
-    if (percent < 67) return l10n.nearbyMeetingChanceMedium;
-    return l10n.nearbyMeetingChanceHigh;
+  String _meetingChanceLabel(AppLocalizations l10n, MeetingChance chance) {
+    switch (chance) {
+      case MeetingChance.low:
+        return l10n.nearbyMeetingChanceLow;
+      case MeetingChance.medium:
+        return l10n.nearbyMeetingChanceMedium;
+      case MeetingChance.high:
+        return l10n.nearbyMeetingChanceHigh;
+    }
   }
 
-  Color _meetingChanceColor(int percent) {
-    if (percent < 34) return Colors.redAccent;
-    if (percent < 67) return Colors.orangeAccent;
-    return Colors.green;
+  Color _meetingChanceColor(MeetingChance chance) {
+    switch (chance) {
+      case MeetingChance.low:
+        return Colors.redAccent;
+      case MeetingChance.medium:
+        return Colors.orangeAccent;
+      case MeetingChance.high:
+        return Colors.green;
+    }
   }
 }

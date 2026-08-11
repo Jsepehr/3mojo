@@ -2,40 +2,56 @@ import 'dart:math';
 
 import '/core/errors/exceptions.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
+import '/features/nearby/domain/entities/nearby_person.dart';
 import 'nearby_remote_data_source.dart';
 
 /// Implementazione **finta** (nessun backend vero): simula 5 persone la cui
 /// presenza cambia a ogni chiamata — entrano, restano, escono — con
-/// fallimento casuale di rete e la percentuale d'incontro calcolata dal
-/// tempo di permanenza simulato.
+/// fallimento casuale di rete e lo stadio di probabilità d'incontro
+/// calcolato dal tempo di permanenza simulato.
 class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   final Random _random = Random();
 
+  // Tutti partono da 0: appena entrati nel raggio di 100 metri, nessuno può
+  // già essere a probabilità media o alta — ci si arriva solo restando.
   final List<_FakePresence> _people = [
     _FakePresence(
       id: '1',
-      name: 'Giulia',
+      photoUrl: _photoUrlFor(1),
       distanceMeters: 4.0,
-      dwellMinutes: 5,
+      dwellMinutes: 0,
     ),
     _FakePresence(
       id: '2',
-      name: 'Marco',
+      photoUrl: _photoUrlFor(2),
       distanceMeters: 12.5,
-      dwellMinutes: 3,
+      dwellMinutes: 0,
     ),
-    _FakePresence(id: '3', name: 'Sara', distanceMeters: 19.0, dwellMinutes: 1),
-    _FakePresence(id: '4', name: 'Luca', distanceMeters: 45.0, dwellMinutes: 2),
+    _FakePresence(
+      id: '3',
+      photoUrl: _photoUrlFor(3),
+      distanceMeters: 19.0,
+      dwellMinutes: 0,
+    ),
+    _FakePresence(
+      id: '4',
+      photoUrl: _photoUrlFor(4),
+      distanceMeters: 45.0,
+      dwellMinutes: 0,
+    ),
     _FakePresence(
       id: '5',
-      name: 'Elena',
+      photoUrl: _photoUrlFor(5),
       distanceMeters: 150.0,
-      dwellMinutes: 5,
+      dwellMinutes: 0,
     ),
   ];
 
+  static String _photoUrlFor(int n) => 'https://i.pravatar.cc/300?img=$n';
+
   static const double _visibilityThresholdMinutes = 1;
-  static const double _fullChanceThresholdMinutes = 5;
+  static const double _mediumChanceThresholdMinutes = 3;
+  static const double _highChanceThresholdMinutes = 5;
   static const double _leaveProbability = 0.15;
   static const double _returnProbability = 0.35;
 
@@ -43,7 +59,7 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   Future<List<NearbyPersonModel>> fetchNearbyPeople() async {
     await Future<void>.delayed(const Duration(seconds: 1));
 
-    if (_random.nextDouble() < 0.3) {
+    if (_random.nextDouble() < 0.1) {
       throw const ServerException('Server irraggiungibile');
     }
 
@@ -71,29 +87,33 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
         .map(
           (person) => NearbyPersonModel(
             id: person.id,
-            name: person.name,
-            photoUrl: '',
+            photoUrl: person.photoUrl,
             distanceMeters: person.distanceMeters,
-            meetingChancePercent:
-                (person.dwellMinutes / _fullChanceThresholdMinutes * 100)
-                    .clamp(0, 100)
-                    .round(),
+            meetingChance: _meetingChanceFor(person.dwellMinutes),
           ),
         )
         .toList();
+  }
+
+  MeetingChance _meetingChanceFor(double dwellMinutes) {
+    if (dwellMinutes >= _highChanceThresholdMinutes) return MeetingChance.high;
+    if (dwellMinutes >= _mediumChanceThresholdMinutes) {
+      return MeetingChance.medium;
+    }
+    return MeetingChance.low;
   }
 }
 
 class _FakePresence {
   _FakePresence({
     required this.id,
-    required this.name,
+    required this.photoUrl,
     required this.distanceMeters,
     required this.dwellMinutes,
   });
 
   final String id;
-  final String name;
+  final String photoUrl;
   final double distanceMeters;
   double dwellMinutes;
   bool isPresent = true;

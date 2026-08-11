@@ -1,50 +1,24 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '/features/session/domain/entities/online_session.dart';
 import 'session_local_data_source.dart';
 
-/// Implementazione **reale**: salva selfie/genere/preferenza con
-/// `shared_preferences`. `endSession` li rimuove — nessuna traccia resta
-/// tra un End e il prossimo Start.
+/// Implementazione **reale**, ma solo in memoria (nessun `shared_preferences`,
+/// nessun disco): la sessione vive finché vive il processo dell'app. Chiudere
+/// del tutto l'app e riaprirla equivale sempre a un nuovo Start da zero —
+/// coerente con "usa e getta", niente account che sopravviva alla chiusura.
 class SessionLocalDataSourceImpl implements SessionLocalDataSource {
-  static const String _selfiePathKey = 'session_selfie_path';
-  static const String _genderKey = 'session_gender';
-  static const String _genderPreferenceKey = 'session_gender_preference';
+  OnlineSession? _session;
 
   @override
-  Future<OnlineSession?> getCurrentSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selfiePath = prefs.getString(_selfiePathKey);
-    final genderName = prefs.getString(_genderKey);
-    final genderPreferenceName = prefs.getString(_genderPreferenceKey);
-
-    if (selfiePath == null ||
-        genderName == null ||
-        genderPreferenceName == null) {
-      return null;
-    }
-
-    return OnlineSession(
-      selfiePath: selfiePath,
-      gender: Gender.values.byName(genderName),
-      genderPreference: GenderPreference.values.byName(genderPreferenceName),
-    );
-  }
+  Future<OnlineSession?> getCurrentSession() async => _session;
 
   @override
   Future<OnlineSession> startSession(OnlineSession session) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selfiePathKey, session.selfiePath);
-    await prefs.setString(_genderKey, session.gender.name);
-    await prefs.setString(_genderPreferenceKey, session.genderPreference.name);
+    _session = session;
     return session;
   }
 
   @override
   Future<void> endSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_selfiePathKey);
-    await prefs.remove(_genderKey);
-    await prefs.remove(_genderPreferenceKey);
+    _session = null;
   }
 }

@@ -32,10 +32,15 @@ import 'features/nearby/domain/repositories/nearby_repository.dart';
 import 'features/nearby/domain/usecases/get_current_location_usecase.dart';
 import 'features/nearby/domain/usecases/get_nearby_people_usecase.dart';
 import 'features/nearby/presentation/providers/pro_nearby.dart';
+import 'features/session/data/datasources/face_detection_local_data_source.dart';
+import 'features/session/data/datasources/face_detection_local_data_source_impl.dart';
 import 'features/session/data/datasources/session_local_data_source.dart';
 import 'features/session/data/datasources/session_local_data_source_impl.dart';
+import 'features/session/data/repositories/face_detection_repository_impl.dart';
 import 'features/session/data/repositories/session_repository_impl.dart';
+import 'features/session/domain/repositories/face_detection_repository.dart';
 import 'features/session/domain/repositories/session_repository.dart';
+import 'features/session/domain/usecases/check_selfie_has_face_usecase.dart';
 import 'features/session/domain/usecases/end_session_usecase.dart';
 import 'features/session/domain/usecases/get_current_session_usecase.dart';
 import 'features/session/domain/usecases/start_session_usecase.dart';
@@ -59,11 +64,25 @@ class App extends StatelessWidget {
         Provider<SessionRepository>(
           create: (context) => SessionRepositoryImpl(context.read()),
         ),
+        Provider<FaceDetectionLocalDataSource>(
+          create: (_) => FaceDetectionLocalDataSourceImpl(),
+        ),
+        Provider<FaceDetectionRepository>(
+          create: (context) => FaceDetectionRepositoryImpl(context.read()),
+        ),
         ChangeNotifierProvider<ProSession>(
           create: (context) => ProSession(
             getCurrentSessionUseCase: GetCurrentSessionUseCase(context.read()),
-            startSessionUseCase: StartSessionUseCase(context.read()),
+            startSessionUseCase: StartSessionUseCase(
+              repository: context.read(),
+              checkSelfieHasFaceUseCase: CheckSelfieHasFaceUseCase(
+                context.read(),
+              ),
+            ),
             endSessionUseCase: EndSessionUseCase(context.read()),
+            checkSelfieHasFaceUseCase: CheckSelfieHasFaceUseCase(
+              context.read(),
+            ),
           ),
         ),
         Provider<LocationLocalDataSource>(

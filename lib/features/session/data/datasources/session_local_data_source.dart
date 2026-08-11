@@ -1,4 +1,3 @@
-
 import '/features/session/domain/entities/online_session.dart';
 
 /// Contratto per persistere la sessione online sul dispositivo.

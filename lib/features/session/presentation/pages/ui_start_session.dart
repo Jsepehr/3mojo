@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -9,8 +10,10 @@ import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/l10n/generated/app_localizations.dart';
 
-/// Wizard aperto da "Start": prima il selfie (scatta e confermi), poi
-/// genere/preferenza. Alla fine avvia la sessione e torna alla home.
+/// Wizard aperto da "Start": prima il selfie (scatta e confermi — un
+/// controllo ML Kit verifica al volo che ci sia un volto, altrimenti blocca
+/// il passo), poi genere/preferenza. Alla fine avvia la sessione e torna
+/// alla home.
 class UiStartSession extends StatefulWidget {
   const UiStartSession({super.key});
 
@@ -23,18 +26,45 @@ class _UiStartSessionState extends State<UiStartSession> {
   String? _selfiePath;
   Gender? _gender;
   GenderPreference? _genderPreference;
+  bool _isCheckingFace = false;
 
   Future<void> _takeSelfie() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.camera,
       preferredCameraDevice: CameraDevice.front,
     );
-    if (picked != null) {
-      setState(() => _selfiePath = picked.path);
-    }
+    if (picked == null) return;
+
+    await _unmirror(picked.path);
+    setState(() => _selfiePath = picked.path);
   }
 
-  void _confirmSelfie() => setState(() => _step = 1);
+  /// La fotocamera frontale, su molti dispositivi Android, salva lo scatto
+  /// come immagine speculare (mirror-image) invece che come si vede nella
+  /// realtà — lo corregge ribaltando l'immagine orizzontalmente una volta.
+  Future<void> _unmirror(String path) async {
+    final file = File(path);
+    final decoded = img.decodeImage(await file.readAsBytes());
+    if (decoded == null) return;
+
+    await file.writeAsBytes(img.encodeJpg(img.flipHorizontal(decoded)));
+  }
+
+  Future<void> _confirmSelfie() async {
+    final selfiePath = _selfiePath;
+    if (selfiePath == null) return;
+
+    setState(() => _isCheckingFace = true);
+    final hasFace = await context.read<ProSession>().checkSelfieHasFace(
+      selfiePath,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingFace = false;
+      if (hasFace) _step = 1;
+    });
+  }
 
   void _submit() {
     final selfiePath = _selfiePath;
@@ -64,13 +94,13 @@ class _UiStartSessionState extends State<UiStartSession> {
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: _step == 0
-            ? _buildSelfieStep(l10n)
+            ? _buildSelfieStep(l10n, errorMessage)
             : _buildGenderStep(l10n, errorMessage),
       ),
     );
   }
 
-  Widget _buildSelfieStep(AppLocalizations l10n) {
+  Widget _buildSelfieStep(AppLocalizations l10n, String? errorMessage) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -99,10 +129,26 @@ class _UiStartSessionState extends State<UiStartSession> {
             ),
           ),
         ),
+        if (errorMessage != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            errorMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
         const Spacer(),
         FilledButton(
-          onPressed: _selfiePath == null ? null : _confirmSelfie,
-          child: Text(l10n.profileLikeSelfieButton),
+          onPressed: _selfiePath == null || _isCheckingFace
+              ? null
+              : _confirmSelfie,
+          child: _isCheckingFace
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.profileLikeSelfieButton),
         ),
       ],
     );
