@@ -1,0 +1,114 @@
+import 'package:test/test.dart';
+import 'package:threemojo_server/src/meeting_chance.dart';
+import 'package:threemojo_server/src/session_store.dart';
+
+void main() {
+  group('SessionStore', () {
+    late DateTime clock;
+    late SessionStore store;
+
+    setUp(() {
+      clock = DateTime(2026, 1, 1);
+      store = SessionStore.withClock(() => clock);
+    });
+
+    test('nearbyPeople returns null if sessionId never sent a position', () {
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isNull);
+    });
+
+    test('a person is invisible before 1 minute of presence', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      clock = clock.add(const Duration(seconds: 59));
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('a person already there before you arrive shows up immediately', () {
+      // 'b' has been in place for 6 minutes before 'a' ever asks — this is
+      // the scenario that motivated arrivedAt-based (not tick-based) dwell.
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      clock = clock.add(const Duration(minutes: 6));
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+
+      final result = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
+      expect(result.single.meetingChance, MeetingChance.high);
+    });
+
+    test('meeting chance rises with dwell time: low -> medium -> high', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      clock = clock.add(const Duration(minutes: 1));
+      expect(
+        store
+            .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+            .single
+            .meetingChance,
+        MeetingChance.low,
+      );
+
+      clock = clock.add(const Duration(minutes: 2));
+      expect(
+        store
+            .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+            .single
+            .meetingChance,
+        MeetingChance.medium,
+      );
+
+      clock = clock.add(const Duration(minutes: 2));
+      expect(
+        store
+            .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+            .single
+            .meetingChance,
+        MeetingChance.high,
+      );
+    });
+
+    test('moving away resets the dwell time back to zero', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      clock = clock.add(const Duration(minutes: 5));
+      expect(
+        store
+            .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+            .single
+            .meetingChance,
+        MeetingChance.high,
+      );
+
+      // 'b' walks far enough away to reset its stationarity anchor, then
+      // comes right back — dwell time should restart from zero.
+      store.upsertPosition(sessionId: 'b', lat: 0.01, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('someone outside the radius is not returned', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      // Roughly 1.1km away — well outside a 100m radius.
+      store.upsertPosition(sessionId: 'b', lat: 0.01, lng: 0);
+
+      clock = clock.add(const Duration(minutes: 5));
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('remove() makes a session disappear from everyone else\'s list', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      clock = clock.add(const Duration(minutes: 5));
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isNotEmpty);
+
+      store.remove('b');
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+  });
+}
