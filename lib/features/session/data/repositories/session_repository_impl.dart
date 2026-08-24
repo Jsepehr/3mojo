@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
@@ -22,14 +24,18 @@ class SessionRepositoryImpl implements SessionRepository {
 
   @override
   Future<Either<Failure, OnlineSession>> startSession({
+    required String sessionId,
     required String selfiePath,
+    required Uint8List selfieBytes,
     required Gender gender,
     required GenderPreference genderPreference,
   }) async {
     try {
       final session = await _localDataSource.startSession(
         OnlineSession(
+          sessionId: sessionId,
           selfiePath: selfiePath,
+          selfieBytes: selfieBytes,
           gender: gender,
           genderPreference: genderPreference,
         ),

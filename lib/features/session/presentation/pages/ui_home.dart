@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -109,7 +107,7 @@ class _OnlineHome extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundImage: FileImage(File(session.selfiePath)),
+              backgroundImage: MemoryImage(session.selfieBytes),
             ),
             IconButton.filledTonal(
               icon: pendingCount == 0

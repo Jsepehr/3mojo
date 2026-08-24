@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '/core/utils/photo_data_uri.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
 
@@ -16,13 +17,13 @@ class CmpNearbyPersonTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    final photo = imageProviderForPhoto(person.photoUrl);
+
     return ListTile(
       leading: CircleAvatar(
         radius: 40,
-        backgroundImage: person.photoUrl.isEmpty
-            ? null
-            : NetworkImage(person.photoUrl),
-        child: person.photoUrl.isEmpty ? const Icon(Icons.person) : null,
+        backgroundImage: photo,
+        child: photo == null ? const Icon(Icons.person) : null,
       ),
       title: Text(
         _meetingChanceLabel(l10n, person.meetingChance),

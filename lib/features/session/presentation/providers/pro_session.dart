@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '/core/usecases/usecase.dart';
+import '/features/nearby/domain/usecases/stop_being_visible_usecase.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/check_selfie_has_face_usecase.dart';
 import '/features/session/domain/usecases/end_session_usecase.dart';
@@ -19,10 +20,12 @@ class ProSession extends ChangeNotifier {
     required StartSessionUseCase startSessionUseCase,
     required EndSessionUseCase endSessionUseCase,
     required CheckSelfieHasFaceUseCase checkSelfieHasFaceUseCase,
+    required StopBeingVisibleUseCase stopBeingVisibleUseCase,
   }) : _getCurrentSessionUseCase = getCurrentSessionUseCase,
        _startSessionUseCase = startSessionUseCase,
        _endSessionUseCase = endSessionUseCase,
-       _checkSelfieHasFaceUseCase = checkSelfieHasFaceUseCase {
+       _checkSelfieHasFaceUseCase = checkSelfieHasFaceUseCase,
+       _stopBeingVisibleUseCase = stopBeingVisibleUseCase {
     _load();
   }
 
@@ -30,6 +33,7 @@ class ProSession extends ChangeNotifier {
   final StartSessionUseCase _startSessionUseCase;
   final EndSessionUseCase _endSessionUseCase;
   final CheckSelfieHasFaceUseCase _checkSelfieHasFaceUseCase;
+  final StopBeingVisibleUseCase _stopBeingVisibleUseCase;
 
   bool _isLoading = true;
   OnlineSession? _session;
@@ -86,6 +90,11 @@ class ProSession extends ChangeNotifier {
   }
 
   Future<void> end() async {
+    // Best-effort: anche se il server non risponde, l'uscita locale deve
+    // comunque riuscire — "usa e getta" vale prima di tutto sul telefono.
+    final sessionId = _session?.sessionId;
+    if (sessionId != null) await _stopBeingVisibleUseCase(sessionId);
+
     await _endSessionUseCase(const NoParams());
     _session = null;
     await WakelockPlus.disable();

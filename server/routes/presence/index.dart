@@ -41,6 +41,9 @@ Future<Response> _upsertPresence(RequestContext context) async {
     sessionId: sessionId,
     lat: lat,
     lng: lng,
+    gender: body['gender'] as String? ?? 'unspecified',
+    genderPreference: body['genderPreference'] as String? ?? 'everyone',
+    selfieBase64: body['selfieBase64'] as String? ?? '',
   );
   return Response(statusCode: 204);
 }

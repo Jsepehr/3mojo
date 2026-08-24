@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/utils/photo_data_uri.dart';
+import '/features/chat/presentation/providers/pro_chat.dart';
+import '/features/chat/presentation/widgets/cmp_chat_message_bubble.dart';
+import '/features/encounters/domain/entities/encounter_request.dart';
+import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/l10n/generated/app_localizations.dart';
-import '../../../chat/presentation/providers/pro_chat.dart';
-import '../../../chat/presentation/widgets/cmp_chat_message_bubble.dart';
-import '../../domain/entities/encounter_request.dart';
-import '../providers/pro_encounters.dart';
 
 /// Pagina a schermo intero per il match attivo: chat con la persona,
 /// apre da sola (vedi `_MatchGate` in app.dart) e blocca l'uscita
@@ -78,6 +79,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final proChat = context.watch<ProChat>();
+    final photo = imageProviderForPhoto(widget.request.otherSelfiePath);
 
     return PopScope(
       canPop: false,
@@ -87,7 +89,17 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(l10n.chatPageTitle),
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: photo,
+                child: photo == null ? const Icon(Icons.person) : null,
+              ),
+              const SizedBox(width: 12),
+              Text(l10n.chatPageTitle),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => _leaveMatch(l10n),

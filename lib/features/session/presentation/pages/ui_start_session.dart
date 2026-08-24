@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -24,6 +24,7 @@ class UiStartSession extends StatefulWidget {
 class _UiStartSessionState extends State<UiStartSession> {
   int _step = 0;
   String? _selfiePath;
+  Uint8List? _selfieBytes;
   Gender? _gender;
   GenderPreference? _genderPreference;
   bool _isCheckingFace = false;
@@ -35,19 +36,22 @@ class _UiStartSessionState extends State<UiStartSession> {
     );
     if (picked == null) return;
 
-    await _unmirror(picked.path);
-    setState(() => _selfiePath = picked.path);
+    final unmirrored = _unmirror(await picked.readAsBytes());
+    setState(() {
+      _selfiePath = picked.path;
+      _selfieBytes = unmirrored;
+    });
   }
 
   /// La fotocamera frontale, su molti dispositivi Android, salva lo scatto
   /// come immagine speculare (mirror-image) invece che come si vede nella
   /// realtà — lo corregge ribaltando l'immagine orizzontalmente una volta.
-  Future<void> _unmirror(String path) async {
-    final file = File(path);
-    final decoded = img.decodeImage(await file.readAsBytes());
-    if (decoded == null) return;
-
-    await file.writeAsBytes(img.encodeJpg(img.flipHorizontal(decoded)));
+  /// Tutto in memoria (mai un file temporaneo): funziona identico su ogni
+  /// piattaforma, web incluso.
+  Uint8List _unmirror(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return bytes;
+    return Uint8List.fromList(img.encodeJpg(img.flipHorizontal(decoded)));
   }
 
   Future<void> _confirmSelfie() async {
@@ -68,15 +72,20 @@ class _UiStartSessionState extends State<UiStartSession> {
 
   void _submit() {
     final selfiePath = _selfiePath;
+    final selfieBytes = _selfieBytes;
     final gender = _gender;
     final genderPreference = _genderPreference;
-    if (selfiePath == null || gender == null || genderPreference == null) {
+    if (selfiePath == null ||
+        selfieBytes == null ||
+        gender == null ||
+        genderPreference == null) {
       return;
     }
 
     context.read<ProSession>().start(
       StartSessionParams(
         selfiePath: selfiePath,
+        selfieBytes: selfieBytes,
         gender: gender,
         genderPreference: genderPreference,
       ),
@@ -109,10 +118,10 @@ class _UiStartSessionState extends State<UiStartSession> {
             onTap: _takeSelfie,
             child: CircleAvatar(
               radius: 96,
-              backgroundImage: _selfiePath == null
+              backgroundImage: _selfieBytes == null
                   ? null
-                  : FileImage(File(_selfiePath!)),
-              child: _selfiePath == null
+                  : MemoryImage(_selfieBytes!),
+              child: _selfieBytes == null
                   ? const Icon(Icons.camera_alt, size: 40)
                   : null,
             ),

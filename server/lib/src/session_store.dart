@@ -12,6 +12,9 @@ class Session {
     required this.lng,
     required this.arrivedAt,
     required this.lastSeen,
+    this.gender = 'unspecified',
+    this.genderPreference = 'everyone',
+    this.selfieBase64 = '',
   });
 
   final String sessionId;
@@ -19,25 +22,40 @@ class Session {
   double lng;
   DateTime arrivedAt;
   DateTime lastSeen;
+
+  /// Il genere dichiarato e la preferenza di chi vedere — stessi valori di
+  /// `Gender`/`GenderPreference` nel client Flutter, qui solo stringhe
+  /// perché il server non ha bisogno di interpretarli, solo di confrontarli.
+  String gender;
+  String genderPreference;
+
+  /// Il selfie della sessione, così com'è arrivato dal client (base64) — il
+  /// server non lo decodifica né lo valida, lo tiene solo per ridistribuirlo
+  /// a chi lo vede in "Vicinanze".
+  String selfieBase64;
 }
 
-/// Una persona vicina già pronta per il client: distanza e stadio di
-/// probabilità d'incontro già calcolati, nessuna posizione grezza esposta.
+/// Una persona vicina già pronta per il client: distanza, stadio di
+/// probabilità d'incontro e selfie già pronti, nessuna posizione grezza
+/// esposta.
 class NearbyPersonResult {
   NearbyPersonResult({
     required this.sessionId,
     required this.distanceMeters,
     required this.meetingChance,
+    required this.selfieBase64,
   });
 
   final String sessionId;
   final double distanceMeters;
   final MeetingChance meetingChance;
+  final String selfieBase64;
 
   Map<String, dynamic> toJson() => {
     'sessionId': sessionId,
     'distanceMeters': distanceMeters,
     'meetingChance': meetingChance.name,
+    'selfieBase64': selfieBase64,
   };
 }
 
@@ -66,6 +84,9 @@ class SessionStore {
     required String sessionId,
     required double lat,
     required double lng,
+    String gender = 'unspecified',
+    String genderPreference = 'everyone',
+    String selfieBase64 = '',
   }) {
     final now = _now();
     final existing = _sessions[sessionId];
@@ -77,6 +98,9 @@ class SessionStore {
         lng: lng,
         arrivedAt: now,
         lastSeen: now,
+        gender: gender,
+        genderPreference: genderPreference,
+        selfieBase64: selfieBase64,
       );
       return;
     }
@@ -88,6 +112,9 @@ class SessionStore {
     existing.lat = lat;
     existing.lng = lng;
     existing.lastSeen = now;
+    existing.gender = gender;
+    existing.genderPreference = genderPreference;
+    existing.selfieBase64 = selfieBase64;
     if (movedAway) existing.arrivedAt = now;
   }
 
@@ -111,6 +138,13 @@ class SessionStore {
     for (final other in _sessions.values) {
       if (other.sessionId == sessionId) continue;
 
+      // "Il genere che l'utente vuole vedere in Vicinanze" — filtro a senso
+      // unico sulla mia preferenza, non serve reciprocità.
+      if (me.genderPreference != 'everyone' &&
+          other.gender != me.genderPreference) {
+        continue;
+      }
+
       final distance = distanceMeters(me.lat, me.lng, other.lat, other.lng);
       if (distance > radiusMeters) continue;
 
@@ -122,6 +156,7 @@ class SessionStore {
           sessionId: other.sessionId,
           distanceMeters: distance,
           meetingChance: meetingChanceFor(dwell),
+          selfieBase64: other.selfieBase64,
         ),
       );
     }

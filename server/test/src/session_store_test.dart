@@ -99,6 +99,45 @@ void main() {
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
     });
 
+    test('genderPreference filters out non-matching genders', () {
+      store.upsertPosition(
+        sessionId: 'a',
+        lat: 0,
+        lng: 0,
+        genderPreference: 'female',
+      );
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0, gender: 'male');
+      clock = clock.add(const Duration(minutes: 5));
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('genderPreference "everyone" shows every gender', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0, gender: 'male');
+      clock = clock.add(const Duration(minutes: 5));
+
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isNotEmpty);
+    });
+
+    test('nearbyPeople returns the selfie the other session sent', () {
+      store.upsertPosition(
+        sessionId: 'a',
+        lat: 0,
+        lng: 0,
+      );
+      store.upsertPosition(
+        sessionId: 'b',
+        lat: 0,
+        lng: 0,
+        selfieBase64: 'ZmFrZS1zZWxmaWU=',
+      );
+      clock = clock.add(const Duration(minutes: 5));
+
+      final result = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
+      expect(result.single.selfieBase64, 'ZmFrZS1zZWxmaWU=');
+    });
+
     test('remove() makes a session disappear from everyone else\'s list', () {
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);

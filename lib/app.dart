@@ -31,6 +31,7 @@ import 'features/nearby/domain/repositories/location_repository.dart';
 import 'features/nearby/domain/repositories/nearby_repository.dart';
 import 'features/nearby/domain/usecases/get_current_location_usecase.dart';
 import 'features/nearby/domain/usecases/get_nearby_people_usecase.dart';
+import 'features/nearby/domain/usecases/stop_being_visible_usecase.dart';
 import 'features/nearby/presentation/providers/pro_nearby.dart';
 import 'features/session/data/datasources/face_detection_local_data_source.dart';
 import 'features/session/data/datasources/face_detection_local_data_source_impl.dart';
@@ -70,6 +71,18 @@ class App extends StatelessWidget {
         Provider<FaceDetectionRepository>(
           create: (context) => FaceDetectionRepositoryImpl(context.read()),
         ),
+        Provider<LocationLocalDataSource>(
+          create: (_) => LocationLocalDataSourceImpl(),
+        ),
+        Provider<NearbyRemoteDataSource>(
+          create: (_) => NearbyRemoteDataSourceImpl(),
+        ),
+        Provider<LocationRepository>(
+          create: (context) => LocationRepositoryImpl(context.read()),
+        ),
+        Provider<NearbyRepository>(
+          create: (context) => NearbyRepositoryImpl(context.read()),
+        ),
         ChangeNotifierProvider<ProSession>(
           create: (context) => ProSession(
             getCurrentSessionUseCase: GetCurrentSessionUseCase(context.read()),
@@ -83,23 +96,15 @@ class App extends StatelessWidget {
             checkSelfieHasFaceUseCase: CheckSelfieHasFaceUseCase(
               context.read(),
             ),
+            stopBeingVisibleUseCase: StopBeingVisibleUseCase(context.read()),
           ),
-        ),
-        Provider<LocationLocalDataSource>(
-          create: (_) => LocationLocalDataSourceImpl(),
-        ),
-        Provider<NearbyRemoteDataSource>(
-          create: (_) => NearbyRemoteDataSourceImpl(),
-        ),
-        Provider<LocationRepository>(
-          create: (context) => LocationRepositoryImpl(context.read()),
-        ),
-        Provider<NearbyRepository>(
-          create: (context) => NearbyRepositoryImpl(context.read()),
         ),
         ChangeNotifierProvider<ProNearby>(
           create: (context) => ProNearby(
             getNearbyPeopleUseCase: GetNearbyPeopleUseCase(
+              getCurrentSessionUseCase: GetCurrentSessionUseCase(
+                context.read(),
+              ),
               getCurrentLocationUseCase: GetCurrentLocationUseCase(
                 context.read(),
               ),

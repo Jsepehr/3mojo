@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:uuid/uuid.dart';
 
 import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
@@ -10,16 +13,23 @@ import 'check_selfie_has_face_usecase.dart';
 class StartSessionParams extends Equatable {
   const StartSessionParams({
     required this.selfiePath,
+    required this.selfieBytes,
     required this.gender,
     required this.genderPreference,
   });
 
   final String selfiePath;
+  final Uint8List selfieBytes;
   final Gender gender;
   final GenderPreference genderPreference;
 
   @override
-  List<Object?> get props => [selfiePath, gender, genderPreference];
+  List<Object?> get props => [
+    selfiePath,
+    selfieBytes,
+    gender,
+    genderPreference,
+  ];
 }
 
 /// Azione: vai online. Valida che ci sia un selfie e che contenga un volto
@@ -38,7 +48,7 @@ class StartSessionUseCase
 
   @override
   Future<Either<Failure, OnlineSession>> call(StartSessionParams params) async {
-    if (params.selfiePath.isEmpty) {
+    if (params.selfieBytes.isEmpty) {
       return const Left(ValidationFailure('Serve un selfie per andare online'));
     }
 
@@ -46,7 +56,9 @@ class StartSessionUseCase
 
     return faceResult.match((failure) => Left(failure), (_) {
       return _repository.startSession(
+        sessionId: const Uuid().v4(),
         selfiePath: params.selfiePath,
+        selfieBytes: params.selfieBytes,
         gender: params.gender,
         genderPreference: params.genderPreference,
       );

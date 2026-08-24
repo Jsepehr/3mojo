@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
@@ -8,7 +10,9 @@ abstract class SessionRepository {
   Future<Either<Failure, OnlineSession?>> getCurrentSession();
 
   Future<Either<Failure, OnlineSession>> startSession({
+    required String sessionId,
     required String selfiePath,
+    required Uint8List selfieBytes,
     required Gender gender,
     required GenderPreference genderPreference,
   });
