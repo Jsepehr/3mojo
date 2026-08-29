@@ -3,26 +3,17 @@ import 'package:fpdart/fpdart.dart';
 import '/core/errors/failures.dart';
 import '../entities/encounter_request.dart';
 
-/// Contratto per inviare/ricevere/rispondere a richieste d'interesse e
-/// per gestire l'esclusività (un solo match attivo alla volta).
+/// Contratto per inviare/ricevere/rispondere a richieste d'interesse.
+/// L'esclusività ("un solo match attivo alla volta") è applicata dal
+/// server: qui non c'è nessun passo separato per cancellare le altre
+/// richieste, arriva già risolta nel prossimo snapshot.
 abstract class EncounterRepository {
-  Future<Either<Failure, EncounterRequest>> sendRequest({
-    required String otherPersonId,
-    required String otherSelfiePath,
-  });
+  Stream<Either<Failure, ({List<EncounterRequest> incoming, List<EncounterRequest> outgoing})>>
+  watchRequests(String sessionId);
 
-  Future<Either<Failure, List<EncounterRequest>>> getIncomingRequests();
+  void sendRequest({required String otherPersonId});
 
-  Future<Either<Failure, List<EncounterRequest>>> getOutgoingRequests();
+  void respondToRequest({required String requestId, required bool accepted});
 
-  Future<Either<Failure, EncounterRequest>> respondToRequest({
-    required String requestId,
-    required bool accepted,
-  });
-
-  Future<Either<Failure, Unit>> cancelOtherPendingRequests(
-    String exceptRequestId,
-  );
-
-  Future<Either<Failure, Unit>> endMatch(String requestId);
+  void endMatch(String requestId);
 }

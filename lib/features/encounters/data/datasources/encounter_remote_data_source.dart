@@ -1,22 +1,21 @@
 import '../models/encounter_request_model.dart';
 
-/// Contratto per lo scambio di richieste d'interesse con un backend.
+/// Contratto verso il backend `server/`: le richieste in entrata/uscita
+/// arrivano spinte dal server sulla connessione persistente condivisa con
+/// `nearby` (vedi `RealtimeConnection`), non richieste una alla volta —
+/// mandare/rispondere sono azioni fire-and-forget: l'esito (compresa la
+/// regola "un solo incontro alla volta", applicata dal server) arriva col
+/// prossimo snapshot.
 abstract class EncounterRemoteDataSource {
-  Future<EncounterRequestModel> sendRequest({
-    required String otherPersonId,
-    required String otherSelfiePath,
-  });
+  /// Stream degli snapshot `{incoming, outgoing}` per `sessionId` — uno
+  /// ogni volta che qualcosa cambia (nuova richiesta, risposta, match,
+  /// fine). Apre la connessione condivisa se non già aperta.
+  Stream<({List<EncounterRequestModel> incoming, List<EncounterRequestModel> outgoing})>
+  watchRequests(String sessionId);
 
-  Future<List<EncounterRequestModel>> getIncomingRequests();
+  void sendRequest({required String otherPersonId});
 
-  Future<List<EncounterRequestModel>> getOutgoingRequests();
+  void respondToRequest({required String requestId, required bool accepted});
 
-  Future<EncounterRequestModel> respondToRequest({
-    required String requestId,
-    required bool accepted,
-  });
-
-  Future<void> cancelOtherPendingRequests(String exceptRequestId);
-
-  Future<void> endMatch(String requestId);
+  void endMatch(String requestId);
 }

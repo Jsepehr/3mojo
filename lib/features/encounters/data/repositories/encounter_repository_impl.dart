@@ -1,87 +1,55 @@
+import 'dart:async';
+
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../../domain/repositories/encounter_repository.dart';
 import '../datasources/encounter_remote_data_source.dart';
+import '../models/encounter_request_model.dart';
 
-/// Passacarte verso il datasource finto, traducendo le eccezioni in `Failure`.
+/// Passacarte verso il datasource reale, traducendo eventuali errori della
+/// connessione in `Failure`.
 class EncounterRepositoryImpl implements EncounterRepository {
   const EncounterRepositoryImpl(this._remoteDataSource);
 
   final EncounterRemoteDataSource _remoteDataSource;
 
   @override
-  Future<Either<Failure, EncounterRequest>> sendRequest({
-    required String otherPersonId,
-    required String otherSelfiePath,
-  }) async {
-    try {
-      return Right(
-        await _remoteDataSource.sendRequest(
-          otherPersonId: otherPersonId,
-          otherSelfiePath: otherSelfiePath,
-        ),
-      );
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
+  Stream<Either<Failure, ({List<EncounterRequest> incoming, List<EncounterRequest> outgoing})>>
+  watchRequests(String sessionId) {
+    return _remoteDataSource
+        .watchRequests(sessionId)
+        .transform(
+          StreamTransformer<
+            ({
+              List<EncounterRequestModel> incoming,
+              List<EncounterRequestModel> outgoing,
+            }),
+            Either<
+              Failure,
+              ({List<EncounterRequest> incoming, List<EncounterRequest> outgoing})
+            >
+          >.fromHandlers(
+            handleData: (snapshot, sink) => sink.add(Right(snapshot)),
+            handleError: (error, stackTrace, sink) =>
+                sink.add(Left(UnexpectedFailure(error.toString()))),
+          ),
+        );
   }
 
   @override
-  Future<Either<Failure, List<EncounterRequest>>> getIncomingRequests() async {
-    try {
-      return Right(await _remoteDataSource.getIncomingRequests());
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
+  void sendRequest({required String otherPersonId}) {
+    _remoteDataSource.sendRequest(otherPersonId: otherPersonId);
   }
 
   @override
-  Future<Either<Failure, List<EncounterRequest>>> getOutgoingRequests() async {
-    try {
-      return Right(await _remoteDataSource.getOutgoingRequests());
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
+  void respondToRequest({required String requestId, required bool accepted}) {
+    _remoteDataSource.respondToRequest(requestId: requestId, accepted: accepted);
   }
 
   @override
-  Future<Either<Failure, EncounterRequest>> respondToRequest({
-    required String requestId,
-    required bool accepted,
-  }) async {
-    try {
-      return Right(
-        await _remoteDataSource.respondToRequest(
-          requestId: requestId,
-          accepted: accepted,
-        ),
-      );
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Unit>> cancelOtherPendingRequests(
-    String exceptRequestId,
-  ) async {
-    try {
-      await _remoteDataSource.cancelOtherPendingRequests(exceptRequestId);
-      return const Right(unit);
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Unit>> endMatch(String requestId) async {
-    try {
-      await _remoteDataSource.endMatch(requestId);
-      return const Right(unit);
-    } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
-    }
+  void endMatch(String requestId) {
+    _remoteDataSource.endMatch(requestId);
   }
 }

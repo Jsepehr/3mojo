@@ -1,16 +1,11 @@
-import 'package:fpdart/fpdart.dart';
-
-import '/core/errors/failures.dart';
-import '/core/usecases/usecase.dart';
 import '../repositories/encounter_repository.dart';
 
-/// Azione: termina volontariamente un match attivo (irreversibile).
-class EndMatchUseCase implements UseCase<Unit, String> {
+/// Azione: termina volontariamente un match attivo (irreversibile) —
+/// fire-and-forget.
+class EndMatchUseCase {
   const EndMatchUseCase(this._repository);
 
   final EncounterRepository _repository;
 
-  @override
-  Future<Either<Failure, Unit>> call(String requestId) =>
-      _repository.endMatch(requestId);
+  void call(String requestId) => _repository.endMatch(requestId);
 }

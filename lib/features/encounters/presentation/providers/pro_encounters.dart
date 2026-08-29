@@ -2,41 +2,40 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '/core/usecases/usecase.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../../domain/usecases/end_match_usecase.dart';
-import '../../domain/usecases/get_incoming_requests_usecase.dart';
-import '../../domain/usecases/get_outgoing_requests_usecase.dart';
 import '../../domain/usecases/respond_to_encounter_request_usecase.dart';
 import '../../domain/usecases/send_encounter_request_usecase.dart';
+import '../../domain/usecases/watch_encounter_requests_usecase.dart';
 
-/// Stato di richieste in entrata/uscita, con polling periodico (ogni 3s)
-/// per sentirsi "vivo" senza un vero push da un backend. `activeMatch`
-/// espone la prima richiesta accettata trovata — usata da `_MatchGate`
-/// in app.dart per aprire la pagina di chat a schermo intero.
+/// Stato di richieste in entrata/uscita — spinte dal server sulla
+/// connessione condivisa con `nearby`, non più richieste con un polling
+/// ogni 3s. Come `ProNearby`, lo stream finisce prima o poi (offline,
+/// connessione caduta) e ci si riabbona da soli. `activeMatch` espone la
+/// prima richiesta accettata trovata — usata da `_MatchGate` in app.dart
+/// per aprire la pagina di chat a schermo intero.
 class ProEncounters extends ChangeNotifier {
   ProEncounters({
+    required WatchEncounterRequestsUseCase watchEncounterRequestsUseCase,
     required SendEncounterRequestUseCase sendEncounterRequestUseCase,
-    required GetIncomingRequestsUseCase getIncomingRequestsUseCase,
-    required GetOutgoingRequestsUseCase getOutgoingRequestsUseCase,
     required RespondToEncounterRequestUseCase respondToEncounterRequestUseCase,
     required EndMatchUseCase endMatchUseCase,
-  }) : _sendEncounterRequestUseCase = sendEncounterRequestUseCase,
-       _getIncomingRequestsUseCase = getIncomingRequestsUseCase,
-       _getOutgoingRequestsUseCase = getOutgoingRequestsUseCase,
+  }) : _watchEncounterRequestsUseCase = watchEncounterRequestsUseCase,
+       _sendEncounterRequestUseCase = sendEncounterRequestUseCase,
        _respondToEncounterRequestUseCase = respondToEncounterRequestUseCase,
        _endMatchUseCase = endMatchUseCase {
-    _refresh();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+    _subscribe();
   }
 
+  static const Duration _resubscribeDelay = Duration(seconds: 3);
+
+  final WatchEncounterRequestsUseCase _watchEncounterRequestsUseCase;
   final SendEncounterRequestUseCase _sendEncounterRequestUseCase;
-  final GetIncomingRequestsUseCase _getIncomingRequestsUseCase;
-  final GetOutgoingRequestsUseCase _getOutgoingRequestsUseCase;
   final RespondToEncounterRequestUseCase _respondToEncounterRequestUseCase;
   final EndMatchUseCase _endMatchUseCase;
 
-  Timer? _pollTimer;
+  StreamSubscription<void>? _subscription;
+  Timer? _resubscribeTimer;
   List<EncounterRequest> _incomingRequests = [];
   List<EncounterRequest> _outgoingRequests = [];
   String? _errorMessage;
@@ -56,57 +55,47 @@ class ProEncounters extends ChangeNotifier {
     return null;
   }
 
-  Future<void> _refresh() async {
-    final incomingResult = await _getIncomingRequestsUseCase(const NoParams());
-    incomingResult.match(
-      (failure) => _errorMessage = failure.message,
-      (requests) => _incomingRequests = requests,
+  void _subscribe() {
+    _subscription = _watchEncounterRequestsUseCase().listen(
+      (result) {
+        result.match((failure) => _errorMessage = failure.message, (
+          snapshot,
+        ) {
+          _incomingRequests = snapshot.incoming;
+          _outgoingRequests = snapshot.outgoing;
+          _errorMessage = null;
+        });
+        notifyListeners();
+      },
+      onError: (Object error) {
+        _errorMessage = error.toString();
+        notifyListeners();
+      },
+      onDone: _scheduleResubscribe,
     );
-
-    final outgoingResult = await _getOutgoingRequestsUseCase(const NoParams());
-    outgoingResult.match(
-      (failure) => _errorMessage = failure.message,
-      (requests) => _outgoingRequests = requests,
-    );
-
-    notifyListeners();
   }
 
-  Future<void> sendRequest(String otherPersonId, String otherSelfiePath) async {
-    final result = await _sendEncounterRequestUseCase(
-      SendEncounterRequestParams(
-        otherPersonId: otherPersonId,
-        otherSelfiePath: otherSelfiePath,
-      ),
-    );
-    result.match(
-      (failure) => _errorMessage = failure.message,
-      (request) => _outgoingRequests = [..._outgoingRequests, request],
-    );
-    notifyListeners();
+  void _scheduleResubscribe() {
+    _resubscribeTimer = Timer(_resubscribeDelay, _subscribe);
   }
 
-  Future<void> respondToRequest(String requestId, bool accepted) async {
-    final result = await _respondToEncounterRequestUseCase(
-      RespondToEncounterRequestParams(requestId: requestId, accepted: accepted),
-    );
-    result.match((failure) => _errorMessage = failure.message, (updated) {
-      _incomingRequests = [
-        for (final r in _incomingRequests)
-          if (r.id == requestId) updated else r,
-      ];
-    });
-    await _refresh();
-  }
+  void sendRequest(String otherPersonId) =>
+      _sendEncounterRequestUseCase(otherPersonId);
 
-  Future<void> endMatch(String requestId) async {
-    await _endMatchUseCase(requestId);
-    await _refresh();
-  }
+  void respondToRequest(String requestId, bool accepted) =>
+      _respondToEncounterRequestUseCase(
+        RespondToEncounterRequestParams(
+          requestId: requestId,
+          accepted: accepted,
+        ),
+      );
+
+  void endMatch(String requestId) => _endMatchUseCase(requestId);
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _resubscribeTimer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }

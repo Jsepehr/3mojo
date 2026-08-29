@@ -15,10 +15,9 @@ import 'features/encounters/data/datasources/encounter_remote_data_source_impl.d
 import 'features/encounters/data/repositories/encounter_repository_impl.dart';
 import 'features/encounters/domain/repositories/encounter_repository.dart';
 import 'features/encounters/domain/usecases/end_match_usecase.dart';
-import 'features/encounters/domain/usecases/get_incoming_requests_usecase.dart';
-import 'features/encounters/domain/usecases/get_outgoing_requests_usecase.dart';
 import 'features/encounters/domain/usecases/respond_to_encounter_request_usecase.dart';
 import 'features/encounters/domain/usecases/send_encounter_request_usecase.dart';
+import 'features/encounters/domain/usecases/watch_encounter_requests_usecase.dart';
 import 'features/encounters/presentation/pages/ui_active_match.dart';
 import 'features/encounters/presentation/providers/pro_encounters.dart';
 import 'features/nearby/data/datasources/location_local_data_source.dart';
@@ -30,8 +29,9 @@ import 'features/nearby/data/repositories/nearby_repository_impl.dart';
 import 'features/nearby/domain/repositories/location_repository.dart';
 import 'features/nearby/domain/repositories/nearby_repository.dart';
 import 'features/nearby/domain/usecases/get_current_location_usecase.dart';
-import 'features/nearby/domain/usecases/get_nearby_people_usecase.dart';
 import 'features/nearby/domain/usecases/stop_being_visible_usecase.dart';
+import 'features/nearby/domain/usecases/watch_nearby_people_usecase.dart';
+import 'features/nearby/domain/usecases/watch_position_usecase.dart';
 import 'features/nearby/presentation/providers/pro_nearby.dart';
 import 'features/session/data/datasources/face_detection_local_data_source.dart';
 import 'features/session/data/datasources/face_detection_local_data_source_impl.dart';
@@ -101,13 +101,14 @@ class App extends StatelessWidget {
         ),
         ChangeNotifierProvider<ProNearby>(
           create: (context) => ProNearby(
-            getNearbyPeopleUseCase: GetNearbyPeopleUseCase(
+            watchNearbyPeopleUseCase: WatchNearbyPeopleUseCase(
               getCurrentSessionUseCase: GetCurrentSessionUseCase(
                 context.read(),
               ),
               getCurrentLocationUseCase: GetCurrentLocationUseCase(
                 context.read(),
               ),
+              watchPositionUseCase: WatchPositionUseCase(context.read()),
               nearbyRepository: context.read(),
             ),
           ),
@@ -120,13 +121,13 @@ class App extends StatelessWidget {
         ),
         ChangeNotifierProvider<ProEncounters>(
           create: (context) => ProEncounters(
+            watchEncounterRequestsUseCase: WatchEncounterRequestsUseCase(
+              getCurrentSessionUseCase: GetCurrentSessionUseCase(
+                context.read(),
+              ),
+              repository: context.read(),
+            ),
             sendEncounterRequestUseCase: SendEncounterRequestUseCase(
-              context.read(),
-            ),
-            getIncomingRequestsUseCase: GetIncomingRequestsUseCase(
-              context.read(),
-            ),
-            getOutgoingRequestsUseCase: GetOutgoingRequestsUseCase(
               context.read(),
             ),
             respondToEncounterRequestUseCase: RespondToEncounterRequestUseCase(

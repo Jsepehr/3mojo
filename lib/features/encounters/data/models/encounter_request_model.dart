@@ -1,7 +1,12 @@
 import '../../domain/entities/encounter_request.dart';
 
-/// Versione "remota" di `EncounterRequest` (nessun JSON per ora, ma la
-/// forma è pronta per quando ci sarà un vero backend).
+/// Versione di `EncounterRequest` che sa leggersi dal JSON spinto dal
+/// server sulla connessione WebSocket condivisa — il server espone
+/// `otherSessionId` (l'id, effimero, dell'altra sessione coinvolta) e
+/// `otherSelfieBase64` (il suo selfie, preso fresco da `SessionStore` a
+/// ogni snapshot, mai conservato nella richiesta), qui tradotti in
+/// `otherPersonId` e `otherSelfiePath` (una data URI che la UI può passare
+/// direttamente a `Image.memory`).
 class EncounterRequestModel extends EncounterRequest {
   const EncounterRequestModel({
     required super.id,
@@ -10,22 +15,15 @@ class EncounterRequestModel extends EncounterRequest {
     required super.status,
   });
 
-  factory EncounterRequestModel.fromEntity(EncounterRequest request) {
+  factory EncounterRequestModel.fromJson(Map<String, dynamic> json) {
+    final selfieBase64 = json['otherSelfieBase64'] as String? ?? '';
     return EncounterRequestModel(
-      id: request.id,
-      otherPersonId: request.otherPersonId,
-      otherSelfiePath: request.otherSelfiePath,
-      status: request.status,
-    );
-  }
-
-  @override
-  EncounterRequestModel copyWith({EncounterRequestStatus? status}) {
-    return EncounterRequestModel(
-      id: id,
-      otherPersonId: otherPersonId,
-      otherSelfiePath: otherSelfiePath,
-      status: status ?? this.status,
+      id: json['id'] as String,
+      otherPersonId: json['otherSessionId'] as String,
+      otherSelfiePath: selfieBase64.isEmpty
+          ? ''
+          : 'data:image/jpeg;base64,$selfieBase64',
+      status: EncounterRequestStatus.values.byName(json['status'] as String),
     );
   }
 }

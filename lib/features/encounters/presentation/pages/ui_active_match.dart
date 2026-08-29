@@ -71,7 +71,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
     final confirmed = await _confirmLeave(l10n);
     if (!confirmed || !mounted) return;
 
-    await context.read<ProEncounters>().endMatch(widget.request.id);
+    context.read<ProEncounters>().endMatch(widget.request.id);
     if (mounted) Navigator.of(context).pop();
   }
 
