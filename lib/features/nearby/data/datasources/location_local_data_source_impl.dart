@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '/core/errors/exceptions.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
@@ -34,6 +36,39 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
     return GeoLocation(
       latitude: position.latitude,
       longitude: position.longitude,
+    );
+  }
+
+  @override
+  Stream<GeoLocation> watchPosition() async* {
+    // Il foreground service (con notifica persistente) è un concetto solo
+    // Android — su altre piattaforme resta un normale stream di posizione.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Da Android 13 (API 33) senza questo permesso la notifica del
+      // foreground service resta invisibile — il tracking parte comunque,
+      // ma l'utente non lo vedrebbe mai succedere. Best-effort: se nega,
+      // si va avanti lo stesso.
+      await Permission.notification.request();
+    }
+
+    final settings = defaultTargetPlatform == TargetPlatform.android
+        ? AndroidSettings(
+            intervalDuration: const Duration(seconds: 60),
+            distanceFilter: 0,
+            foregroundNotificationConfig: const ForegroundNotificationConfig(
+              notificationTitle: '3mojo è online',
+              notificationText:
+                  'Stai comparendo a chi ti è vicino, anche con l\'app '
+                  'in background.',
+              notificationChannelName: 'Presenza online',
+              enableWakeLock: true,
+            ),
+          )
+        : const LocationSettings(distanceFilter: 0);
+
+    yield* Geolocator.getPositionStream(locationSettings: settings).map(
+      (position) =>
+          GeoLocation(latitude: position.latitude, longitude: position.longitude),
     );
   }
 }

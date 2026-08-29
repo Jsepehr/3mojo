@@ -15,8 +15,8 @@ void main() {
   ) async {
     await tester.pumpWidget(const App());
     // Avoid pumpAndSettle: the animated radar background never settles on
-    // its own. Pump past ProEncounters' first refresh cycle (two chained
-    // 300ms fake-network delays) so nothing is left in flight at teardown.
+    // its own. A short pump is enough to let the initial (offline) stream
+    // subscriptions in ProNearby/ProEncounters settle before teardown.
     await tester.pump(const Duration(milliseconds: 800));
 
     // The test environment defaults to the English locale.

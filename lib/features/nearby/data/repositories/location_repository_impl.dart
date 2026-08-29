@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/exceptions.dart';
@@ -24,5 +26,16 @@ class LocationRepositoryImpl implements LocationRepository {
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }
+  }
+
+  @override
+  Stream<Either<Failure, GeoLocation>> watchPosition() {
+    return _localDataSource.watchPosition().transform(
+      StreamTransformer<GeoLocation, Either<Failure, GeoLocation>>.fromHandlers(
+        handleData: (location, sink) => sink.add(Right(location)),
+        handleError: (error, stackTrace, sink) =>
+            sink.add(Left(UnexpectedFailure(error.toString()))),
+      ),
+    );
   }
 }

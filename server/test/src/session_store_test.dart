@@ -68,7 +68,7 @@ void main() {
       );
     });
 
-    test('moving away resets the dwell time back to zero', () {
+    test('moving away for 2+ readings in a row resets the dwell time', () {
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
 
@@ -81,12 +81,33 @@ void main() {
         MeetingChance.high,
       );
 
-      // 'b' walks far enough away to reset its stationarity anchor, then
-      // comes right back — dwell time should restart from zero.
+      // 'b' walks far enough away for two readings in a row (confirming a
+      // real move, not GPS noise), then comes right back — dwell time
+      // should restart from zero.
+      store.upsertPosition(sessionId: 'b', lat: 0.01, lng: 0);
       store.upsertPosition(sessionId: 'b', lat: 0.01, lng: 0);
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
 
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('a single noisy reading far from the anchor is forgiven', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      clock = clock.add(const Duration(minutes: 5));
+
+      // One isolated GPS jump, then back close to the anchor — should not
+      // be treated as a real move, dwell keeps accumulating uninterrupted.
+      store.upsertPosition(sessionId: 'b', lat: 0.01, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      expect(
+        store
+            .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+            .single
+            .meetingChance,
+        MeetingChance.high,
+      );
     });
 
     test('someone outside the radius is not returned', () {
@@ -148,6 +169,27 @@ void main() {
       store.remove('b');
 
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+    });
+
+    test('purgeStale removes sessions silent for longer than maxAge', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      clock = clock.add(const Duration(seconds: 30));
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+
+      // 'a' hasn't sent an update in 91s (past a 90s maxAge), 'b' has (61s).
+      clock = clock.add(const Duration(seconds: 61));
+
+      final removed = store.purgeStale(const Duration(seconds: 90));
+
+      expect(removed, ['a']);
+      expect(store.nearbyPeople(sessionId: 'b', radiusMeters: 100), isEmpty);
+    });
+
+    test('purgeStale keeps sessions that updated within maxAge', () {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      clock = clock.add(const Duration(seconds: 60));
+
+      expect(store.purgeStale(const Duration(seconds: 90)), isEmpty);
     });
   });
 }

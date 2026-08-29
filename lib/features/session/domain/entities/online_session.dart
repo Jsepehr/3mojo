@@ -12,7 +12,7 @@ enum GenderPreference { male, female, everyone }
 /// account — nasce a ogni Start e sparisce a ogni End, nessun dato fisso.
 /// `sessionId` è generato da zero a ogni Start (mai un id fisso legato al
 /// device): serve solo a farsi riconoscere dal server finché si resta
-/// online, in `POST/DELETE /presence` e `GET /nearby`.
+/// online, nella connessione persistente `GET /ws`.
 ///
 /// Il selfie vive in due forme: `selfiePath` (un percorso file reale solo
 /// su Android/iOS/desktop, usato dal controllo ML Kit) e `selfieBytes` (il

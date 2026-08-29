@@ -6,11 +6,12 @@ import '/core/errors/failures.dart';
 import '../entities/geo_location.dart';
 import '../entities/nearby_person.dart';
 
-/// Contratto verso il backend `server/`: manda la mia presenza (posizione +
-/// profilo) e chiede chi c'è entro un certo raggio, o mi toglie dalla vista
-/// di tutti quando vado offline.
+/// Contratto verso il backend `server/`: apre una connessione persistente,
+/// mandando la mia presenza (posizione + profilo) e ricevendo da lì in poi
+/// chi c'è entro un certo raggio ogni volta che cambia — non più una
+/// richiesta alla volta.
 abstract class NearbyRepository {
-  Future<Either<Failure, List<NearbyPerson>>> getNearbyPeople(
+  Stream<Either<Failure, List<NearbyPerson>>> watchNearbyPeople(
     GeoLocation location, {
     required double radiusMeters,
     required String sessionId,
@@ -18,6 +19,10 @@ abstract class NearbyRepository {
     required String genderPreference,
     required Uint8List selfieBytes,
   });
+
+  /// Manda un aggiornamento di posizione sulla connessione già aperta da
+  /// [watchNearbyPeople].
+  void updatePosition(GeoLocation location);
 
   Future<Either<Failure, Unit>> stopBeingVisible(String sessionId);
 }

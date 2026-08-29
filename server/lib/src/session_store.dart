@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:threemojo_server/src/geo.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
 
 /// Una persona online: la sua posizione più recente, e da quando è "ferma"
 /// nello stesso punto — l'ancora di stazionarietà, non la posizione grezza.
 /// Se si sposta di più di [SessionStore.stationarityRadiusMeters] rispetto
-/// all'ultima posizione nota, l'ancora si aggiorna e il tempo riparte da zero.
+/// all'**ancora** (non alla singola lettura precedente: vedi
+/// `consecutiveAwayReadings`) per due letture di fila, l'ancora si aggiorna
+/// e il tempo riparte da zero.
 class Session {
   Session({
     required this.sessionId,
@@ -15,11 +19,28 @@ class Session {
     this.gender = 'unspecified',
     this.genderPreference = 'everyone',
     this.selfieBase64 = '',
-  });
+  }) : anchorLat = lat,
+       anchorLng = lng;
 
   final String sessionId;
+
+  /// Ultima posizione nota — usata per le distanze verso le altre sessioni,
+  /// aggiornata a ogni lettura senza filtri (qui la freschezza conta più
+  /// della stabilità).
   double lat;
   double lng;
+
+  /// Posizione di riferimento per il calcolo di stazionarietà/dwell —
+  /// diversa da [lat]/[lng]: si sposta solo quando un allontanamento è
+  /// confermato da letture consecutive, non a ogni singola lettura rumorosa.
+  double anchorLat;
+  double anchorLng;
+
+  /// Quante letture di fila sono risultate oltre
+  /// [SessionStore.stationarityRadiusMeters] dall'ancora attuale, senza
+  /// ancora essere confermate come un vero spostamento.
+  int consecutiveAwayReadings = 0;
+
   DateTime arrivedAt;
   DateTime lastSeen;
 
@@ -72,14 +93,29 @@ class SessionStore {
 
   static final SessionStore instance = SessionStore._();
 
-  static const double stationarityRadiusMeters = 30;
+  // Alzata da 30 a 60: il GPS di uno smartphone normale ha già di suo un
+  // errore tipico di 5-20m (anche 30-50m a spot, indoor/urban canyon) — con
+  // 30m bastava una singola lettura rumorosa per resettare la stazionarietà
+  // di qualcuno fermo, facendolo sparire per un altro minuto senza essersi
+  // mai davvero mosso (visto in test reali: due persone a ~40-80m stabili,
+  // dwell resettato di continuo).
+  static const double stationarityRadiusMeters = 60;
+
+  /// Quante letture consecutive oltre [stationarityRadiusMeters] servono
+  /// prima di considerare confermato un vero spostamento (invece di un
+  /// singolo balzo rumoroso che poi torna vicino all'ancora).
+  static const int confirmMovementReadings = 2;
 
   final DateTime Function() _now;
   final Map<String, Session> _sessions = {};
+  Timer? _autoPurgeTimer;
 
-  /// Aggiorna la posizione di `sessionId`. Se si è mossa più di
-  /// [stationarityRadiusMeters] dall'ultima posizione nota, l'ancora di
-  /// stazionarietà si resetta: è "arrivata altrove", si riparte da zero.
+  /// Aggiorna la posizione di `sessionId`. Se una lettura risulta oltre
+  /// [stationarityRadiusMeters] dall'ancora attuale, non resetta subito la
+  /// stazionarietà: serve che questo capiti per [confirmMovementReadings]
+  /// letture di fila prima di considerarlo un vero spostamento ("è arrivata
+  /// altrove", si riparte da zero) — un singolo balzo GPS isolato che poi
+  /// torna vicino non conta.
   void upsertPosition({
     required String sessionId,
     required double lat,
@@ -105,9 +141,19 @@ class SessionStore {
       return;
     }
 
-    final movedAway =
-        distanceMeters(existing.lat, existing.lng, lat, lng) >
+    final looksAway =
+        distanceMeters(existing.anchorLat, existing.anchorLng, lat, lng) >
         stationarityRadiusMeters;
+    existing.consecutiveAwayReadings = looksAway
+        ? existing.consecutiveAwayReadings + 1
+        : 0;
+
+    if (existing.consecutiveAwayReadings >= confirmMovementReadings) {
+      existing.anchorLat = lat;
+      existing.anchorLng = lng;
+      existing.arrivedAt = now;
+      existing.consecutiveAwayReadings = 0;
+    }
 
     existing.lat = lat;
     existing.lng = lng;
@@ -115,12 +161,47 @@ class SessionStore {
     existing.gender = gender;
     existing.genderPreference = genderPreference;
     existing.selfieBase64 = selfieBase64;
-    if (movedAway) existing.arrivedAt = now;
   }
 
-  /// Rimuove `sessionId` dallo store — equivalente del bottone End: chi
-  /// esce non deve più comparire nella lista di nessuno.
+  /// Rimuove `sessionId` dallo store — equivalente del bottone End (o della
+  /// chiusura del WebSocket): chi esce non deve più comparire nella lista
+  /// di nessuno.
   void remove(String sessionId) => _sessions.remove(sessionId);
+
+  /// Il selfie di `sessionId`, così com'è arrivato dal client — usato da
+  /// `ConnectionHub` per arricchire le richieste d'incontro con una foto
+  /// sempre fresca, senza doverla conservare nella richiesta stessa.
+  /// `null` se la sessione non è (più) online.
+  String? selfieBase64For(String sessionId) => _sessions[sessionId]?.selfieBase64;
+
+  /// Rete di sicurezza per quando un client sparisce senza chiudere il
+  /// WebSocket in modo pulito (crash, rete che cade): rimuove le sessioni
+  /// che non mandano un aggiornamento di presenza da più di [maxAge].
+  /// Ritorna gli id rimossi, così chi tiene i canali collegati (vedi
+  /// `ConnectionHub`) può anche chiuderli/notificare gli altri.
+  List<String> purgeStale(Duration maxAge) {
+    final now = _now();
+    final staleIds = [
+      for (final session in _sessions.values)
+        if (now.difference(session.lastSeen) > maxAge) session.sessionId,
+    ];
+    staleIds.forEach(_sessions.remove);
+    return staleIds;
+  }
+
+  /// Avvia (se non già attivo) la pulizia periodica di [purgeStale]. Non è
+  /// automatico dentro il costruttore per non far scattare timer nei test
+  /// che usano `SessionStore.withClock`.
+  void startAutoPurge({
+    Duration interval = const Duration(seconds: 30),
+    Duration maxAge = const Duration(seconds: 90),
+    void Function(List<String> removedIds)? onPurged,
+  }) {
+    _autoPurgeTimer ??= Timer.periodic(interval, (_) {
+      final removed = purgeStale(maxAge);
+      if (removed.isNotEmpty) onPurged?.call(removed);
+    });
+  }
 
   /// Persone entro [radiusMeters] da `sessionId`, con probabilità d'incontro
   /// già calcolata. Ritorna `null` se `sessionId` non ha ancora mandato una
@@ -162,5 +243,38 @@ class SessionStore {
     }
 
     return results;
+  }
+
+  /// Solo per debug locale: tutte le sessioni in memoria, senza filtri di
+  /// raggio/genere/tempo di permanenza — per verificare "chi risulta al
+  /// server" indipendentemente da cosa vede un client specifico. Niente
+  /// posizione grezza né selfie: solo ciò che serve a controllare che una
+  /// sessione sia arrivata. `distanceMetersToOthers` (anch'essa derivata,
+  /// non la posizione grezza) aiuta a distinguere "troppo lontani" da
+  /// "genere/permanenza" quando qualcuno non si vede.
+  List<Map<String, dynamic>> debugSnapshot() {
+    final now = _now();
+    final sessions = _sessions.values.toList();
+    return sessions
+        .map(
+          (s) => {
+            'sessionId': s.sessionId,
+            'gender': s.gender,
+            'genderPreference': s.genderPreference,
+            'dwellSeconds': now.difference(s.arrivedAt).inSeconds,
+            'lastSeenSecondsAgo': now.difference(s.lastSeen).inSeconds,
+            'distanceMetersToOthers': {
+              for (final other in sessions)
+                if (other.sessionId != s.sessionId)
+                  other.sessionId: distanceMeters(
+                    s.lat,
+                    s.lng,
+                    other.lat,
+                    other.lng,
+                  ),
+            },
+          },
+        )
+        .toList();
   }
 }

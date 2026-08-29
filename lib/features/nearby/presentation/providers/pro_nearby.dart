@@ -2,35 +2,34 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '/core/usecases/usecase.dart';
 import '../../domain/entities/nearby_person.dart';
-import '../../domain/usecases/get_nearby_people_usecase.dart';
+import '../../domain/usecases/watch_nearby_people_usecase.dart';
 
 /// Stato della pagina "Vicinanze": la lista di persone, se sta caricando,
-/// eventuale errore. Ricarica su richiesta (pull-to-refresh) e da sola con
-/// un timer che simula il controllo periodico del server: ogni minuto per i
-/// primi 5 minuti (la situazione cambia in fretta), poi rallenta — 2, 4, 8
-/// minuti — fino a stabilizzarsi su un controllo ogni 12 minuti, invece di
-/// continuare a martellare il server con la stessa frequenza per sempre.
-/// Tiene anche a chi hai già mandato una richiesta (una sola per persona,
-/// finché resta nel perimetro): l'insieme si "scorda" di un id appena quella
-/// persona non è più tra i risultati, così se esce e rientra puoi richiederla.
+/// eventuale errore. Si abbona alla connessione persistente aperta da
+/// `WatchNearbyPeopleUseCase` — il server la spinge da solo ogni volta che
+/// cambia qualcosa, non serve più un timer che la richiede a intervalli.
+/// Lo stream finisce sempre prima o poi (offline, End premuto, connessione
+/// caduta): quando succede ci si riabbona da soli dopo una breve pausa,
+/// così la lista riparte da sola appena si torna online, senza dover
+/// ricreare il provider. Tiene anche a chi hai già mandato una richiesta
+/// (una sola per persona, finché resta nel perimetro): l'insieme si
+/// "scorda" di un id appena quella persona non è più tra i risultati, così
+/// se esce e rientra puoi richiederla.
 class ProNearby extends ChangeNotifier {
-  ProNearby({required GetNearbyPeopleUseCase getNearbyPeopleUseCase})
-    : _getNearbyPeopleUseCase = getNearbyPeopleUseCase {
-    loadNearbyPeople();
-    _scheduleNextRefresh();
+  ProNearby({required WatchNearbyPeopleUseCase watchNearbyPeopleUseCase})
+    : _watchNearbyPeopleUseCase = watchNearbyPeopleUseCase {
+    _subscribe();
   }
 
-  final GetNearbyPeopleUseCase _getNearbyPeopleUseCase;
+  static const Duration _resubscribeDelay = Duration(seconds: 3);
 
-  static const List<int> _refreshIntervalsMinutes = [1, 1, 1, 1, 1, 2, 4, 8];
-  static const int _maxRefreshIntervalMinutes = 12;
+  final WatchNearbyPeopleUseCase _watchNearbyPeopleUseCase;
 
-  Timer? _refreshTimer;
-  int _refreshCount = 0;
+  StreamSubscription<void>? _subscription;
+  Timer? _resubscribeTimer;
   List<NearbyPerson> _people = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
   String? _errorMessage;
   final Set<String> _requestedPersonIds = {};
 
@@ -45,46 +44,39 @@ class ProNearby extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _scheduleNextRefresh() {
-    final minutes = _refreshCount < _refreshIntervalsMinutes.length
-        ? _refreshIntervalsMinutes[_refreshCount]
-        : _maxRefreshIntervalMinutes;
-    _refreshCount++;
-
-    _refreshTimer = Timer(Duration(minutes: minutes), () async {
-      await loadNearbyPeople();
-      _scheduleNextRefresh();
-    });
+  void _subscribe() {
+    _subscription = _watchNearbyPeopleUseCase().listen(
+      (result) {
+        result.match(
+          (failure) => _errorMessage = failure.message,
+          (people) {
+            _people = people;
+            _errorMessage = null;
+            _requestedPersonIds.retainWhere(
+              (id) => people.any((person) => person.id == id),
+            );
+          },
+        );
+        _isLoading = false;
+        notifyListeners();
+      },
+      onError: (Object error) {
+        _errorMessage = error.toString();
+        _isLoading = false;
+        notifyListeners();
+      },
+      onDone: _scheduleResubscribe,
+    );
   }
 
-  Future<void> loadNearbyPeople() async {
-    _isLoading = true;
-    // Deferred: the constructor calls this synchronously, which can run
-    // during another widget's build (e.g. the first time this provider is
-    // read) — notifying immediately would try to rebuild mid-build.
-    scheduleMicrotask(notifyListeners);
-
-    final result = await _getNearbyPeopleUseCase(const NoParams());
-    result.match(
-      (failure) {
-        _errorMessage = failure.message;
-      },
-      (people) {
-        _people = people;
-        _errorMessage = null;
-        _requestedPersonIds.retainWhere(
-          (id) => people.any((person) => person.id == id),
-        );
-      },
-    );
-
-    _isLoading = false;
-    notifyListeners();
+  void _scheduleResubscribe() {
+    _resubscribeTimer = Timer(_resubscribeDelay, _subscribe);
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _resubscribeTimer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }

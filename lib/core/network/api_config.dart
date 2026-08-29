@@ -22,4 +22,9 @@ class ApiConfig {
     }
     return 'http://localhost:8080';
   }
+
+  /// Stesso host di [baseUrl], ma con schema `ws`/`wss` — per la connessione
+  /// persistente di `nearby/` (`GET /ws`), che sostituisce le richieste
+  /// HTTP separate di presenza/vicinanze.
+  static String get wsBaseUrl => baseUrl.replaceFirst('http', 'ws');
 }

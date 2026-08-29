@@ -6,7 +6,9 @@ import '../../../encounters/presentation/providers/pro_encounters.dart';
 import '../providers/pro_nearby.dart';
 import 'cmp_nearby_person_tile.dart';
 
-/// Corpo di "Vicinanze": lista delle persone presenti ora, con pull-to-refresh.
+/// Corpo di "Vicinanze": lista delle persone presenti ora — aggiornata da
+/// sola, il server la spinge appena cambia qualcosa (nessun pull-to-refresh:
+/// non c'è più nulla da richiedere a mano, la connessione è già aperta).
 /// Un tap su una persona manda una richiesta d'incontro (feature `encounters`).
 /// Una sola richiesta a testa finché resta nel perimetro: dopo il tap la
 /// tile si vede in grigio e non è più cliccabile (`ProNearby.hasRequested`).
@@ -20,10 +22,7 @@ class CmpNearbyList extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final proNearby = context.watch<ProNearby>();
 
-    return RefreshIndicator(
-      onRefresh: () => context.read<ProNearby>().loadNearbyPeople(),
-      child: _NearbyBody(l10n: l10n, proNearby: proNearby),
-    );
+    return _NearbyBody(l10n: l10n, proNearby: proNearby);
   }
 }
 
@@ -60,10 +59,7 @@ class _NearbyBody extends StatelessWidget {
               onTap: alreadyRequested
                   ? null
                   : () {
-                      context.read<ProEncounters>().sendRequest(
-                        person.id,
-                        person.photoUrl,
-                      );
+                      context.read<ProEncounters>().sendRequest(person.id);
                       context.read<ProNearby>().markRequested(person.id);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(l10n.nearbyRequestSentMessage)),

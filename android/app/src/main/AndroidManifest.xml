@@ -1,6 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Per il foreground service di geolocator (nearby/), che tiene la
+         sessione visibile anche con l'app in background: obbligatori da
+         Android 9 (FOREGROUND_SERVICE) e Android 14 (il tipo specifico
+         "location"). POST_NOTIFICATIONS serve a mostrare la notifica
+         persistente del servizio su Android 13+. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Richiesto da ForegroundNotificationConfig.enableWakeLock: senza
+         questo geolocator lancia una SecurityException a runtime quando
+         prova a tenere sveglio il device durante il tracking. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="3mojo"
         android:name="${applicationName}"
