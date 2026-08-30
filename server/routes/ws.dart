@@ -6,11 +6,10 @@ import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
-/// `GET /ws?sessionId=...`, upgradato a WebSocket — sostituisce `POST`/
-/// `DELETE /presence` + `GET /nearby` **e** le vecchie richieste finte di
-/// `encounters/`: un solo canale persistente per sessione porta sia la
-/// presenza/vicinanze sia le richieste d'incontro, spinte dal server appena
-/// cambia qualcosa invece che richieste dal client a intervalli.
+/// `GET /ws?sessionId=...`, upgradato a WebSocket — un solo canale
+/// persistente per sessione porta presenza/vicinanze, richieste d'incontro
+/// **e** i messaggi di chat, spinti dal server appena cambia qualcosa
+/// invece che richiesti dal client a intervalli.
 ///
 /// Messaggi in arrivo dal client, un JSON per riga, distinti da `"type"`:
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
@@ -18,13 +17,18 @@ import 'package:threemojo_server/src/session_store.dart';
 ///   connessione e poi ogni volta che la posizione va aggiornata;
 /// - `{"type": "sendEncounterRequest", "toSessionId": ...}`;
 /// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
-/// - `{"type": "endMatch", "requestId": ...}`.
+/// - `{"type": "endMatch", "requestId": ...}`;
+/// - `{"type": "chatMessage", "toSessionId": ..., "text": ..., "sentAt": ...}`
+///   — inoltrato al destinatario se online, non conservato da nessuna
+///   parte (il server fa solo da postino: se il destinatario non è
+///   connesso in questo momento, il messaggio va perso).
 ///
 /// Messaggi in uscita verso il client:
 /// - `{"type": "nearby", "people": [...]}`;
 /// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}` — mandato
 ///   subito alla connessione (con lo stato già esistente, utile dopo una
-///   riconnessione) e di nuovo a ogni cambiamento che riguarda la sessione.
+///   riconnessione) e di nuovo a ogni cambiamento che riguarda la sessione;
+/// - `{"type": "chatMessage", "fromSessionId": ..., "text": ..., "sentAt": ...}`.
 ///
 /// Quando il socket si chiude (pulito o no): la sessione viene rimossa
 /// subito da `SessionStore` (niente più sessioni fantasma), e le sue
@@ -74,6 +78,8 @@ Future<Response> onRequest(RequestContext context) async {
               _handleRespondToEncounterRequest(sessionId, decoded);
             case 'endMatch':
               _handleEndMatch(sessionId, decoded);
+            case 'chatMessage':
+              _handleChatMessage(sessionId, decoded);
           }
         },
         onDone: () {
@@ -158,6 +164,20 @@ void _handleRespondToEncounterRequest(
   for (final id in touchedSessionIds) {
     ConnectionHub.instance.pushEncounterSnapshot(id);
   }
+}
+
+void _handleChatMessage(String sessionId, Map<String, dynamic> decoded) {
+  final toSessionId = decoded['toSessionId'] as String?;
+  final text = decoded['text'] as String?;
+  final sentAt = decoded['sentAt'] as String?;
+  if (toSessionId == null || text == null || sentAt == null) return;
+
+  ConnectionHub.instance.relayChatMessage(
+    fromSessionId: sessionId,
+    toSessionId: toSessionId,
+    text: text,
+    sentAt: sentAt,
+  );
 }
 
 void _handleEndMatch(String sessionId, Map<String, dynamic> decoded) {

@@ -1,27 +1,19 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '/core/network/realtime_connection.dart';
 import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
 import 'chat_local_data_source.dart';
 
-/// Implementazione **reale** per il salvataggio (JSON in `shared_preferences`
-/// — il server farebbe solo da postino, non conserva nulla), ma con un
-/// autoreply **finto** dopo ogni messaggio, per sentire la chat viva senza
-/// un vero interlocutore dall'altra parte.
+/// Implementazione **reale**: cronologia salvata come JSON in
+/// `shared_preferences` (il server fa solo da postino, non la conserva), e
+/// consegna vera tramite la connessione WebSocket condivisa con `nearby`/
+/// `encounters` (`RealtimeConnection`) — nessun autoreply finto.
 class ChatLocalDataSourceImpl implements ChatLocalDataSource {
   static const String _conversationsKey = 'chat_conversations';
   static const String _messagesKeyPrefix = 'chat_messages_';
-
-  static const List<String> _fakeReplies = [
-    "Ciao! Dove sei esattamente?",
-    "Sono vicino all'entrata, tu?",
-    'Perfetto, arrivo tra un minuto!',
-  ];
-
-  final Random _random = Random();
 
   @override
   Future<ConversationModel> getOrCreateConversation({
@@ -61,36 +53,59 @@ class ChatLocalDataSourceImpl implements ChatLocalDataSource {
   @override
   Future<ChatMessageModel> appendMessage({
     required String conversationId,
+    required String otherPersonId,
     required String text,
   }) async {
-    final messages = await getMessages(conversationId);
     final message = ChatMessageModel(
       id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
       isMine: true,
       text: text,
       sentAt: DateTime.now(),
     );
-    messages.add(message);
-    await _saveMessages(conversationId, messages);
+    await _storeMessage(conversationId, message);
 
-    _scheduleFakeReply(conversationId);
+    RealtimeConnection.instance.send({
+      'type': 'chatMessage',
+      'toSessionId': otherPersonId,
+      'text': message.text,
+      'sentAt': message.sentAt.toIso8601String(),
+    });
 
     return message;
   }
 
-  void _scheduleFakeReply(String conversationId) {
-    Future<void>.delayed(const Duration(seconds: 3), () async {
-      final messages = await getMessages(conversationId);
-      messages.add(
-        ChatMessageModel(
-          id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
-          isMine: false,
-          text: _fakeReplies[_random.nextInt(_fakeReplies.length)],
-          sentAt: DateTime.now(),
-        ),
-      );
-      await _saveMessages(conversationId, messages);
-    });
+  @override
+  Stream<ChatMessageModel> watchIncomingMessages({
+    required String sessionId,
+    required String otherPersonId,
+  }) {
+    final messages = RealtimeConnection.instance.connect(sessionId);
+
+    return messages
+        .where(
+          (decoded) =>
+              decoded['type'] == 'chatMessage' &&
+              decoded['fromSessionId'] == otherPersonId,
+        )
+        .asyncMap((decoded) async {
+          final message = ChatMessageModel(
+            id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
+            isMine: false,
+            text: decoded['text'] as String,
+            sentAt: DateTime.parse(decoded['sentAt'] as String),
+          );
+          await _storeMessage('conv-$otherPersonId', message);
+          return message;
+        });
+  }
+
+  Future<void> _storeMessage(
+    String conversationId,
+    ChatMessageModel message,
+  ) async {
+    final messages = await getMessages(conversationId);
+    messages.add(message);
+    await _saveMessages(conversationId, messages);
   }
 
   Future<List<ConversationModel>> _loadConversations() async {

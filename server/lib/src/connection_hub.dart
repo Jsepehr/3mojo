@@ -43,6 +43,24 @@ class ConnectionHub {
     _sinks[sessionId]?.add(jsonEncode(message));
   }
 
+  /// Inoltra un messaggio di chat a `toSessionId`, se connesso in questo
+  /// momento — il server fa solo da postino, non lo conserva da nessuna
+  /// parte: se il destinatario non è online, il messaggio va perso (chi
+  /// l'ha mandato lo tiene comunque nella propria cronologia locale).
+  void relayChatMessage({
+    required String fromSessionId,
+    required String toSessionId,
+    required String text,
+    required String sentAt,
+  }) {
+    _sendTo(toSessionId, {
+      'type': 'chatMessage',
+      'fromSessionId': fromSessionId,
+      'text': text,
+      'sentAt': sentAt,
+    });
+  }
+
   /// Ricalcola e manda a ognuno dei client connessi la sua lista
   /// "vicinanze" aggiornata (ognuno riceve la propria, già filtrata per
   /// genere/raggio/permanenza da `SessionStore.nearbyPeople`).

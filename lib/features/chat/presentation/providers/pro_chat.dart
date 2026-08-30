@@ -7,23 +7,32 @@ import '../../domain/entities/conversation.dart';
 import '../../domain/usecases/get_messages_usecase.dart';
 import '../../domain/usecases/get_or_create_conversation_usecase.dart';
 import '../../domain/usecases/send_message_usecase.dart';
+import '../../domain/usecases/watch_incoming_chat_messages_usecase.dart';
 
-/// Stato della chat aperta: messaggi, se sta caricando, polling ogni 2s
-/// per vedere l'autoreply finto senza dover ricaricare manualmente.
+/// Stato della chat aperta: messaggi, se sta caricando. I messaggi in
+/// arrivo sono spinti dalla connessione condivisa (`WatchIncomingChatMessagesUseCase`),
+/// niente più polling né autoreply finto — come `ProNearby`/`ProEncounters`,
+/// se lo stream finisce ci si riabbona da soli dopo una breve pausa.
 class ProChat extends ChangeNotifier {
   ProChat({
     required GetOrCreateConversationUseCase getOrCreateConversationUseCase,
     required GetMessagesUseCase getMessagesUseCase,
     required SendMessageUseCase sendMessageUseCase,
+    required WatchIncomingChatMessagesUseCase watchIncomingChatMessagesUseCase,
   }) : _getOrCreateConversationUseCase = getOrCreateConversationUseCase,
        _getMessagesUseCase = getMessagesUseCase,
-       _sendMessageUseCase = sendMessageUseCase;
+       _sendMessageUseCase = sendMessageUseCase,
+       _watchIncomingChatMessagesUseCase = watchIncomingChatMessagesUseCase;
+
+  static const Duration _resubscribeDelay = Duration(seconds: 3);
 
   final GetOrCreateConversationUseCase _getOrCreateConversationUseCase;
   final GetMessagesUseCase _getMessagesUseCase;
   final SendMessageUseCase _sendMessageUseCase;
+  final WatchIncomingChatMessagesUseCase _watchIncomingChatMessagesUseCase;
 
-  Timer? _pollTimer;
+  StreamSubscription<void>? _subscription;
+  Timer? _resubscribeTimer;
   Conversation? _conversation;
   List<ChatMessage> _messages = [];
   bool _isLoading = true;
@@ -38,6 +47,9 @@ class ProChat extends ChangeNotifier {
     required String otherPersonId,
     required String otherSelfiePath,
   }) async {
+    _resubscribeTimer?.cancel();
+    await _subscription?.cancel();
+
     _isLoading = true;
     // Deferred: open() is called from UiActiveMatch.initState(), which runs
     // while _MatchGate's own build is still in progress — notifying
@@ -55,15 +67,34 @@ class ProChat extends ChangeNotifier {
     ) async {
       _conversation = conversation;
       await _loadMessages();
+      _subscribeToIncoming(otherPersonId);
     });
 
     _isLoading = false;
     notifyListeners();
+  }
 
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _pollMessages(),
+  void _subscribeToIncoming(String otherPersonId) {
+    _subscription = _watchIncomingChatMessagesUseCase(otherPersonId).listen(
+      (result) {
+        result.match((failure) => _errorMessage = failure.message, (message) {
+          _messages = [..._messages, message];
+          _errorMessage = null;
+        });
+        notifyListeners();
+      },
+      onError: (Object error) {
+        _errorMessage = error.toString();
+        notifyListeners();
+      },
+      onDone: () => _scheduleResubscribe(otherPersonId),
+    );
+  }
+
+  void _scheduleResubscribe(String otherPersonId) {
+    _resubscribeTimer = Timer(
+      _resubscribeDelay,
+      () => _subscribeToIncoming(otherPersonId),
     );
   }
 
@@ -72,21 +103,17 @@ class ProChat extends ChangeNotifier {
     if (conversation == null) return;
 
     final result = await _sendMessageUseCase(
-      SendMessageParams(conversationId: conversation.id, text: text),
+      SendMessageParams(
+        conversationId: conversation.id,
+        otherPersonId: conversation.otherPersonId,
+        text: text,
+      ),
     );
-    await result.match((failure) async => _errorMessage = failure.message, (
-      _,
-    ) async {
+    result.match((failure) => _errorMessage = failure.message, (message) {
+      _messages = [..._messages, message];
       _errorMessage = null;
-      await _loadMessages();
     });
     notifyListeners();
-  }
-
-  Future<void> _pollMessages() async {
-    final before = _messages.length;
-    await _loadMessages();
-    if (_messages.length != before) notifyListeners();
   }
 
   Future<void> _loadMessages() async {
@@ -102,7 +129,8 @@ class ProChat extends ChangeNotifier {
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _resubscribeTimer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 }

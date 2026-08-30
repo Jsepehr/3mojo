@@ -7,13 +7,18 @@ import '../entities/chat_message.dart';
 import '../repositories/chat_repository.dart';
 
 class SendMessageParams extends Equatable {
-  const SendMessageParams({required this.conversationId, required this.text});
+  const SendMessageParams({
+    required this.conversationId,
+    required this.otherPersonId,
+    required this.text,
+  });
 
   final String conversationId;
+  final String otherPersonId;
   final String text;
 
   @override
-  List<Object?> get props => [conversationId, text];
+  List<Object?> get props => [conversationId, otherPersonId, text];
 }
 
 /// Azione: manda un messaggio. Valida che non sia vuoto prima di scriverlo.
@@ -33,6 +38,7 @@ class SendMessageUseCase implements UseCase<ChatMessage, SendMessageParams> {
 
     return _repository.appendMessage(
       conversationId: params.conversationId,
+      otherPersonId: params.otherPersonId,
       text: text,
     );
   }

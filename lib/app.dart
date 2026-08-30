@@ -9,6 +9,7 @@ import 'features/chat/domain/repositories/chat_repository.dart';
 import 'features/chat/domain/usecases/get_messages_usecase.dart';
 import 'features/chat/domain/usecases/get_or_create_conversation_usecase.dart';
 import 'features/chat/domain/usecases/send_message_usecase.dart';
+import 'features/chat/domain/usecases/watch_incoming_chat_messages_usecase.dart';
 import 'features/chat/presentation/providers/pro_chat.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source_impl.dart';
@@ -147,6 +148,12 @@ class App extends StatelessWidget {
             ),
             getMessagesUseCase: GetMessagesUseCase(context.read()),
             sendMessageUseCase: SendMessageUseCase(context.read()),
+            watchIncomingChatMessagesUseCase: WatchIncomingChatMessagesUseCase(
+              getCurrentSessionUseCase: GetCurrentSessionUseCase(
+                context.read(),
+              ),
+              repository: context.read(),
+            ),
           ),
         ),
       ],

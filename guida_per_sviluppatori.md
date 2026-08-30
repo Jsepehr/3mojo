@@ -20,7 +20,7 @@ flutter pub get          # dalla root, per l'app
 cd server && dart pub get  # per il server
 ```
 
-Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`), non richieste HTTP separate: il client manda presenza/azioni sul canale aperto, il server spinge indietro liste e aggiornamenti appena cambia qualcosa, invece che il client debba richiederli a intervalli. Ci passano sia presenza/vicinanze sia le richieste d'incontro (`encounters/`). **Solo la chat resta locale** — non tocca mai il server (vedi §3.4).
+Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`), non richieste HTTP separate: il client manda presenza/azioni sul canale aperto, il server spinge indietro liste e aggiornamenti appena cambia qualcosa, invece che il client debba richiederli a intervalli. Ci passano presenza/vicinanze, richieste d'incontro (`encounters/`) **e** i messaggi di chat — per la chat il server fa solo da postino (inoltra, non conserva): la cronologia resta locale su ogni dispositivo (vedi §3.4).
 
 ---
 
@@ -156,11 +156,13 @@ Il selfie della controparte (`otherSelfiePath`, in realtà sempre una data URI, 
 
 **Gotcha condiviso con `nearby/`**: `Timer`/`Future.delayed` per il resubscribe va tenuto in un campo cancellabile (`Timer? _resubscribeTimer`, cancellato in `dispose()`) — un `Future.delayed` "nudo" senza riferimento non si può fermare, e il widget test lo scopre subito (`A Timer is still pending even after the widget tree was disposed`). Capitato una volta, sistemato in entrambi i provider.
 
-### 3.4 `chat/` — conversazione (locale, nessuna scadenza a tempo)
+### 3.4 `chat/` — conversazione reale (nessuna scadenza a tempo)
 
-`ChatLocalDataSourceImpl` salva conversazioni e messaggi come JSON in `shared_preferences` (reale, non finto: il "server farebbe solo da postino", coerente con l'architettura pensata, anche se qui non c'è nessun postino). L'unica parte finta è un autoreply automatico 3s dopo ogni messaggio mandato (`_scheduleFakeReply`), per sentire la chat "viva".
+`ChatLocalDataSourceImpl` salva conversazioni e messaggi come JSON in `shared_preferences` (locale, per-dispositivo) e li scambia con la controparte sulla stessa `RealtimeConnection` condivisa con `nearby`/`encounters` — niente più autoreply finto. `appendMessage` salva in locale **e** manda `{"type":"chatMessage","toSessionId":...,"text":...,"sentAt":...}`; `watchIncomingMessages({sessionId, otherPersonId})` filtra dallo stream condiviso solo i `chatMessage` il cui `fromSessionId` combacia con la conversazione aperta, salvandoli in locale non appena arrivano.
 
-`ProChat` fa polling ogni 2s per vedere l'autoreply senza dover ricaricare manualmente. Nessuna scadenza a tempo: la conversazione dura finché uno dei due non la termina esplicitamente (`EndMatchUseCase`, con conferma in UI).
+Il server (`_handleChatMessage` in [routes/ws.dart](server/routes/ws.dart)) **fa solo da postino**: inoltra al destinatario se connesso in questo momento, non conserva nulla da nessuna parte. Se il destinatario non è online, il messaggio va perso lato server — chi l'ha mandato lo tiene comunque nella propria cronologia locale, ma l'altro non lo riceverà mai (nessuna coda, nessun retry: coerente con "usa e getta").
+
+`ProChat` non fa più polling ogni 2s: si abbona allo stream di `WatchIncomingChatMessagesUseCase` per la conversazione aperta (stessa auto-riconnessione dopo 3s di `ProNearby`/`ProEncounters` se lo stream finisce — cancellata e ricreata a ogni nuovo `open()`, per non restare abbonati alla conversazione precedente se se ne apre una nuova). Nessuna scadenza a tempo: la conversazione dura finché uno dei due non la termina esplicitamente (`EndMatchUseCase`, con conferma in UI).
 
 ---
 
@@ -184,9 +186,10 @@ server/
 
 **`SessionStore`** è un singleton in RAM (`SessionStore.instance`). Nessun database: riavvii il server e ogni sessione sparisce.
 
-**`GET /ws?sessionId=...`** ([routes/ws.dart](server/routes/ws.dart)) upgrada la richiesta HTTP a WebSocket con `shelf_web_socket` + `fromShelfHandler` (il ponte ufficiale di Dart Frog verso un `shelf.Handler` — necessario perché solo l'oggetto `shelf.Request` sottostante supporta l'hijack richiesto da un upgrade WebSocket). Un solo canale per sessione porta sia presenza/vicinanze sia le richieste d'incontro, distinte da `"type"`:
+**`GET /ws?sessionId=...`** ([routes/ws.dart](server/routes/ws.dart)) upgrada la richiesta HTTP a WebSocket con `shelf_web_socket` + `fromShelfHandler` (il ponte ufficiale di Dart Frog verso un `shelf.Handler` — necessario perché solo l'oggetto `shelf.Request` sottostante supporta l'hijack richiesto da un upgrade WebSocket). Un solo canale per sessione porta presenza/vicinanze, richieste d'incontro **e** messaggi di chat, distinti da `"type"`:
 - `{"type":"presence", "lat":..., "lng":..., "gender":..., "genderPreference":..., "selfieBase64":...}` (alla connessione, e a ogni aggiornamento) → `SessionStore.upsertPosition(...)` seguito da `ConnectionHub.broadcastNearbyUpdates()` — ricalcola e spinge a **ognuno** dei client connessi la propria lista aggiornata;
 - `{"type":"sendEncounterRequest","toSessionId":...}`, `{"type":"respondToEncounterRequest","requestId":...,"accepted":...}`, `{"type":"endMatch","requestId":...}` → delegati a `EncounterStore` (vedi sotto), seguiti da `ConnectionHub.pushEncounterSnapshot(...)` per ogni sessione toccata dall'azione (non solo le due dirette: un accept cancella richieste altrui, che vanno notificate anch'esse);
+- `{"type":"chatMessage","toSessionId":...,"text":...,"sentAt":...}` → `ConnectionHub.relayChatMessage(...)`, un puro inoltro al destinatario se connesso — nessuno stato, nessuna persistenza: se il destinatario non è online il messaggio va semplicemente perso;
 - alla connessione, subito un `ConnectionHub.pushEncounterSnapshot(sessionId)` (stato già esistente, utile dopo una riconnessione — non serve aspettare un cambiamento);
 - alla chiusura del socket (`onDone`, pulita o no) → `SessionStore.remove(sessionId)` + `ConnectionHub.unregister(...)` + `broadcastNearbyUpdates()` (chi era connesso a quella persona la vede sparire subito) **e** `EncounterStore.cancelAllPendingFor(sessionId)` + `pushEncounterSnapshot` per ogni controparte toccata — le richieste pendenti di chi sparisce non potrebbero comunque mai ottenere risposta.
 
