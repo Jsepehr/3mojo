@@ -201,6 +201,22 @@
   "@languageOptionItalian": {
     "description": "Language option: Italian"
   },
+  "languageOptionGerman": "Deutsch",
+  "@languageOptionGerman": {
+    "description": "Language option: German"
+  },
+  "languageOptionSpanish": "Español",
+  "@languageOptionSpanish": {
+    "description": "Language option: Spanish"
+  },
+  "languageOptionFrench": "Français",
+  "@languageOptionFrench": {
+    "description": "Language option: French"
+  },
+  "languageOptionArabic": "العربية",
+  "@languageOptionArabic": {
+    "description": "Language option: Arabic"
+  },
   "aboutAppDescription": "Meet people nearby, in real time.",
   "@aboutAppDescription": {
     "description": "Short description shown in the About dialog"

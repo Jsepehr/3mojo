@@ -48,6 +48,14 @@ class CmpLanguagePickerDialog extends StatelessWidget {
         return l10n.languageOptionEnglish;
       case AppLanguage.italian:
         return l10n.languageOptionItalian;
+      case AppLanguage.german:
+        return l10n.languageOptionGerman;
+      case AppLanguage.spanish:
+        return l10n.languageOptionSpanish;
+      case AppLanguage.french:
+        return l10n.languageOptionFrench;
+      case AppLanguage.arabic:
+        return l10n.languageOptionArabic;
     }
   }
 }

@@ -49,6 +49,10 @@
   "languageOptionSystem": "Predefinita di sistema",
   "languageOptionEnglish": "English",
   "languageOptionItalian": "Italiano",
+  "languageOptionGerman": "Deutsch",
+  "languageOptionSpanish": "Español",
+  "languageOptionFrench": "Français",
+  "languageOptionArabic": "العربية",
   "aboutAppDescription": "Incontra le persone vicine a te, in tempo reale.",
   "shareAppMessage": "Prova ThreeMojo, l'app per incontrare persone vicine a te in tempo reale!"
 }
