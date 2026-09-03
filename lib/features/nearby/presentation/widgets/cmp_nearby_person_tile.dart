@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
 
@@ -19,17 +20,35 @@ class CmpNearbyPersonTile extends StatelessWidget {
 
     final photo = imageProviderForPhoto(person.photoUrl);
 
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 40,
-        backgroundImage: photo,
-        child: photo == null ? const Icon(Icons.person) : null,
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            CmpPhoto(image: photo, size: 96),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _meetingChanceLabel(l10n, person.meetingChance),
+                    style: TextStyle(
+                      color: _meetingChanceColor(person.meetingChance),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.nearbyDistanceLabel(person.distanceMeters.round()),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      title: Text(
-        _meetingChanceLabel(l10n, person.meetingChance),
-        style: TextStyle(color: _meetingChanceColor(person.meetingChance)),
-      ),
-      trailing: Text(l10n.nearbyDistanceLabel(person.distanceMeters.round())),
     );
   }
 

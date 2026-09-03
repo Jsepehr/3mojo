@@ -40,5 +40,15 @@
   "matchLeaveWarningTitle": "Terminare questo incontro?",
   "matchLeaveWarningMessage": "Perderai il contatto con questa persona per sempre.",
   "matchLeaveWarningCancel": "Resta",
-  "matchLeaveWarningConfirm": "Termina"
+  "matchLeaveWarningConfirm": "Termina",
+  "drawerChangeLanguage": "Cambia lingua",
+  "drawerDarkMode": "Tema scuro",
+  "drawerAbout": "Informazioni",
+  "drawerShareApp": "Condividi l'app",
+  "languagePickerTitle": "Scegli una lingua",
+  "languageOptionSystem": "Predefinita di sistema",
+  "languageOptionEnglish": "English",
+  "languageOptionItalian": "Italiano",
+  "aboutAppDescription": "Incontra le persone vicine a te, in tempo reale.",
+  "shareAppMessage": "Prova ThreeMojo, l'app per incontrare persone vicine a te in tempo reale!"
 }

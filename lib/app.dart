@@ -48,6 +48,15 @@ import 'features/session/domain/usecases/get_current_session_usecase.dart';
 import 'features/session/domain/usecases/start_session_usecase.dart';
 import 'features/session/presentation/pages/ui_home.dart';
 import 'features/session/presentation/providers/pro_session.dart';
+import 'features/settings/data/datasources/settings_local_data_source.dart';
+import 'features/settings/data/datasources/settings_local_data_source_impl.dart';
+import 'features/settings/data/repositories/settings_repository_impl.dart';
+import 'features/settings/domain/repositories/settings_repository.dart';
+import 'features/settings/domain/usecases/get_language_usecase.dart';
+import 'features/settings/domain/usecases/get_theme_mode_usecase.dart';
+import 'features/settings/domain/usecases/set_language_usecase.dart';
+import 'features/settings/domain/usecases/set_theme_mode_usecase.dart';
+import 'features/settings/presentation/providers/pro_settings.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Widget radice: registra tutti i provider (uno per feature, dal
@@ -156,13 +165,32 @@ class App extends StatelessWidget {
             ),
           ),
         ),
+        Provider<SettingsLocalDataSource>(
+          create: (_) => SettingsLocalDataSourceImpl(),
+        ),
+        Provider<SettingsRepository>(
+          create: (context) => SettingsRepositoryImpl(context.read()),
+        ),
+        ChangeNotifierProvider<ProSettings>(
+          create: (context) => ProSettings(
+            getLanguageUseCase: GetLanguageUseCase(context.read()),
+            setLanguageUseCase: SetLanguageUseCase(context.read()),
+            getThemeModeUseCase: GetThemeModeUseCase(context.read()),
+            setThemeModeUseCase: SetThemeModeUseCase(context.read()),
+          ),
+        ),
       ],
-      child: MaterialApp(
-        onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
-        theme: AppTheme.light,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const _MatchGate(child: UiHome()),
+      child: Consumer<ProSettings>(
+        builder: (context, proSettings, _) => MaterialApp(
+          onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: proSettings.themeMode,
+          locale: proSettings.locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const _MatchGate(child: UiHome()),
+        ),
       ),
     );
   }

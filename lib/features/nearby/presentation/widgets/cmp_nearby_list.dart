@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/widgets/cmp_loading_indicator.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../../encounters/presentation/providers/pro_encounters.dart';
 import '../providers/pro_nearby.dart';
@@ -35,7 +36,7 @@ class _NearbyBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (proNearby.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CmpLoadingIndicator());
     }
 
     if (proNearby.errorMessage != null) {

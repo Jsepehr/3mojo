@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 
@@ -16,10 +17,7 @@ class CmpOutgoingRequestTile extends StatelessWidget {
     final photo = imageProviderForPhoto(request.otherSelfiePath);
 
     return ListTile(
-      leading: CircleAvatar(
-        backgroundImage: photo,
-        child: photo == null ? const Icon(Icons.person) : null,
-      ),
+      leading: CmpPhoto(image: photo, size: 56),
       title: Text(_statusLabel(l10n, request.status)),
     );
   }

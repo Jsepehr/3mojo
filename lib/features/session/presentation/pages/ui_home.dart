@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/widgets/cmp_loading_indicator.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_list.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_radar_background.dart';
+import '/features/settings/presentation/widgets/cmp_app_drawer.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'ui_start_session.dart';
 
@@ -19,7 +22,7 @@ class UiHome extends StatelessWidget {
     final proSession = context.watch<ProSession>();
 
     if (proSession.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CmpLoadingIndicator()));
     }
 
     return proSession.isOnline ? const _OnlineHome() : const _OfflineHome();
@@ -35,6 +38,9 @@ class _OfflineHome extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      drawer: const CmpAppDrawer(),
       body: Stack(
         children: [
           const Positioned.fill(child: CmpRadarBackground()),
@@ -88,6 +94,7 @@ class _OnlineHome extends StatelessWidget {
     final pendingCount = context.watch<ProEncounters>().pendingIncomingCount;
 
     return Scaffold(
+      drawer: const CmpAppDrawer(),
       appBar: AppBar(
         title: Text(l10n.nearbyPageTitle),
         actions: [
@@ -105,10 +112,7 @@ class _OnlineHome extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundImage: MemoryImage(session.selfieBytes),
-            ),
+            CmpPhoto(image: MemoryImage(session.selfieBytes), size: 44),
             IconButton.filledTonal(
               icon: pendingCount == 0
                   ? const Icon(Icons.favorite_border)

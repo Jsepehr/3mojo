@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_loading_indicator.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/features/chat/presentation/providers/pro_chat.dart';
 import '/features/chat/presentation/widgets/cmp_chat_message_bubble.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
@@ -91,11 +93,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
         appBar: AppBar(
           title: Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: photo,
-                child: photo == null ? const Icon(Icons.person) : null,
-              ),
+              CmpPhoto(image: photo, size: 40),
               const SizedBox(width: 12),
               Text(l10n.chatPageTitle),
             ],
@@ -108,7 +106,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
           ],
         ),
         body: proChat.isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: CmpLoadingIndicator())
             : Column(
                 children: [
                   Expanded(

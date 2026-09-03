@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 
@@ -28,11 +29,7 @@ class CmpIncomingRequestTile extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundImage: photo,
-              child: photo == null ? const Icon(Icons.person, size: 32) : null,
-            ),
+            CmpPhoto(image: photo, size: 96),
             const SizedBox(height: 12),
             Text(l10n.encountersWantsToMeetYou, textAlign: TextAlign.center),
             const SizedBox(height: 12),

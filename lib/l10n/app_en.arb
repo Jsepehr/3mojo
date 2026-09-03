@@ -168,5 +168,45 @@
   "matchLeaveWarningConfirm": "End it",
   "@matchLeaveWarningConfirm": {
     "description": "Confirm option of the leave-match confirmation dialog"
+  },
+  "drawerChangeLanguage": "Change language",
+  "@drawerChangeLanguage": {
+    "description": "Side menu entry that opens the language picker"
+  },
+  "drawerDarkMode": "Dark mode",
+  "@drawerDarkMode": {
+    "description": "Side menu switch that toggles between light and dark theme"
+  },
+  "drawerAbout": "About",
+  "@drawerAbout": {
+    "description": "Side menu entry that opens the About dialog"
+  },
+  "drawerShareApp": "Share app",
+  "@drawerShareApp": {
+    "description": "Side menu entry that opens the native share sheet for the app"
+  },
+  "languagePickerTitle": "Choose a language",
+  "@languagePickerTitle": {
+    "description": "Title of the language picker dialog opened from the side menu"
+  },
+  "languageOptionSystem": "System default",
+  "@languageOptionSystem": {
+    "description": "Language option that follows the phone's system language"
+  },
+  "languageOptionEnglish": "English",
+  "@languageOptionEnglish": {
+    "description": "Language option: English"
+  },
+  "languageOptionItalian": "Italiano",
+  "@languageOptionItalian": {
+    "description": "Language option: Italian"
+  },
+  "aboutAppDescription": "Meet people nearby, in real time.",
+  "@aboutAppDescription": {
+    "description": "Short description shown in the About dialog"
+  },
+  "shareAppMessage": "Check out ThreeMojo, an app to meet people nearby in real time!",
+  "@shareAppMessage": {
+    "description": "Text shared through the native share sheet when the user taps Share app"
   }
 }

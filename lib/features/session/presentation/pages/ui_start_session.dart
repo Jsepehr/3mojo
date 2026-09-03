@@ -5,6 +5,8 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '/core/widgets/cmp_loading_indicator.dart';
+import '/core/widgets/cmp_photo.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
@@ -116,14 +118,10 @@ class _UiStartSessionState extends State<UiStartSession> {
         Center(
           child: GestureDetector(
             onTap: _takeSelfie,
-            child: CircleAvatar(
-              radius: 96,
-              backgroundImage: _selfieBytes == null
-                  ? null
-                  : MemoryImage(_selfieBytes!),
-              child: _selfieBytes == null
-                  ? const Icon(Icons.camera_alt, size: 40)
-                  : null,
+            child: CmpPhoto(
+              image: _selfieBytes == null ? null : MemoryImage(_selfieBytes!),
+              size: 220,
+              placeholderIcon: Icons.camera_alt,
             ),
           ),
         ),
@@ -152,10 +150,9 @@ class _UiStartSessionState extends State<UiStartSession> {
               ? null
               : _confirmSelfie,
           child: _isCheckingFace
-              ? const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              ? CmpLoadingIndicator(
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
                 )
               : Text(l10n.profileLikeSelfieButton),
         ),
