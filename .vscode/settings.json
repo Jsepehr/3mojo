@@ -1,13 +1,13 @@
 {
-  "dart.flutterSdkPath": "D:\\Programs\\flutter_windows_3.41.7-stable\\flutter",
-  "dart.sdkPath": "D:\\Programs\\flutter_windows_3.41.7-stable\\flutter\\bin\\cache\\dart-sdk",
+  "dart.flutterSdkPath": "C:\\Users\\sepehrbaradaran\\flutter_new\\flutter_windows_3.38.3-stable\\flutter",
+  "dart.sdkPath": "C:\\Users\\sepehrbaradaran\\flutter_new\\flutter_windows_3.38.3-stable\\flutter\\bin\\cache\\dart-sdk",
 
-  "java.jdt.ls.java.home": "D:\\Programs\\Android Studio\\jbr",
-  "java.import.gradle.java.home": "D:\\Programs\\Android Studio\\jbr",
+  "java.jdt.ls.java.home": "C:\\Users\\sepehrbaradaran\\.jdks\\azul-17.0.16",
+  "java.import.gradle.java.home": "C:\\Users\\sepehrbaradaran\\.jdks\\azul-17.0.16",
   "java.configuration.runtimes": [
     {
-      "name": "JavaSE-21",
-      "path": "D:\\Programs\\Android Studio\\jbr",
+      "name": "JavaSE-17",
+      "path": "C:\\Users\\sepehrbaradaran\\.jdks\\azul-17.0.16",
       "default": true
     }
   ],
