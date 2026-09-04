@@ -45,6 +45,8 @@
   "drawerDarkMode": "الوضع الداكن",
   "drawerAbout": "حول التطبيق",
   "drawerShareApp": "مشاركة التطبيق",
+  "drawerFakeMode": "بيانات وهمية (بدون شبكة)",
+  "drawerFakeModeRestartNotice": "أعد تشغيل التطبيق لتطبيق هذا التغيير",
   "languagePickerTitle": "اختر لغة",
   "languageOptionSystem": "لغة النظام",
   "languageOptionEnglish": "English",

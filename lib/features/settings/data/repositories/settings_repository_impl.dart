@@ -49,4 +49,23 @@ class SettingsRepositoryImpl implements SettingsRepository {
       return Left(CacheFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, bool>> getFakeMode() async {
+    try {
+      return Right(await _localDataSource.getFakeMode());
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> setFakeMode(bool enabled) async {
+    try {
+      await _localDataSource.setFakeMode(enabled);
+      return const Right(unit);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
+  }
 }

@@ -185,6 +185,14 @@
   "@drawerShareApp": {
     "description": "Side menu entry that opens the native share sheet for the app"
   },
+  "drawerFakeMode": "Fake data (no network)",
+  "@drawerFakeMode": {
+    "description": "Side menu switch that toggles fake, offline data instead of the real backend"
+  },
+  "drawerFakeModeRestartNotice": "Restart the app to apply this change",
+  "@drawerFakeModeRestartNotice": {
+    "description": "Snackbar shown after toggling fake mode, since it only applies on next app start"
+  },
   "languagePickerTitle": "Choose a language",
   "@languagePickerTitle": {
     "description": "Title of the language picker dialog opened from the side menu"

@@ -13,7 +13,7 @@ void main() {
   testWidgets('Home shows the Start button while offline', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const App());
+    await tester.pumpWidget(const App(fakeMode: false));
     // Avoid pumpAndSettle: the animated radar background never settles on
     // its own. A short pump is enough to let the initial (offline) stream
     // subscriptions in ProNearby/ProEncounters settle before teardown.

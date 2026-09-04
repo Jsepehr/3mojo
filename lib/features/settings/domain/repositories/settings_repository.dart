@@ -12,4 +12,8 @@ abstract class SettingsRepository {
   Future<Either<Failure, AppThemeMode>> getThemeMode();
 
   Future<Either<Failure, Unit>> setThemeMode(AppThemeMode themeMode);
+
+  Future<Either<Failure, bool>> getFakeMode();
+
+  Future<Either<Failure, Unit>> setFakeMode(bool enabled);
 }

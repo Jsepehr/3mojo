@@ -45,6 +45,8 @@
   "drawerDarkMode": "Modo oscuro",
   "drawerAbout": "Acerca de",
   "drawerShareApp": "Compartir app",
+  "drawerFakeMode": "Datos falsos (sin red)",
+  "drawerFakeModeRestartNotice": "Reinicia la app para aplicar este cambio",
   "languagePickerTitle": "Elige un idioma",
   "languageOptionSystem": "Predeterminado del sistema",
   "languageOptionEnglish": "English",

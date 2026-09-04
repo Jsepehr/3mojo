@@ -11,6 +11,7 @@ import 'settings_local_data_source.dart';
 class SettingsLocalDataSourceImpl implements SettingsLocalDataSource {
   static const _languageKey = 'app_language';
   static const _themeModeKey = 'app_theme_mode';
+  static const _fakeModeKey = 'app_fake_mode';
 
   @override
   Future<AppLanguage> getLanguage() async {
@@ -42,5 +43,17 @@ class SettingsLocalDataSourceImpl implements SettingsLocalDataSource {
   Future<void> setThemeMode(AppThemeMode themeMode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themeModeKey, themeMode.name);
+  }
+
+  @override
+  Future<bool> getFakeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_fakeModeKey) ?? false;
+  }
+
+  @override
+  Future<void> setFakeMode(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_fakeModeKey, enabled);
   }
 }

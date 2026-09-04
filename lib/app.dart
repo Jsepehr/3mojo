@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/chat/data/datasources/chat_local_data_source.dart';
+import 'features/chat/data/datasources/chat_local_data_source_fake_impl.dart';
 import 'features/chat/data/datasources/chat_local_data_source_impl.dart';
 import 'features/chat/data/repositories/chat_repository_impl.dart';
 import 'features/chat/domain/repositories/chat_repository.dart';
@@ -12,6 +13,7 @@ import 'features/chat/domain/usecases/send_message_usecase.dart';
 import 'features/chat/domain/usecases/watch_incoming_chat_messages_usecase.dart';
 import 'features/chat/presentation/providers/pro_chat.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source.dart';
+import 'features/encounters/data/datasources/encounter_remote_data_source_fake_impl.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source_impl.dart';
 import 'features/encounters/data/repositories/encounter_repository_impl.dart';
 import 'features/encounters/domain/repositories/encounter_repository.dart';
@@ -24,6 +26,7 @@ import 'features/encounters/presentation/providers/pro_encounters.dart';
 import 'features/nearby/data/datasources/location_local_data_source.dart';
 import 'features/nearby/data/datasources/location_local_data_source_impl.dart';
 import 'features/nearby/data/datasources/nearby_remote_data_source.dart';
+import 'features/nearby/data/datasources/nearby_remote_data_source_fake_impl.dart';
 import 'features/nearby/data/datasources/nearby_remote_data_source_impl.dart';
 import 'features/nearby/data/repositories/location_repository_impl.dart';
 import 'features/nearby/data/repositories/nearby_repository_impl.dart';
@@ -52,8 +55,10 @@ import 'features/settings/data/datasources/settings_local_data_source.dart';
 import 'features/settings/data/datasources/settings_local_data_source_impl.dart';
 import 'features/settings/data/repositories/settings_repository_impl.dart';
 import 'features/settings/domain/repositories/settings_repository.dart';
+import 'features/settings/domain/usecases/get_fake_mode_usecase.dart';
 import 'features/settings/domain/usecases/get_language_usecase.dart';
 import 'features/settings/domain/usecases/get_theme_mode_usecase.dart';
+import 'features/settings/domain/usecases/set_fake_mode_usecase.dart';
 import 'features/settings/domain/usecases/set_language_usecase.dart';
 import 'features/settings/domain/usecases/set_theme_mode_usecase.dart';
 import 'features/settings/presentation/providers/pro_settings.dart';
@@ -62,8 +67,13 @@ import 'l10n/generated/app_localizations.dart';
 /// Widget radice: registra tutti i provider (uno per feature, dal
 /// datasource al ChangeNotifier) e apre su `UiHome`, avvolta da
 /// `_MatchGate` così un match può prendere il controllo da qualsiasi punto.
+/// `fakeMode` (letta in `main.dart` prima di costruire l'albero) sceglie i
+/// datasource finti al posto di quelli reali per nearby/encounters/chat —
+/// le uniche feature che dipendono dal backend `server/`.
 class App extends StatelessWidget {
-  const App({super.key});
+  const App({required this.fakeMode, super.key});
+
+  final bool fakeMode;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +95,9 @@ class App extends StatelessWidget {
           create: (_) => LocationLocalDataSourceImpl(),
         ),
         Provider<NearbyRemoteDataSource>(
-          create: (_) => NearbyRemoteDataSourceImpl(),
+          create: (_) => fakeMode
+              ? NearbyRemoteDataSourceFakeImpl()
+              : NearbyRemoteDataSourceImpl(),
         ),
         Provider<LocationRepository>(
           create: (context) => LocationRepositoryImpl(context.read()),
@@ -124,7 +136,9 @@ class App extends StatelessWidget {
           ),
         ),
         Provider<EncounterRemoteDataSource>(
-          create: (_) => EncounterRemoteDataSourceImpl(),
+          create: (_) => fakeMode
+              ? EncounterRemoteDataSourceFakeImpl()
+              : EncounterRemoteDataSourceImpl(),
         ),
         Provider<EncounterRepository>(
           create: (context) => EncounterRepositoryImpl(context.read()),
@@ -146,7 +160,10 @@ class App extends StatelessWidget {
             endMatchUseCase: EndMatchUseCase(context.read()),
           ),
         ),
-        Provider<ChatLocalDataSource>(create: (_) => ChatLocalDataSourceImpl()),
+        Provider<ChatLocalDataSource>(
+          create: (_) =>
+              fakeMode ? ChatLocalDataSourceFakeImpl() : ChatLocalDataSourceImpl(),
+        ),
         Provider<ChatRepository>(
           create: (context) => ChatRepositoryImpl(context.read()),
         ),
@@ -177,6 +194,8 @@ class App extends StatelessWidget {
             setLanguageUseCase: SetLanguageUseCase(context.read()),
             getThemeModeUseCase: GetThemeModeUseCase(context.read()),
             setThemeModeUseCase: SetThemeModeUseCase(context.read()),
+            getFakeModeUseCase: GetFakeModeUseCase(context.read()),
+            setFakeModeUseCase: SetFakeModeUseCase(context.read()),
           ),
         ),
       ],

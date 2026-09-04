@@ -45,10 +45,19 @@ class CmpAppDrawer extends StatelessWidget {
     );
   }
 
+  void _toggleFakeMode(BuildContext context, AppLocalizations l10n, bool enabled) {
+    context.read<ProSettings>().setFakeMode(enabled);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.drawerFakeModeRestartNotice)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isDarkMode = context.watch<ProSettings>().isDarkMode;
+    final proSettings = context.watch<ProSettings>();
+    final isDarkMode = proSettings.isDarkMode;
+    final isFakeMode = proSettings.isFakeMode;
 
     return Drawer(
       child: SafeArea(
@@ -69,6 +78,12 @@ class CmpAppDrawer extends StatelessWidget {
               value: isDarkMode,
               onChanged: (enabled) =>
                   context.read<ProSettings>().setDarkMode(enabled),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.wifi_off_outlined),
+              title: Text(l10n.drawerFakeMode),
+              value: isFakeMode,
+              onChanged: (enabled) => _toggleFakeMode(context, l10n, enabled),
             ),
             ListTile(
               leading: const Icon(Icons.info_outline),

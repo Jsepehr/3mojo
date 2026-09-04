@@ -8,4 +8,7 @@ abstract class SettingsLocalDataSource {
 
   Future<AppThemeMode> getThemeMode();
   Future<void> setThemeMode(AppThemeMode themeMode);
+
+  Future<bool> getFakeMode();
+  Future<void> setFakeMode(bool enabled);
 }
