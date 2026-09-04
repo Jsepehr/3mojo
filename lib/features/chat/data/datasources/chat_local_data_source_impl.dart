@@ -99,6 +99,17 @@ class ChatLocalDataSourceImpl implements ChatLocalDataSource {
         });
   }
 
+  @override
+  Future<void> deleteConversation(String otherPersonId) async {
+    final conversationId = 'conv-$otherPersonId';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_messagesKeyPrefix$conversationId');
+
+    final conversations = await _loadConversations();
+    conversations.removeWhere((c) => c.otherPersonId == otherPersonId);
+    await _saveConversations(conversations);
+  }
+
   Future<void> _storeMessage(
     String conversationId,
     ChatMessageModel message,

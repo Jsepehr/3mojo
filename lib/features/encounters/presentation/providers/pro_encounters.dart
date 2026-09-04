@@ -90,7 +90,8 @@ class ProEncounters extends ChangeNotifier {
         ),
       );
 
-  void endMatch(String requestId) => _endMatchUseCase(requestId);
+  void endMatch({required String requestId, required String otherPersonId}) =>
+      _endMatchUseCase(requestId: requestId, otherPersonId: otherPersonId);
 
   @override
   void dispose() {

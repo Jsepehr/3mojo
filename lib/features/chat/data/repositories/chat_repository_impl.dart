@@ -64,6 +64,16 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<Either<Failure, void>> deleteConversation(String otherPersonId) async {
+    try {
+      await _localDataSource.deleteConversation(otherPersonId);
+      return const Right(null);
+    } catch (e) {
+      return Left(UnexpectedFailure(e.toString()));
+    }
+  }
+
+  @override
   Stream<Either<Failure, ChatMessage>> watchIncomingMessages({
     required String sessionId,
     required String otherPersonId,

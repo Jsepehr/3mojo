@@ -24,4 +24,6 @@ abstract class ChatRepository {
     required String sessionId,
     required String otherPersonId,
   });
+
+  Future<Either<Failure, void>> deleteConversation(String otherPersonId);
 }

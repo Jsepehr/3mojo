@@ -7,6 +7,7 @@ import 'features/chat/data/datasources/chat_local_data_source_fake_impl.dart';
 import 'features/chat/data/datasources/chat_local_data_source_impl.dart';
 import 'features/chat/data/repositories/chat_repository_impl.dart';
 import 'features/chat/domain/repositories/chat_repository.dart';
+import 'features/chat/domain/usecases/delete_conversation_usecase.dart';
 import 'features/chat/domain/usecases/get_messages_usecase.dart';
 import 'features/chat/domain/usecases/get_or_create_conversation_usecase.dart';
 import 'features/chat/domain/usecases/send_message_usecase.dart';
@@ -143,6 +144,13 @@ class App extends StatelessWidget {
         Provider<EncounterRepository>(
           create: (context) => EncounterRepositoryImpl(context.read()),
         ),
+        Provider<ChatLocalDataSource>(
+          create: (_) =>
+              fakeMode ? ChatLocalDataSourceFakeImpl() : ChatLocalDataSourceImpl(),
+        ),
+        Provider<ChatRepository>(
+          create: (context) => ChatRepositoryImpl(context.read()),
+        ),
         ChangeNotifierProvider<ProEncounters>(
           create: (context) => ProEncounters(
             watchEncounterRequestsUseCase: WatchEncounterRequestsUseCase(
@@ -157,15 +165,11 @@ class App extends StatelessWidget {
             respondToEncounterRequestUseCase: RespondToEncounterRequestUseCase(
               context.read(),
             ),
-            endMatchUseCase: EndMatchUseCase(context.read()),
+            endMatchUseCase: EndMatchUseCase(
+              context.read(),
+              DeleteConversationUseCase(context.read()),
+            ),
           ),
-        ),
-        Provider<ChatLocalDataSource>(
-          create: (_) =>
-              fakeMode ? ChatLocalDataSourceFakeImpl() : ChatLocalDataSourceImpl(),
-        ),
-        Provider<ChatRepository>(
-          create: (context) => ChatRepositoryImpl(context.read()),
         ),
         ChangeNotifierProvider<ProChat>(
           create: (context) => ProChat(

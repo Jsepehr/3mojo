@@ -28,4 +28,9 @@ abstract class ChatLocalDataSource {
     required String sessionId,
     required String otherPersonId,
   });
+
+  /// Cancella la conversazione con `otherPersonId` e tutta la sua
+  /// cronologia salvata — chiamato quando il match finisce, così la chat
+  /// non sopravvive alla fine dell'incontro.
+  Future<void> deleteConversation(String otherPersonId);
 }
