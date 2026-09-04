@@ -25,7 +25,7 @@ class ConnectionHub {
     EncounterStore.instance,
   );
 
-  static const double radiusMeters = 150;
+  static const double radiusMeters = 200;
 
   final SessionStore _sessionStore;
   final EncounterStore _encounterStore;

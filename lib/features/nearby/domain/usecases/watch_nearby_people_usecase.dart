@@ -12,7 +12,7 @@ import 'watch_position_usecase.dart';
 
 /// Azione: apri la connessione con chi sono (per farmi riconoscere dal
 /// server) e la mia posizione, poi resta in ascolto di chi c'è entro
-/// `radiusMeters` (100, regola di business fissa) — aggiornato dal server
+/// `radiusMeters` (200, regola di business fissa) — aggiornato dal server
 /// stesso ogni volta che qualcosa cambia, non richiesto di nuovo a mano.
 /// Compone `GetCurrentSessionUseCase` e `GetCurrentLocationUseCase` invece
 /// di dipendere direttamente dai loro repository — sotto-passi genuini di
@@ -28,7 +28,7 @@ class WatchNearbyPeopleUseCase {
        _watchPositionUseCase = watchPositionUseCase,
        _nearbyRepository = nearbyRepository;
 
-  static const double radiusMeters = 150;
+  static const double radiusMeters = 200;
 
   final GetCurrentSessionUseCase _getCurrentSessionUseCase;
   final GetCurrentLocationUseCase _getCurrentLocationUseCase;

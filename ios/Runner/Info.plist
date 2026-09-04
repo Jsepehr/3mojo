@@ -42,7 +42,7 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Usiamo la tua posizione per mostrarti le persone entro 100 metri da te.</string>
+	<string>Usiamo la tua posizione per mostrarti le persone entro 200 metri da te.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ci serve la fotocamera per scattare il tuo selfie del momento.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

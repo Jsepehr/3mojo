@@ -8,7 +8,7 @@
   "@homeTitle": {
     "description": "Headline on the home page while offline"
   },
-  "homeSubtitle": "Discover people within 100 meters, in real time.",
+  "homeSubtitle": "Discover people within 200 meters, in real time.",
   "@homeSubtitle": {
     "description": "Subtitle on the home page while offline"
   },
@@ -64,7 +64,7 @@
   "@nearbyPageTitle": {
     "description": "Title of the nearby people page and its home button tooltip"
   },
-  "nearbyEmptyMessage": "No one within 100 meters right now",
+  "nearbyEmptyMessage": "No one within 200 meters right now",
   "@nearbyEmptyMessage": {
     "description": "Shown when no nearby people are found within the radius"
   },
