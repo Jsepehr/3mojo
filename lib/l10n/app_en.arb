@@ -64,6 +64,10 @@
   "@nearbyPageTitle": {
     "description": "Title of the nearby people page and its home button tooltip"
   },
+  "nearbyConnectingMessage": "Connecting to the server…",
+  "@nearbyConnectingMessage": {
+    "description": "Shown while the nearby-people connection to the server is still being established"
+  },
   "nearbyEmptyMessage": "No one within 200 meters right now",
   "@nearbyEmptyMessage": {
     "description": "Shown when no nearby people are found within the radius"
@@ -92,6 +96,22 @@
   "nearbyRequestSentMessage": "Request sent",
   "@nearbyRequestSentMessage": {
     "description": "Snackbar shown after tapping a nearby person to send an encounter request"
+  },
+  "nearbyEmptyTipRadius": "We only show people who stay within 200 meters for at least a minute — not everyone just passing by.",
+  "@nearbyEmptyTipRadius": {
+    "description": "Empty-state tip explaining the radius and minimum-presence rule"
+  },
+  "nearbyEmptyTipMeetingChance": "The longer someone stays close to you, the higher their meeting chance: low, medium, high.",
+  "@nearbyEmptyTipMeetingChance": {
+    "description": "Empty-state tip explaining the meeting chance stages"
+  },
+  "nearbyEmptyTipEphemeral": "No names, no permanent profile: just today's photo and distance, only while you're online.",
+  "@nearbyEmptyTipEphemeral": {
+    "description": "Empty-state tip explaining there are no accounts or stored profiles"
+  },
+  "nearbyEmptyTipOneAtATime": "Accept one request and the others cancel automatically — one encounter at a time.",
+  "@nearbyEmptyTipOneAtATime": {
+    "description": "Empty-state tip explaining encounter exclusivity"
   },
   "encountersPageTitle": "Requests",
   "@encountersPageTitle": {

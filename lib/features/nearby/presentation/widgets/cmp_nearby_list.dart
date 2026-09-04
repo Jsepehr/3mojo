@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '/core/widgets/cmp_loading_indicator.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../../encounters/presentation/providers/pro_encounters.dart';
 import '../providers/pro_nearby.dart';
 import 'cmp_nearby_person_tile.dart';
+import 'cmp_nearby_waiting_overlay.dart';
 
 /// Corpo di "Vicinanze": lista delle persone presenti ora — aggiornata da
 /// sola, il server la spinge appena cambia qualcosa (nessun pull-to-refresh:
@@ -15,6 +15,11 @@ import 'cmp_nearby_person_tile.dart';
 /// tile si vede in grigio e non è più cliccabile (`ProNearby.hasRequested`).
 /// Senza `Scaffold`/`AppBar` propri: pensato per stare nel body di un'altra
 /// pagina (la home online), non per essere una pagina a sé.
+/// Sia durante la connessione iniziale sia a lista vuota, il corpo diventa
+/// `CmpNearbyWaitingOverlay` (titolo diverso nei due casi) — l'attesa non è
+/// un caricamento generico, ma il riflesso di regole precise (raggio,
+/// permanenza minima...) che vale la pena spiegare invece di lasciar
+/// percepire come un bug.
 class CmpNearbyList extends StatelessWidget {
   const CmpNearbyList({super.key});
 
@@ -36,7 +41,7 @@ class _NearbyBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (proNearby.isLoading) {
-      return const Center(child: CmpLoadingIndicator());
+      return CmpNearbyWaitingOverlay(title: l10n.nearbyConnectingMessage);
     }
 
     if (proNearby.errorMessage != null) {
@@ -44,7 +49,7 @@ class _NearbyBody extends StatelessWidget {
     }
 
     if (proNearby.people.isEmpty) {
-      return Center(child: Text(l10n.nearbyEmptyMessage));
+      return CmpNearbyWaitingOverlay(title: l10n.nearbyEmptyMessage);
     }
 
     return ListView.builder(
