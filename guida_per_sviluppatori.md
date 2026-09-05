@@ -124,7 +124,11 @@ WatchNearbyPeopleUseCase.call()  (Stream, non Future)
                  └─ resta in ascolto di {"type":"nearby", "people":[...]} spinti dal server
 ```
 
-Il raggio massimo (100m, `WatchNearbyPeopleUseCase.radiusMeters`) è una costante nello use case, non configurabile dall'esterno; il repository lo riapplica anche lato client come difesa in più, anche se il server ha già filtrato.
+Il raggio massimo (200m, `WatchNearbyPeopleUseCase.radiusMeters`) è una costante nello use case, non configurabile dall'esterno; il repository lo riapplica anche lato client come difesa in più, anche se il server ha già filtrato.
+
+**In attesa di una lista** (connessione in corso, o lista vuota): `CmpNearbyList` mostra `CmpNearbyWaitingOverlay` ([cmp_nearby_waiting_overlay.dart](lib/features/nearby/presentation/widgets/cmp_nearby_waiting_overlay.dart)) — lo stesso radar animato della schermata Start, con sopra una card che spiega a rotazione (ordine casuale, dissolvenza incrociata) le regole vere del server: raggio, permanenza minima, stadi di probabilità, niente profili permanenti, un incontro alla volta. Serve a far leggere l'attesa come comportamento intenzionale — "il server sta davvero aspettando che tu resti fermo un minuto" — non come un bug o un caricamento infinito.
+
+**Datasource finto per lo sviluppo offline**: `NearbyRemoteDataSourceFakeImpl` (accanto a `NearbyRemoteDataSourceImpl`, stessa interfaccia) simula persone/presenza senza rete — vedi §3.5 per come e quando viene scelto al posto di quello vero.
 
 **Restare visibili con l'app in background (foreground service, solo Android)**: senza precauzioni Android congela il processo quando l'app va in background — timer che smettono di scattare, socket che restano aperti ma "muti" finché il sistema non li chiude per inattività (dopo di che il server pulisce comunque la sessione con `purgeStale`, ma nel frattempo si sparisce dalla vista degli altri anche stando fisicamente nella zona). `LocationLocalDataSourceImpl.watchPosition()` — chiamato tramite `WatchPositionUseCase` da `WatchNearbyPeopleUseCase` per rimandare la posizione ogni volta che cambia — su Android usa `Geolocator.getPositionStream` con `AndroidSettings(foregroundNotificationConfig: ...)`: questo fa partire un vero **foreground service** nativo (con una notifica persistente, "3mojo è online — Stai comparendo a chi ti è vicino, anche con l'app in background"), che alza la priorità del processo e lo rende molto meno soggetto a essere congelato/ucciso mentre si cambia app. **Non è una garanzia assoluta** (non impedisce la chiusura se l'activity viene proprio distrutta — per quello servirebbe un secondo Flutter engine dedicato, molto più complesso — ma copre il caso comune "ho premuto Home per un attimo"). Sostituisce il vecchio `Timer.periodic` manuale che c'era prima in `WatchNearbyPeopleUseCase` per rimandare la posizione: ora è lo stream del GPS stesso a scandire il ritmo (`intervalDuration: 60s`, `distanceFilter: 0` — stesso intervallo di prima, ma pilotato dal sensore invece che da un timer Dart che si sarebbe congelato per primo).
 
@@ -154,6 +158,8 @@ Tap su una persona in `CmpNearbyList` → non chiama `nearby/`, chiama `ProEncou
 
 Il selfie della controparte (`otherSelfiePath`, in realtà sempre una data URI, mai un vero percorso file — nome storico) non viene mai conservato nella richiesta: il server lo prende fresco da `SessionStore` (`SessionStore.selfieBase64For`) a ogni snapshot, la stessa foto già usata da `nearby/`.
 
+**`EndMatchUseCase` compone `DeleteConversationUseCase`** (feature `chat`, cross-feature deliberato) come sotto-passo genuino: terminare un match non deve lasciarsi dietro una chat orfana — vedi §3.4. `EncounterRemoteDataSourceFakeImpl` (stessa interfaccia, nessuna rete) è la sua controparte finta: vedi §3.5.
+
 **Gotcha condiviso con `nearby/`**: `Timer`/`Future.delayed` per il resubscribe va tenuto in un campo cancellabile (`Timer? _resubscribeTimer`, cancellato in `dispose()`) — un `Future.delayed` "nudo" senza riferimento non si può fermare, e il widget test lo scopre subito (`A Timer is still pending even after the widget tree was disposed`). Capitato una volta, sistemato in entrambi i provider.
 
 ### 3.4 `chat/` — conversazione reale (nessuna scadenza a tempo)
@@ -162,7 +168,21 @@ Il selfie della controparte (`otherSelfiePath`, in realtà sempre una data URI, 
 
 Il server (`_handleChatMessage` in [routes/ws.dart](server/routes/ws.dart)) **fa solo da postino**: inoltra al destinatario se connesso in questo momento, non conserva nulla da nessuna parte. Se il destinatario non è online, il messaggio va perso lato server — chi l'ha mandato lo tiene comunque nella propria cronologia locale, ma l'altro non lo riceverà mai (nessuna coda, nessun retry: coerente con "usa e getta").
 
-`ProChat` non fa più polling ogni 2s: si abbona allo stream di `WatchIncomingChatMessagesUseCase` per la conversazione aperta (stessa auto-riconnessione dopo 3s di `ProNearby`/`ProEncounters` se lo stream finisce — cancellata e ricreata a ogni nuovo `open()`, per non restare abbonati alla conversazione precedente se se ne apre una nuova). Nessuna scadenza a tempo: la conversazione dura finché uno dei due non la termina esplicitamente (`EndMatchUseCase`, con conferma in UI).
+`ProChat` non fa più polling ogni 2s: si abbona allo stream di `WatchIncomingChatMessagesUseCase` per la conversazione aperta (stessa auto-riconnessione dopo 3s di `ProNearby`/`ProEncounters` se lo stream finisce — cancellata e ricreata a ogni nuovo `open()`, per non restare abbonati alla conversazione precedente se se ne apre una nuova).
+
+**La cronologia non sopravvive alla fine del match** — a differenza di quanto documentato in CLAUDE.md ("nessuna scadenza a tempo"), che descriveva solo l'assenza di un timeout automatico, non l'effetto di `EndMatchUseCase`: `ChatLocalDataSource.deleteConversation(otherPersonId)` cancella conversazione e messaggi da `shared_preferences`, chiamato da `EndMatchUseCase` (feature `encounters`, §3.3) subito dopo aver terminato il match lato server. Prima restava per sempre in locale anche dopo aver premuto "Termina" — un vero bug di persistenza, non solo mancanza di scadenza. `ChatLocalDataSourceFakeImpl` (stessa interfaccia, nessuna rete) è la sua controparte finta: vedi §3.5.
+
+### 3.5 `settings/` — lingua, tema, e l'interruttore finto/reale
+
+**Entità**: `AppLanguage` (`system`/`english`/`italian`/`german`/`spanish`/`french`/`arabic` — `system` è `null` come `languageCode`, segue il telefono; le altre forzano una lingua a prescindere dal sistema) e `AppThemeMode` (`light`/`dark`, binario: nessun "segui il sistema", perché in UI è una `SwitchListTile`, per natura a due stati). Entrambe **persistite** su `shared_preferences` (`SettingsLocalDataSourceImpl`) — a differenza della sessione online, lingua e tema devono sopravvivere alla chiusura dell'app.
+
+`ProSettings` le carica all'avvio e le cambia dal cassetto laterale (`CmpAppDrawer`, aperto da un'icona ☰ sia nella home offline che online). Il `MaterialApp` in [app.dart](lib/app.dart) osserva `proSettings.locale`/`proSettings.themeMode` per ricostruirsi con la scelta corrente.
+
+**La modalità finta/reale** (`ProSettings.isFakeMode`, interruttore nel drawer) è concettualmente diversa dalle altre due impostazioni: sceglie se l'app usa i datasource **reali** (richiedono `server/` acceso e raggiungibile) o quelli **finti** (`NearbyRemoteDataSourceFakeImpl`, `EncounterRemoteDataSourceFakeImpl`, `ChatLocalDataSourceFakeImpl` — stessa interfaccia dei reali, nessuna rete, per provare l'app o l'UI senza dover far girare il backend). La scelta **non è effettiva subito**: `main.dart` legge il flag salvato *prima* di costruire l'albero dei provider e lo passa ad `App(fakeMode: ...)`, che sceglie una volta per tutte quale implementazione registrare in `MultiProvider` — cambiarla dal drawer persiste subito ma richiede di riavviare l'app (il drawer lo dice esplicitamente con una snackbar). **Perché non a caldo**: i datasource reali condividono un'unica `RealtimeConnection` costruita a livello di processo, non pensata per essere aperta/chiusa/sostituita a metà sessione mentre l'app è già in giro — più semplice imporre un riavvio che gestire quella transizione.
+
+**Widget condivisi introdotti insieme al drawer** (`core/widgets/`, non specifici di nessuna feature): `CmpPhoto` (foto quadrata con angoli arrotondati, mai un cerchio — sostituisce i vari `CircleAvatar` sparsi tra `encounters`/`nearby`/`session`) e `CmpLoadingIndicator` (tre puntini animati, sostituto del semplice `CircularProgressIndicator` per le attese dell'app). Se aggiungi una nuova feature con foto o stati di caricamento, riusa questi invece di reintrodurre i widget Material grezzi.
+
+**Nota cosmetica**: `AppTheme.dark` ([core/theme/app_theme.dart](lib/core/theme/app_theme.dart)) sovrascrive le superfici scure generate di default da Material 3 (`ColorScheme.fromSeed`) con una palette blu navy alla stessa tonalità del seed — di default Material 3 genera superfici quasi nere/neutre dal seed, qui invece si è scelto deliberatamente che il tema scuro si legga come blu, non nero.
 
 ---
 
@@ -227,7 +247,7 @@ L'IP LAN del PC si trova con `ipconfig` (Windows) cercando `IPv4 Address`. Windo
 **Se dimentichi `--dart-define=API_BASE_URL=...` su un device fisico**: `ApiConfig.baseUrl` cade sul default per Android (`10.0.2.2`, valido solo per l'emulatore) e la connessione WebSocket va in timeout — si vede in `adb logcat` come `WebSocketChannelException: SocketException: Connection timed out ..., address = 10.0.2.2`. Prima di dare la colpa al codice, controlla sempre questo.
 
 **Gotcha da ambiente Windows incontrati e relative soluzioni**, se ricompaiono:
-- `org.gradle.java.home` in `android/gradle.properties` pinnato a un path assoluto — se il repo arriva da un'altra macchina/utente, va ripuntato a un JDK presente su questa macchina (es. quello incluso in Android Studio, `<Android Studio>/jbr`).
+- `org.gradle.java.home` in `android/gradle.properties` e i percorsi JDK/Flutter SDK in `.vscode/settings.json` sono path assoluti — validi solo sulla macchina su cui sono stati scritti. Passando a un'altra macchina (o a un altro utente) si rompe con `Java home supplied is invalid` o l'estensione Dart non trova l'SDK. **[macchine_sviluppo.md](macchine_sviluppo.md)** tiene una tabella dei percorsi già scoperti per macchina — guardala prima di rimetterti a cercare `where flutter`/cartelle `.jdks` da zero, e aggiungici una riga se scopri i percorsi di una macchina nuova.
 - Cache di build Gradle/Kotlin corrotta dopo un'interruzione a metà (`already exists, it cannot be overwritten`, `Storage ... is already registered`) → `flutter clean` + `cd android && ./gradlew --stop` (ferma sia il Gradle Daemon che il Kotlin Compile Daemon rimasti vivi con cache stantie).
 
 ---
@@ -240,7 +260,7 @@ L'IP LAN del PC si trova con `ipconfig` (Windows) cercando `IPv4 Address`. Windo
 4. Implementa `data/datasources/` (`Impl` in file separato dall'interfaccia) e `data/repositories/*_repository_impl.dart`: qui e solo qui si intercettano `Exception` tecniche e si ritorna `Either<Failure, T>`.
 5. Presentation: `ProXxx extends ChangeNotifier` che chiama gli use case, poi `UiXxx`/`CmpXxx` che osservano `ProXxx` con `context.watch`/`context.read`.
 6. Cablaggio in [lib/app.dart](lib/app.dart): un `Provider`/`ChangeNotifierProvider` per ogni classe nuova, nello stesso ordine di dipendenza (datasource → repository → usecase dentro il provider → ChangeNotifierProvider).
-7. Testo utente: mai hardcoded — in `lib/l10n/app_en.arb` (template) e `app_it.arb`, poi `flutter gen-l10n`.
+7. Testo utente: mai hardcoded — parti da `lib/l10n/app_en.arb` (template, sempre aggiornato per primo), poi replica la stessa chiave in **tutte** le altre lingue supportate (`app_it.arb`, `app_de.arb`, `app_es.arb`, `app_fr.arb`, `app_ar.arb` — le sei lingue forzabili di `AppLanguage`, più `system` che segue il telefono, vedi §3.5), infine `flutter gen-l10n`. Dimenticare una lingua non rompe la build (va in fallback sul template), ma lascia quella lingua a metà tradotta.
 8. Prima di scrivere, ripassa [CHECKLIST.md](CHECKLIST.md): la domanda "cosa sto descrivendo?" toglie quasi tutti i dubbi su dove va un file nuovo.
 
 ## 7. Come modificare una feature esistente — esempio pratico
