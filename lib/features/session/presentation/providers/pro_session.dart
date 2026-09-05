@@ -92,8 +92,21 @@ class ProSession extends ChangeNotifier {
   Future<void> end() async {
     // Best-effort: anche se il server non risponde, l'uscita locale deve
     // comunque riuscire — "usa e getta" vale prima di tutto sul telefono.
+    // Il timeout è una rete di sicurezza indipendente da quella dentro
+    // RealtimeConnection.disconnect(): qualunque cosa si blocchi nella
+    // catena verso il server, il bottone End deve sempre riportare offline
+    // entro pochi secondi — è già capitato che restasse bloccato per
+    // sempre, sembrando "non fare niente".
     final sessionId = _session?.sessionId;
-    if (sessionId != null) await _stopBeingVisibleUseCase(sessionId);
+    if (sessionId != null) {
+      try {
+        await _stopBeingVisibleUseCase(
+          sessionId,
+        ).timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // Ignorato di proposito: vedi il commento sopra.
+      }
+    }
 
     await _endSessionUseCase(const NoParams());
     _session = null;

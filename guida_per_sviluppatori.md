@@ -100,7 +100,9 @@ Non c'è un framework DI: `App.build()` registra tutto a mano con `MultiProvider
 1. `StopBeingVisibleUseCase(sessionId)` → `NearbyRepository.stopBeingVisible` → chiude il WebSocket (best-effort: si va avanti anche se la chiusura fallisce). Il server se ne accorge dalla chiusura del socket stesso e rimuove subito la sessione — non serve più un'azione HTTP dedicata;
 2. `EndSessionUseCase` → azzera la sessione locale.
 
-`ProSession` accende/spegne anche `WakelockPlus` insieme a Start/End (online lo schermo non va in standby).
+**Gotcha già capitato — il bottone End "non faceva niente"**: il passo 1 è avvolto in `.timeout(const Duration(seconds: 3))` più `try`/`catch` proprio in `end()`, indipendente dal timeout già presente dentro `RealtimeConnection.disconnect()` (§3.2). Motivo: se il socket è già in uno stato bloccato, `WebSocketChannel.sink.close()` può non risolversi mai — senza **entrambi** i timeout, un `await` senza limite in un punto qualsiasi della catena (`StopBeingVisibleUseCase` → `NearbyRepository` → `NearbyRemoteDataSourceImpl` → `RealtimeConnection`) blocca `end()` per sempre *prima* di arrivare a `_session = null; notifyListeners();` — la UI resta online senza nessun errore visibile, sembra che il bottone non abbia fatto nulla. Test di regressione in [test/features/session/pro_session_end_test.dart](test/features/session/pro_session_end_test.dart), con un `NearbyRepository` finto il cui `stopBeingVisible` non si risolve mai apposta — verificato che fallisce (timeout del test) se si toglie il `.timeout(...)` da `end()`.
+
+`ProSession` accende/spegne anche `WakelockPlus` insieme a Start/End (online lo schermo non va in standby). Nei test, `WakelockPlus` va sostituito con un finto `WakelockPlusPlatformInterface` (assegnato a `wakelockPlusPlatformInstance`, `@visibleForTesting` in `package:wakelock_plus`) — nessun binding Flutter reale è disponibile in un `test()` semplice, e usare `testWidgets()` per aggirare il problema introdurrebbe un altro guaio: il suo orologio finto impedirebbe a un `Timer` reale come quello dietro `.timeout()` di scattare mai, a meno di avanzare il tempo a mano con `tester.pump(durata)`.
 
 ### 3.2 `nearby/` — chi c'è vicino (l'unica feature che parla col server vero)
 
@@ -277,7 +279,7 @@ Vuoi aggiungere un nuovo filtro a "Vicinanze" (es. distanza massima configurabil
 ## 8. Test
 
 ```
-flutter test                 # app: test/widget_test.dart
+flutter test                 # app: test/widget_test.dart + test/features/**
 cd server && dart test       # server: server/test/**
 ```
 

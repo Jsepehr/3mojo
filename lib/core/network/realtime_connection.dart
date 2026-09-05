@@ -70,11 +70,24 @@ class RealtimeConnection {
 
   /// Chiude la connessione — il server se ne accorge subito e pulisce sia
   /// la presenza sia le richieste d'incontro pendenti di questa sessione.
+  /// **Best-effort con timeout**: se il socket è già in uno stato bloccato
+  /// (es. rete caduta a metà, foreground service ucciso) `sink.close()` può
+  /// non completarsi mai — senza un limite, chi chiama `disconnect()` (in
+  /// particolare `ProSession.end()`, il bottone End) resterebbe bloccato
+  /// per sempre prima di poter tornare offline in locale. Dopo il timeout
+  /// si abbandona comunque il canale: il server lo scoprirà da sé quando
+  /// la connessione decade (`purgeStale`), ma l'utente non deve aspettarlo.
   Future<void> disconnect() async {
-    await _channel?.sink.close();
+    try {
+      await Future.wait([
+        if (_channel != null) _channel!.sink.close(),
+        if (_messages != null) _messages!.close(),
+      ]).timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // Ignorato di proposito: vedi il commento sopra.
+    }
     _channel = null;
     _sessionId = null;
-    await _messages?.close();
     _messages = null;
   }
 }
