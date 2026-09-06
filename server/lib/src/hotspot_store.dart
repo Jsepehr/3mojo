@@ -43,7 +43,10 @@ class Hotspot {
 /// (media delle posizioni) diventa un hotspot per [lifetime] — dentro il suo
 /// raggio, chiunque vede chiunque altro sia anch'esso dentro quel raggio,
 /// anche se la distanza diretta tra i due supera [clusterRadiusMeters]
-/// (vedi `SessionStore.nearbyPeople`, che consulta questo store).
+/// (vedi `SessionStore.nearbyPeople`, che consulta questo store). Possono
+/// esistere più hotspot insieme in zone diverse, ma **mai due il cui cerchio
+/// si sovrappone** — vedi `_wouldOverlapAnotherHotspot`, consultato sia alla
+/// creazione sia quando un hotspot esistente si ricalcola.
 class HotspotStore {
   HotspotStore._({DateTime Function()? now}) : _now = now ?? DateTime.now;
 
@@ -97,6 +100,24 @@ class HotspotStore {
             Hotspot.radiusMeters,
   );
 
+  /// true se un cerchio centrato in (lat,lng) si sovrapporrebbe al cerchio di
+  /// un altro hotspot attivo (distanza tra i centri < la somma dei due raggi,
+  /// cioè < il doppio di [Hotspot.radiusMeters], visto che tutti gli hotspot
+  /// hanno lo stesso raggio) — due hotspot non possono mai esistere
+  /// contemporaneamente se i loro cerchi si toccano. `excluding` esclude
+  /// l'hotspot che si sta eventualmente ricalcolando dal confronto con sé
+  /// stesso.
+  bool _wouldOverlapAnotherHotspot(double lat, double lng, Hotspot? excluding) {
+    for (final other in _hotspots) {
+      if (identical(other, excluding)) continue;
+      if (distanceMeters(lat, lng, other.centerLat, other.centerLng) <
+          Hotspot.radiusMeters * 2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Chiamato a ogni broadcast (vedi `ConnectionHub.broadcastNearbyUpdates`):
   /// 1. Rinnovo: per ogni hotspot esistente, i "supporter" sono le sessioni
   ///    idonee entro il suo raggio che sono **anche** reciprocamente entro
@@ -111,10 +132,12 @@ class HotspotStore {
   ///    estende. Se i supporter sono meno di [minClusterSize], l'hotspot non
   ///    viene rinnovato (scadrà da solo quando si supera `expiresAt`).
   /// 2. Scadenza: chi non è stato rinnovato ed è oltre `expiresAt` viene tolto.
-  /// 3. Rilevamento: tra le sessioni idonee non già coperte da un hotspot
-  ///    (rinnovato o no), cerca ogni gruppo di ≥[minClusterSize] reciprocamente
-  ///    entro [clusterRadiusMeters] (tutte le coppie, non solo vicine a un
-  ///    centro) e promuove il centroide a nuovo hotspot.
+  /// 3. Rilevamento: tra tutte le sessioni idonee, cerca ogni gruppo di
+  ///    ≥[minClusterSize] reciprocamente entro [clusterRadiusMeters] (tutte le
+  ///    coppie, non solo vicine a un centro) e promuove il centroide a nuovo
+  ///    hotspot — a meno che il suo cerchio si sovrapporrebbe a uno già
+  ///    esistente (rinnovato o no in questo stesso giro), nel qual caso non
+  ///    viene creato: due hotspot non coesistono mai sovrapposti.
   void detectAndRefresh(Iterable<Session> sessions) {
     final now = _now();
     final eligible = sessions
@@ -150,12 +173,24 @@ class HotspotStore {
             clusterRadiusMeters,
       );
       if (onlyBareMinimum && noneNearCore) {
-        hotspot.centerLat =
+        final recenteredLat =
             supporters.map((s) => s.lat).reduce((a, b) => a + b) /
             supporters.length;
-        hotspot.centerLng =
+        final recenteredLng =
             supporters.map((s) => s.lng).reduce((a, b) => a + b) /
             supporters.length;
+        // Non spostarlo se il nuovo punto farebbe sovrapporre il suo cerchio
+        // a un altro hotspot attivo -- resta fermo al vecchio centro (viene
+        // comunque rinnovato subito sotto) piuttosto che violare la regola
+        // "due hotspot non coesistono mai sovrapposti".
+        if (!_wouldOverlapAnotherHotspot(
+          recenteredLat,
+          recenteredLng,
+          hotspot,
+        )) {
+          hotspot.centerLat = recenteredLat;
+          hotspot.centerLng = recenteredLng;
+        }
       }
       hotspot.expiresAt = now.add(lifetime);
     }
@@ -169,12 +204,7 @@ class HotspotStore {
       final centerLng =
           combo.map((s) => s.lng).reduce((a, b) => a + b) / combo.length;
 
-      final alreadyCovered = _hotspots.any(
-        (h) =>
-            distanceMeters(centerLat, centerLng, h.centerLat, h.centerLng) <=
-            Hotspot.radiusMeters,
-      );
-      if (alreadyCovered) continue;
+      if (_wouldOverlapAnotherHotspot(centerLat, centerLng, null)) continue;
 
       _hotspots.add(
         Hotspot(
