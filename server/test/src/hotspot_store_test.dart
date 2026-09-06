@@ -102,33 +102,30 @@ void main() {
       expect(renewed.centerLng, formedLng);
     });
 
-    test(
-      'scattered strangers within the old radius do not keep it alive -- '
-      'renewal requires the same mutual-closeness as formation',
-      () {
-        placeTrio();
-        clock = clock.add(const Duration(minutes: 16));
-        hotspots.detectAndRefresh(sessions.allSessions);
+    test('scattered strangers within the old radius do not keep it alive -- '
+        'renewal requires the same mutual-closeness as formation', () {
+      placeTrio();
+      clock = clock.add(const Duration(minutes: 16));
+      hotspots.detectAndRefresh(sessions.allSessions);
 
-        // The founding trio leaves; three unrelated people each show up
-        // within 200m of the OLD center, but ~350m apart from each other.
-        // Scattered far apart from each other too, so they don't
-        // incidentally form a brand-new hotspot of their own at their new
-        // location -- that would mask what this test actually checks.
-        sessions.upsertPosition(sessionId: 'a', lat: 5, lng: 5);
-        sessions.upsertPosition(sessionId: 'b', lat: 6, lng: 6);
-        sessions.upsertPosition(sessionId: 'c', lat: 7, lng: 7);
-        sessions.upsertPosition(sessionId: 'x', lat: 0.0016, lng: 0);
-        sessions.upsertPosition(sessionId: 'y', lat: -0.0016, lng: 0);
-        sessions.upsertPosition(sessionId: 'z', lat: 0, lng: 0.0016);
-        // Past both their own 15-min eligibility and the original 1h expiry.
-        clock = clock.add(const Duration(hours: 1, minutes: 1));
+      // The founding trio leaves; three unrelated people each show up
+      // within 200m of the OLD center, but ~350m apart from each other.
+      // Scattered far apart from each other too, so they don't
+      // incidentally form a brand-new hotspot of their own at their new
+      // location -- that would mask what this test actually checks.
+      sessions.upsertPosition(sessionId: 'a', lat: 5, lng: 5);
+      sessions.upsertPosition(sessionId: 'b', lat: 6, lng: 6);
+      sessions.upsertPosition(sessionId: 'c', lat: 7, lng: 7);
+      sessions.upsertPosition(sessionId: 'x', lat: 0.0016, lng: 0);
+      sessions.upsertPosition(sessionId: 'y', lat: -0.0016, lng: 0);
+      sessions.upsertPosition(sessionId: 'z', lat: 0, lng: 0.0016);
+      // Past both their own 15-min eligibility and the original 1h expiry.
+      clock = clock.add(const Duration(hours: 1, minutes: 1));
 
-        hotspots.detectAndRefresh(sessions.allSessions);
+      hotspots.detectAndRefresh(sessions.allSessions);
 
-        expect(hotspots.active, isEmpty);
-      },
-    );
+      expect(hotspots.active, isEmpty);
+    });
 
     test(
       'recenters when the bare minimum remains and has drifted to the edge',
@@ -211,10 +208,60 @@ void main() {
       clock = clock.add(const Duration(minutes: 16));
       hotspots.detectAndRefresh(sessions.allSessions);
 
-      expect(
-        hotspots.sharesAnyActiveHotspot(0, 0, 1, 1),
-        isFalse,
+      expect(hotspots.sharesAnyActiveHotspot(0, 0, 1, 1), isFalse);
+    });
+
+    test('two genuinely separate clusters only ~250m apart do not both '
+        'become hotspots -- their circles would overlap', () {
+      placeTrio();
+      // ~250m away: two independent triangles, but close enough that two
+      // 200m-radius circles centered on each would overlap.
+      const gapDeg = 0.00225;
+      sessions.upsertPosition(sessionId: 'x', lat: gapDeg, lng: 0);
+      sessions.upsertPosition(sessionId: 'y', lat: gapDeg + 0.0001, lng: 0);
+      sessions.upsertPosition(sessionId: 'z', lat: gapDeg, lng: 0.0001);
+      clock = clock.add(const Duration(minutes: 16));
+
+      hotspots.detectAndRefresh(sessions.allSessions);
+
+      expect(hotspots.active, hasLength(1));
+    });
+
+    test('refuses to recenter into overlap with another active hotspot', () {
+      placeTrio();
+      clock = clock.add(const Duration(minutes: 16));
+      hotspots.detectAndRefresh(sessions.allSessions);
+      final originalLat = hotspots.active.single.centerLat;
+
+      // A second hotspot forms ~456m away -- far enough not to overlap the
+      // first at formation time (needs >=400m).
+      const bOffset = 0.0041;
+      sessions.upsertPosition(sessionId: 'p', lat: bOffset, lng: 0);
+      sessions.upsertPosition(sessionId: 'q', lat: bOffset + 0.0001, lng: 0);
+      sessions.upsertPosition(sessionId: 'r', lat: bOffset, lng: 0.0001);
+      clock = clock.add(const Duration(minutes: 16));
+      hotspots.detectAndRefresh(sessions.allSessions);
+      expect(hotspots.active, hasLength(2));
+
+      // The first trio shrinks to the bare minimum and drifts ~180m toward
+      // the second hotspot -- still within the first hotspot's 200m reach
+      // (so it stays a "supporter"), but recentering onto this new centroid
+      // would land only ~276m from the second hotspot: inside overlap range.
+      const towardOther = 0.001617;
+      sessions.upsertPosition(sessionId: 'a', lat: towardOther, lng: 0);
+      sessions.upsertPosition(
+        sessionId: 'b',
+        lat: towardOther + 0.0001,
+        lng: 0,
       );
+      sessions.upsertPosition(sessionId: 'c', lat: towardOther, lng: 0.0001);
+      clock = clock.add(const Duration(minutes: 16));
+
+      hotspots.detectAndRefresh(sessions.allSessions);
+
+      expect(hotspots.active, hasLength(2));
+      final first = hotspots.active.firstWhere((h) => h.centerLat < 0.003);
+      expect(first.centerLat, originalLat);
     });
   });
 }
