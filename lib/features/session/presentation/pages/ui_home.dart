@@ -5,7 +5,7 @@ import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
-import '/features/nearby/presentation/widgets/cmp_nearby_list.dart';
+import '/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_radar_background.dart';
 import '/features/settings/presentation/widgets/cmp_app_drawer.dart';
@@ -107,7 +107,7 @@ class _OnlineHome extends StatelessWidget {
           ),
         ],
       ),
-      body: const CmpNearbyList(),
+      body: const CmpPaywalledNearbyList(),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -20,6 +20,11 @@ import 'cmp_nearby_waiting_overlay.dart';
 /// un caricamento generico, ma il riflesso di regole precise (raggio,
 /// permanenza minima...) che vale la pena spiegare invece di lasciar
 /// percepire come un bug.
+///
+/// Non sa nulla del paywall (`features/paywall/`): chi vuole nascondere
+/// alcune persone dietro un pagamento lo fa da fuori, componendo
+/// `CmpPaywalledNearbyList` al posto di questa — vedi `ui_home.dart`.
+/// Se il paywall venisse rimosso, questo file non cambierebbe di una riga.
 class CmpNearbyList extends StatelessWidget {
   const CmpNearbyList({super.key});
 

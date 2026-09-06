@@ -38,6 +38,16 @@ import 'features/nearby/domain/usecases/stop_being_visible_usecase.dart';
 import 'features/nearby/domain/usecases/watch_nearby_people_usecase.dart';
 import 'features/nearby/domain/usecases/watch_position_usecase.dart';
 import 'features/nearby/presentation/providers/pro_nearby.dart';
+import 'features/paywall/data/datasources/paywall_local_data_source.dart';
+import 'features/paywall/data/datasources/paywall_local_data_source_impl.dart';
+import 'features/paywall/data/datasources/paywall_remote_data_source.dart';
+import 'features/paywall/data/datasources/paywall_remote_data_source_fake_impl.dart';
+import 'features/paywall/data/datasources/paywall_remote_data_source_impl.dart';
+import 'features/paywall/data/repositories/paywall_repository_impl.dart';
+import 'features/paywall/domain/repositories/paywall_repository.dart';
+import 'features/paywall/domain/usecases/get_unlock_status_usecase.dart';
+import 'features/paywall/domain/usecases/purchase_unlock_usecase.dart';
+import 'features/paywall/presentation/providers/pro_paywall.dart';
 import 'features/session/data/datasources/face_detection_local_data_source.dart';
 import 'features/session/data/datasources/face_detection_local_data_source_impl.dart';
 import 'features/session/data/datasources/session_local_data_source.dart';
@@ -134,6 +144,24 @@ class App extends StatelessWidget {
               watchPositionUseCase: WatchPositionUseCase(context.read()),
               nearbyRepository: context.read(),
             ),
+          ),
+        ),
+        Provider<PaywallLocalDataSource>(
+          create: (_) => PaywallLocalDataSourceImpl(),
+        ),
+        Provider<PaywallRemoteDataSource>(
+          create: (_) => fakeMode
+              ? PaywallRemoteDataSourceFakeImpl()
+              : PaywallRemoteDataSourceImpl(),
+        ),
+        Provider<PaywallRepository>(
+          create: (context) =>
+              PaywallRepositoryImpl(context.read(), context.read()),
+        ),
+        ChangeNotifierProvider<ProPaywall>(
+          create: (context) => ProPaywall(
+            getUnlockStatusUseCase: GetUnlockStatusUseCase(context.read()),
+            purchaseUnlockUseCase: PurchaseUnlockUseCase(context.read()),
           ),
         ),
         Provider<EncounterRemoteDataSource>(

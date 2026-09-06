@@ -20,7 +20,7 @@ flutter pub get          # dalla root, per l'app
 cd server && dart pub get  # per il server
 ```
 
-Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`), non richieste HTTP separate: il client manda presenza/azioni sul canale aperto, il server spinge indietro liste e aggiornamenti appena cambia qualcosa, invece che il client debba richiederli a intervalli. Ci passano presenza/vicinanze, richieste d'incontro (`encounters/`) **e** i messaggi di chat — per la chat il server fa solo da postino (inoltra, non conserva): la cronologia resta locale su ogni dispositivo (vedi §3.4).
+Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`), non richieste HTTP separate: il client manda presenza/azioni sul canale aperto, il server spinge indietro liste e aggiornamenti appena cambia qualcosa, invece che il client debba richiederli a intervalli. Ci passano presenza/vicinanze, richieste d'incontro (`encounters/`) **e** i messaggi di chat — per la chat il server fa solo da postino (inoltra, non conserva): la cronologia resta locale su ogni dispositivo (vedi §3.4). Eccezione deliberata: `paywall/` (§3.6) usa due route HTTP semplici (`POST /paywall/purchase`, `GET /paywall/status`), non il WebSocket — non serve il push in tempo reale per un controllo puntuale come "sono ancora sbloccato?".
 
 ---
 
@@ -186,6 +186,20 @@ Il server (`_handleChatMessage` in [routes/ws.dart](server/routes/ws.dart)) **fa
 
 **Nota cosmetica**: `AppTheme.dark` ([core/theme/app_theme.dart](lib/core/theme/app_theme.dart)) sovrascrive le superfici scure generate di default da Material 3 (`ColorScheme.fromSeed`) con una palette blu navy alla stessa tonalità del seed — di default Material 3 genera superfici quasi nere/neutre dal seed, qui invece si è scelto deliberatamente che il tema scuro si legga come blu, non nero.
 
+### 3.6 `paywall/` — sblocco a pagamento (finto per ora)
+
+**Regola di business** (`GetLockedNearbyPeopleUseCase`, [get_locked_nearby_people_usecase.dart](lib/features/paywall/domain/usecases/get_locked_nearby_people_usecase.dart)): un terzo delle persone in "Vicinanze" resta visibile gratis — **le più lontane**, ordinando per `distanceMeters` decrescente — le altre due terzi (le più vicine, quelle con probabilità d'incontro reale più alta) restano sfocate finché non si sblocca. Deliberato: il contenuto a pagamento è quello davvero utile (chi è vicino), non un assaggio a caso. È una funzione **pura** (nessun repository, nessun I/O, sincrona) — non tocca `NearbyPerson` (l'entity resta ignara del paywall), ritorna una lista di `LockedNearbyPerson` (persona + `isLocked`) nello stesso ordine ricevuto in ingresso.
+
+**Sblocco valido 2 ore, calcolate dal server — mai dal telefono** (`PaywallStore.unlockDuration`, [paywall_store.dart](server/lib/src/paywall_store.dart)): la prima versione di questa feature calcolava le 2 ore in locale con `DateTime.now()`, sia al momento di registrare l'acquisto sia al controllo — **falsificabile** spostando indietro l'orologio del telefono dopo aver pagato, per restare sbloccati all'infinito. Corretto spostando l'intera regola lato server, che tiene un `Map<deviceId, unlockedAt>` in RAM (stessa filosofia di `SessionStore`/`EncounterStore`, nessuna persistenza: riavvii il server e ogni sblocco sparisce) e usa **il proprio** orologio sia per registrare sia per controllare — un client non ha modo di falsificarlo. Il client parla col server tramite due route HTTP semplici, non la connessione WebSocket condivisa (`PaywallRemoteDataSourceImpl`, [paywall_remote_data_source_impl.dart](lib/features/paywall/data/datasources/paywall_remote_data_source_impl.dart)): `POST /paywall/purchase` registra, `GET /paywall/status` controlla — non serve il push in tempo reale, è un controllo puntuale, non qualcosa che cambia mentre lo si guarda.
+
+`deviceId` ([paywall_local_data_source_impl.dart](lib/features/paywall/data/datasources/paywall_local_data_source_impl.dart)) è un UUID anonimo generato una volta e persistito per sempre (`shared_preferences`) — **non** un account: nessun nome, email o profilo, serve solo a far riconoscere al server "questo dispositivo ha già sbloccato" tra un controllo e l'altro. A differenza del `sessionId` di `session/` (rigenerato a ogni Start, usa-e-getta), questo deve sopravvivere a Start/End e alla chiusura dell'app, altrimenti ogni riapertura perderebbe lo sblocco pagato.
+
+`ProPaywall` ricontrolla ogni 5 minuti (`Timer.periodic`) così lo sblocco scade da solo in UI anche se l'app resta aperta oltre le 2 ore — il controllo stesso passa dal server, quindi riflette sempre la verità, non un calcolo locale che potrebbe essere disallineato.
+
+**Nessuna dipendenza circolare con `nearby/`**: `paywall/domain/usecases/get_locked_nearby_people_usecase.dart` importa `NearbyPerson` da `nearby/domain/entities/` (lecito, `paywall` sa di `nearby`), ma `nearby/` non importa mai nulla da `paywall/` — se il paywall venisse rimosso, `nearby/` non cambierebbe di una riga. La composizione tra le due (chi mostrare sfocato, il banner, la conferma d'acquisto) vive in `CmpPaywalledNearbyList` ([cmp_paywalled_nearby_list.dart](lib/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart), feature `paywall`), che **sostituisce** `CmpNearbyList` (rimasta invariata, ignara del paywall) dentro `UiHome` — non è `CmpNearbyList` a essere stata modificata per supportare il paywall. `CmpNearbyPersonTile` fa eccezione: ha un parametro generico `isLocked` (sfoca solo la foto con `ImageFiltered`/`ImageFilter.blur`, mostra un lucchetto) — non nomina "paywall", resta un hook riusabile qualunque cosa lo usi.
+
+**Pagamento finto**: `PurchaseUnlockUseCase` non fa nessun acquisto vero — Apple/Google richiedono di passare dai loro sistemi di in-app purchase per sbloccare contenuto digitale, che vanno registrati in App Store Connect/Play Console (account sviluppatore, dati fiscali) prima di poter essere integrati con `package:in_app_purchase`. Quando ci sarà un prodotto reale, la vera chiamata va dentro `PurchaseUnlockUseCase` (o un nuovo passo composto da lì) — il resto (provider, UI, regola dei due terzi) non cambia.
+
 ---
 
 ## 4. Il server (`server/`, Dart Frog)
@@ -198,9 +212,12 @@ server/
     _middleware.dart      ← CORS, applicato a tutte le route
     ws.dart                → GET /ws?sessionId=...  (upgrade a WebSocket)
     debug/sessions.dart   → GET /debug/sessions   (solo per debug locale)
+    paywall/purchase.dart → POST /paywall/purchase
+    paywall/status.dart   → GET /paywall/status?deviceId=...
   lib/src/
     session_store.dart    ← SessionStore: Map<sessionId, Session> in RAM, nessuna persistenza
     encounter_store.dart   ← EncounterStore: Map<requestId, EncounterRequest>, stessa filosofia
+    paywall_store.dart     ← PaywallStore: Map<deviceId, unlockedAt>, stessa filosofia
     connection_hub.dart    ← ConnectionHub: canali WebSocket connessi, push degli aggiornamenti
     geo.dart               distanza Haversine tra due coordinate
     meeting_chance.dart     soglie di permanenza → low/medium/high

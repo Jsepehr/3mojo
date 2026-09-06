@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '/core/utils/photo_data_uri.dart';
@@ -9,10 +11,18 @@ import '/l10n/generated/app_localizations.dart';
 /// una foto grande, la distanza, e lo stadio di probabilità d'incontro
 /// (Bassa/Media/Alta, con colore) — niente barra di caricamento, dato che
 /// sono solo tre stadi discreti, non un valore continuo.
+/// `isLocked` (paywall, `features/paywall/`) sfoca solo la foto — distanza
+/// e probabilità restano visibili anche bloccata, è proprio quel poco di
+/// informazione a dare un motivo per sbloccare la foto vera.
 class CmpNearbyPersonTile extends StatelessWidget {
-  const CmpNearbyPersonTile({super.key, required this.person});
+  const CmpNearbyPersonTile({
+    super.key,
+    required this.person,
+    this.isLocked = false,
+  });
 
   final NearbyPerson person;
+  final bool isLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +36,7 @@ class CmpNearbyPersonTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            CmpPhoto(image: photo, size: 96),
+            _Photo(photo: photo, isLocked: isLocked),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -72,5 +82,36 @@ class CmpNearbyPersonTile extends StatelessWidget {
       case MeetingChance.high:
         return Colors.green;
     }
+  }
+}
+
+/// Foto della tile, sfocata con un lucchetto sopra quando bloccata dal
+/// paywall — la stessa `CmpPhoto` di sempre, solo con un filtro applicato.
+class _Photo extends StatelessWidget {
+  const _Photo({required this.photo, required this.isLocked});
+
+  final ImageProvider? photo;
+  final bool isLocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = CmpPhoto(image: photo, size: 96);
+    if (!isLocked) return image;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: image,
+        ),
+        Icon(
+          Icons.lock,
+          color: Colors.white,
+          size: 28,
+          shadows: [Shadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 6)],
+        ),
+      ],
+    );
   }
 }
