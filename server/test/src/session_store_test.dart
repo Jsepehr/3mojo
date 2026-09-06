@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
@@ -190,6 +191,72 @@ void main() {
       clock = clock.add(const Duration(seconds: 60));
 
       expect(store.purgeStale(const Duration(seconds: 90)), isEmpty);
+    });
+
+    group('with an active hotspot', () {
+      late HotspotStore hotspots;
+
+      setUp(() {
+        hotspots = HotspotStore.withClock(() => clock);
+      });
+
+      test('widens visibility beyond radiusMeters for two people it covers', () {
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0.0001, lng: 0);
+        store.upsertPosition(sessionId: 'c', lat: 0, lng: 0.0001);
+        clock = clock.add(const Duration(minutes: 16));
+        hotspots.detectAndRefresh(store.allSessions);
+
+        // ~150m from the trio's centroid: too far from 'a' individually
+        // under the 100m radius, but within the hotspot's 200m reach.
+        store.upsertPosition(sessionId: 'd', lat: 0.00003 + 0.00135, lng: 0.00003);
+        clock = clock.add(const Duration(minutes: 2));
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 100,
+          hotspotStore: hotspots,
+        )!;
+
+        expect(result.map((p) => p.sessionId), contains('d'));
+      });
+
+      test('never widens visibility without an injected/active hotspot', () {
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0.0001, lng: 0);
+        store.upsertPosition(sessionId: 'c', lat: 0, lng: 0.0001);
+        store.upsertPosition(sessionId: 'd', lat: 0.00003 + 0.00135, lng: 0.00003);
+        clock = clock.add(const Duration(minutes: 16));
+        // No detectAndRefresh call: hotspots.active stays empty.
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 100,
+          hotspotStore: hotspots,
+        )!;
+
+        expect(result.map((p) => p.sessionId), isNot(contains('d')));
+      });
+
+      test('does not widen visibility for someone outside the hotspot too', () {
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0.0001, lng: 0);
+        store.upsertPosition(sessionId: 'c', lat: 0, lng: 0.0001);
+        clock = clock.add(const Duration(minutes: 16));
+        hotspots.detectAndRefresh(store.allSessions);
+
+        // Genuinely unrelated and far from both 'a' and the hotspot.
+        store.upsertPosition(sessionId: 'e', lat: 5, lng: 5);
+        clock = clock.add(const Duration(minutes: 2));
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 100,
+          hotspotStore: hotspots,
+        )!;
+
+        expect(result.map((p) => p.sessionId), isNot(contains('e')));
+      });
     });
   });
 }
