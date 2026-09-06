@@ -36,6 +36,10 @@
   "@profileRetakeSelfieButton": {
     "description": "Button that opens the camera again to retake the selfie"
   },
+  "profileFlipSelfieButton": "Flip photo",
+  "@profileFlipSelfieButton": {
+    "description": "Button shown over the selfie to manually mirror it horizontally, for cameras that save it flipped"
+  },
   "profileLikeSelfieButton": "I like it, continue",
   "@profileLikeSelfieButton": {
     "description": "Button confirming the selfie and moving to the gender/preference step"
@@ -112,6 +116,34 @@
   "nearbyEmptyTipOneAtATime": "Accept one request and the others cancel automatically — one encounter at a time.",
   "@nearbyEmptyTipOneAtATime": {
     "description": "Empty-state tip explaining encounter exclusivity"
+  },
+  "paywallBannerMessage": "The closest profiles are blurred — unlock to see everyone nearby.",
+  "@paywallBannerMessage": {
+    "description": "Banner shown above the nearby list when some profiles are paywalled"
+  },
+  "paywallUnlockButton": "Unlock — €1",
+  "@paywallUnlockButton": {
+    "description": "Button that opens the unlock purchase confirmation"
+  },
+  "paywallConfirmDialogTitle": "Unlock nearby profiles",
+  "@paywallConfirmDialogTitle": {
+    "description": "Title of the unlock purchase confirmation dialog"
+  },
+  "paywallConfirmDialogMessage": "Unlock every nearby profile for the next 2 hours for €1. This is a mock payment for now — nothing is really charged.",
+  "@paywallConfirmDialogMessage": {
+    "description": "Body of the unlock purchase confirmation dialog, explaining it's a mock payment"
+  },
+  "paywallConfirmDialogCancel": "Cancel",
+  "@paywallConfirmDialogCancel": {
+    "description": "Cancel button in the unlock purchase confirmation dialog"
+  },
+  "paywallConfirmDialogConfirm": "Pay €1",
+  "@paywallConfirmDialogConfirm": {
+    "description": "Confirm button in the unlock purchase confirmation dialog"
+  },
+  "paywallPurchaseSuccessMessage": "Unlocked for the next 2 hours",
+  "@paywallPurchaseSuccessMessage": {
+    "description": "Snackbar shown after the (mock) unlock purchase succeeds"
   },
   "encountersPageTitle": "Requests",
   "@encountersPageTitle": {

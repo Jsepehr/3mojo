@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +10,15 @@ import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/l10n/generated/app_localizations.dart';
+
+/// Decodifica/ribalta/codifica un JPEG: eseguito su un isolate separato
+/// tramite [compute] (per questo è una funzione top-level, non un metodo),
+/// così il ribaltamento manuale non blocca il frame in corso.
+Uint8List _flipImageBytes(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return bytes;
+  return Uint8List.fromList(img.encodeJpg(img.flipHorizontal(decoded)));
+}
 
 /// Wizard aperto da "Start": prima il selfie (scatta e confermi — un
 /// controllo ML Kit verifica al volo che ci sia un volto, altrimenti blocca
@@ -30,6 +38,7 @@ class _UiStartSessionState extends State<UiStartSession> {
   Gender? _gender;
   GenderPreference? _genderPreference;
   bool _isCheckingFace = false;
+  bool _isFlipping = false;
 
   Future<void> _takeSelfie() async {
     final picked = await ImagePicker().pickImage(
@@ -38,22 +47,32 @@ class _UiStartSessionState extends State<UiStartSession> {
     );
     if (picked == null) return;
 
-    final unmirrored = _unmirror(await picked.readAsBytes());
+    final bytes = await picked.readAsBytes();
     setState(() {
       _selfiePath = picked.path;
-      _selfieBytes = unmirrored;
+      _selfieBytes = bytes;
     });
   }
 
   /// La fotocamera frontale, su molti dispositivi Android, salva lo scatto
   /// come immagine speculare (mirror-image) invece che come si vede nella
-  /// realtà — lo corregge ribaltando l'immagine orizzontalmente una volta.
-  /// Tutto in memoria (mai un file temporaneo): funziona identico su ogni
-  /// piattaforma, web incluso.
-  Uint8List _unmirror(Uint8List bytes) {
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return bytes;
-    return Uint8List.fromList(img.encodeJpg(img.flipHorizontal(decoded)));
+  /// realtà: l'utente decide se serve la correzione col bottone sopra il
+  /// selfie, che ribalta l'immagine orizzontalmente. Tutto in memoria (mai
+  /// un file temporaneo): funziona identico su ogni piattaforma, web incluso.
+  /// Gira su un isolate separato (compute) perché decode/encode JPEG è
+  /// abbastanza pesante da bloccare il frame se girasse sulla UI.
+  Future<void> _flipSelfie() async {
+    final bytes = _selfieBytes;
+    if (bytes == null) return;
+
+    setState(() => _isFlipping = true);
+    final flipped = await compute(_flipImageBytes, bytes);
+    if (!mounted) return;
+
+    setState(() {
+      _selfieBytes = flipped;
+      _isFlipping = false;
+    });
   }
 
   Future<void> _confirmSelfie() async {
@@ -116,13 +135,53 @@ class _UiStartSessionState extends State<UiStartSession> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Center(
-          child: GestureDetector(
-            onTap: _takeSelfie,
-            child: CmpPhoto(
-              image: _selfieBytes == null ? null : MemoryImage(_selfieBytes!),
-              size: 220,
-              placeholderIcon: Icons.camera_alt,
-            ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: _takeSelfie,
+                child: CmpPhoto(
+                  image: _selfieBytes == null
+                      ? null
+                      : MemoryImage(_selfieBytes!),
+                  size: 220,
+                  placeholderIcon: Icons.camera_alt,
+                ),
+              ),
+              if (_isFlipping)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(
+                        CmpPhoto.cornerRadius,
+                      ),
+                    ),
+                    child: const Center(
+                      child: CmpLoadingIndicator(color: Colors.white),
+                    ),
+                  ),
+                ),
+              if (_selfieBytes != null)
+                Positioned(
+                  top: -8,
+                  right: -8,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: _isFlipping ? null : _flipSelfie,
+                      tooltip: l10n.profileFlipSelfieButton,
+                      icon: Icon(
+                        Icons.flip,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
