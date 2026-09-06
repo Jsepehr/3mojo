@@ -40,16 +40,39 @@ void main() {
       expect(lockedDistances, {0, 10, 20, 30, 40, 50});
     });
 
-    test('preserves the original order and every person exactly once', () {
+    test('lists free people first, then locked, keeping every person', () {
       final people = [
-        _personAt('far', 100),
         _personAt('near', 5),
+        _personAt('far', 100),
         _personAt('mid', 50),
       ];
 
       final result = useCase(people, isUnlocked: false);
 
-      expect(result.map((r) => r.person.id), ['far', 'near', 'mid']);
+      // The minimum of 2 free people kicks in here (a third of 3 would
+      // round down to 1): 'far' and 'mid' are the two farthest, so both are
+      // free and move to the front; 'near' stays locked.
+      expect(result.map((r) => r.person.id), ['far', 'mid', 'near']);
+      expect(result.map((r) => r.isLocked), [false, false, true]);
+    });
+
+    test('never locks below minFreeCount, even on a short list', () {
+      final people = [_personAt('a', 10), _personAt('b', 5)];
+
+      final result = useCase(people, isUnlocked: false);
+
+      // Only 2 people total: a plain third would free 0, but the minimum
+      // of 2 free people means nobody ends up locked.
+      expect(result.map((r) => r.isLocked), everyElement(isFalse));
+    });
+
+    test('the minimum can never free more people than actually exist', () {
+      final people = [_personAt('only', 42)];
+
+      final result = useCase(people, isUnlocked: false);
+
+      expect(result, hasLength(1));
+      expect(result.single.isLocked, isFalse);
     });
   });
 }
