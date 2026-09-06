@@ -51,6 +51,23 @@ void main() {
       expect(hotspot.centerLng, closeTo(0.0000333, 0.0000001));
     });
 
+    test('still forms when the trio straddles a latitude-band boundary '
+        '(spatial pruning must not miss valid cross-band triangles)', () {
+      // Detection groups sessions into latitude bands as wide as
+      // clusterRadiusMeters to avoid an O(n^3) search across the whole
+      // world -- these three straddle exactly the boundary at lat=0
+      // (one lands in the band below, two in the band at/above), while
+      // staying mutually within 100m.
+      sessions.upsertPosition(sessionId: 'a', lat: -0.00035, lng: 0);
+      sessions.upsertPosition(sessionId: 'b', lat: 0.00035, lng: 0);
+      sessions.upsertPosition(sessionId: 'c', lat: 0, lng: 0.0002);
+      clock = clock.add(const Duration(minutes: 16));
+
+      hotspots.detectAndRefresh(sessions.allSessions);
+
+      expect(hotspots.active, hasLength(1));
+    });
+
     test('a "star" pattern does not qualify -- every pair must be close, '
         'not just each to one common member', () {
       // b and c are each close to a, but ~2.2km apart from each other.

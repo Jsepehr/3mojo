@@ -58,6 +58,14 @@ class ConnectionHub {
     });
   }
 
+  /// Solo per i test: ferma il timer avviato da [startHotspotDetection], per
+  /// non lasciarlo pendente dopo che un test finisce (stesso gotcha già
+  /// capitato con `ProNearby`/`ProEncounters` — vedi guida sviluppatori).
+  void stopHotspotDetection() {
+    _hotspotDetectionTimer?.cancel();
+    _hotspotDetectionTimer = null;
+  }
+
   void register(String sessionId, StreamSink<dynamic> sink) {
     _sinks[sessionId] = sink;
   }
