@@ -19,7 +19,8 @@ class ConnectionHub {
   factory ConnectionHub.withStore(
     SessionStore sessionStore, {
     EncounterStore? encounterStore,
-  }) => ConnectionHub._(sessionStore, encounterStore ?? EncounterStore.instance);
+  }) =>
+      ConnectionHub._(sessionStore, encounterStore ?? EncounterStore.instance);
 
   static final ConnectionHub instance = ConnectionHub._(
     SessionStore.instance,
@@ -28,9 +29,34 @@ class ConnectionHub {
 
   static const double radiusMeters = 100;
 
+  // Un hotspot si forma in minClusterSize/clusterMinDwellMinutes (minuti) e
+  // vive un'ora: non serve rilevarlo di nuovo a ogni singolo aggiornamento
+  // di presenza di chiunque sia online (che con molti utenti connessi
+  // potrebbe voler dire decine di volte al secondo) — un ritardo di
+  // rilevamento fino a questo intervallo è del tutto irrilevante su quelle
+  // scale di tempo, e disaccoppiarlo dal ritmo dei messaggi mette un limite
+  // superiore netto al carico, indipendente da quanti utenti/messaggi ci
+  // sono. `broadcastNearbyUpdates` resta invece istantaneo a ogni presenza:
+  // riflette sempre lo stato hotspot più recente, solo la sua *scoperta* è
+  // rallentata.
+  static const Duration hotspotDetectionInterval = Duration(seconds: 15);
+
   final SessionStore _sessionStore;
   final EncounterStore _encounterStore;
   final Map<String, StreamSink<dynamic>> _sinks = {};
+  Timer? _hotspotDetectionTimer;
+
+  /// Avvia (se non già attivo) il rilevamento periodico degli hotspot —
+  /// non è automatico dentro il costruttore, stesso motivo e stessa forma di
+  /// `SessionStore.startAutoPurge` (`interval` iniettabile per i test, non
+  /// far scattare timer veri nei test che usano `ConnectionHub.withStore`
+  /// senza mai chiamare questo metodo).
+  void startHotspotDetection({Duration interval = hotspotDetectionInterval}) {
+    _hotspotDetectionTimer ??= Timer.periodic(interval, (_) {
+      HotspotStore.instance.detectAndRefresh(_sessionStore.allSessions);
+      broadcastNearbyUpdates();
+    });
+  }
 
   void register(String sessionId, StreamSink<dynamic> sink) {
     _sinks[sessionId] = sink;
@@ -66,9 +92,9 @@ class ConnectionHub {
   /// "vicinanze" aggiornata (ognuno riceve la propria, già filtrata per
   /// genere/raggio/permanenza da `SessionStore.nearbyPeople`, ed
   /// eventualmente allargata da un hotspot attivo — vedi `HotspotStore`).
+  /// Non rileva/rinnova hotspot di persona: usa quelli già noti in questo
+  /// momento a `HotspotStore.instance` — vedi `startHotspotDetection`.
   void broadcastNearbyUpdates() {
-    HotspotStore.instance.detectAndRefresh(_sessionStore.allSessions);
-
     for (final sessionId in _sinks.keys) {
       final people = _sessionStore.nearbyPeople(
         sessionId: sessionId,

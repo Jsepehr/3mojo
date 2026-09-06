@@ -51,6 +51,7 @@ Future<Response> onRequest(RequestContext context) async {
       ConnectionHub.instance.broadcastNearbyUpdates();
     },
   );
+  ConnectionHub.instance.startHotspotDetection();
 
   final handler = fromShelfHandler(
     webSocketHandler((webSocket, protocol) {

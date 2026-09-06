@@ -73,6 +73,12 @@ class HotspotStore {
 
   static const Duration lifetime = Duration(hours: 1);
 
+  // Approssimazione grossolana (costante ovunque, non dipende dalla
+  // latitudine) usata solo per raggruppare i candidati in `detectAndRefresh`
+  // — non per decidere se qualcuno è davvero vicino: quello resta sempre
+  // l'Haversine esatto di `distanceMeters`/`_allPairwiseWithin`.
+  static const double _metersPerDegreeLat = 111320;
+
   final DateTime Function() _now;
   final List<Hotspot> _hotspots = [];
 
@@ -132,12 +138,14 @@ class HotspotStore {
   ///    estende. Se i supporter sono meno di [minClusterSize], l'hotspot non
   ///    viene rinnovato (scadrà da solo quando si supera `expiresAt`).
   /// 2. Scadenza: chi non è stato rinnovato ed è oltre `expiresAt` viene tolto.
-  /// 3. Rilevamento: tra tutte le sessioni idonee, cerca ogni gruppo di
-  ///    ≥[minClusterSize] reciprocamente entro [clusterRadiusMeters] (tutte le
-  ///    coppie, non solo vicine a un centro) e promuove il centroide a nuovo
-  ///    hotspot — a meno che il suo cerchio si sovrapporrebbe a uno già
-  ///    esistente (rinnovato o no in questo stesso giro), nel qual caso non
-  ///    viene creato: due hotspot non coesistono mai sovrapposti.
+  /// 3. Rilevamento: tra le sessioni idonee **vicine in latitudine** (vedi
+  ///    partizionamento spaziale sotto — non tra tutte, ovunque si trovino),
+  ///    cerca ogni gruppo di ≥[minClusterSize] reciprocamente entro
+  ///    [clusterRadiusMeters] (tutte le coppie, non solo vicine a un centro)
+  ///    e promuove il centroide a nuovo hotspot — a meno che il suo cerchio
+  ///    si sovrapporrebbe a uno già esistente (rinnovato o no in questo
+  ///    stesso giro), nel qual caso non viene creato: due hotspot non
+  ///    coesistono mai sovrapposti.
   void detectAndRefresh(Iterable<Session> sessions) {
     final now = _now();
     final eligible = sessions
@@ -196,26 +204,57 @@ class HotspotStore {
     }
     _hotspots.removeWhere((h) => now.isAfter(h.expiresAt));
 
-    for (final combo in _combinationsOfSize(eligible, minClusterSize)) {
-      if (!_allPairwiseWithin(combo, clusterRadiusMeters)) continue;
+    // Partizionamento spaziale: raggruppa le sessioni idonee in fasce di
+    // latitudine larghe quanto clusterRadiusMeters, così la ricerca
+    // combinatoria (altrimenti O(n³) su TUTTE le sessioni idonee, ovunque si
+    // trovino) si limita, fascia per fascia, a chi è già abbastanza vicino
+    // in latitudine da poter davvero formare un triangolo — due sessioni in
+    // fasce non adiacenti sono per forza più lontane di clusterRadiusMeters
+    // (la larghezza di una fascia), quindi non potrebbero mai passare
+    // `_allPairwiseWithin` insieme. Ogni tripla valida ha per forza tutti e
+    // tre i membri entro una fascia di differenza l'uno dall'altro, quindi
+    // esaminare (fascia-1, fascia, fascia+1) per ogni fascia occupata la
+    // trova comunque — può essere esaminata più di una volta da fasce
+    // diverse, ma `_wouldOverlapAnotherHotspot` già impedisce di crearla due
+    // volte, quindi il lavoro in più è innocuo, solo ridondante.
+    final byLatitudeBand = <int, List<Session>>{};
+    for (final session in eligible) {
+      byLatitudeBand
+          .putIfAbsent(_latitudeBand(session.lat), () => [])
+          .add(session);
+    }
 
-      final centerLat =
-          combo.map((s) => s.lat).reduce((a, b) => a + b) / combo.length;
-      final centerLng =
-          combo.map((s) => s.lng).reduce((a, b) => a + b) / combo.length;
+    for (final band in byLatitudeBand.keys) {
+      final neighborhood = [
+        ...?byLatitudeBand[band - 1],
+        ...?byLatitudeBand[band],
+        ...?byLatitudeBand[band + 1],
+      ];
 
-      if (_wouldOverlapAnotherHotspot(centerLat, centerLng, null)) continue;
+      for (final combo in _combinationsOfSize(neighborhood, minClusterSize)) {
+        if (!_allPairwiseWithin(combo, clusterRadiusMeters)) continue;
 
-      _hotspots.add(
-        Hotspot(
-          centerLat: centerLat,
-          centerLng: centerLng,
-          createdAt: now,
-          expiresAt: now.add(lifetime),
-        ),
-      );
+        final centerLat =
+            combo.map((s) => s.lat).reduce((a, b) => a + b) / combo.length;
+        final centerLng =
+            combo.map((s) => s.lng).reduce((a, b) => a + b) / combo.length;
+
+        if (_wouldOverlapAnotherHotspot(centerLat, centerLng, null)) continue;
+
+        _hotspots.add(
+          Hotspot(
+            centerLat: centerLat,
+            centerLng: centerLng,
+            createdAt: now,
+            expiresAt: now.add(lifetime),
+          ),
+        );
+      }
     }
   }
+
+  int _latitudeBand(double lat) =>
+      (lat * _metersPerDegreeLat / clusterRadiusMeters).floor();
 
   bool _allPairwiseWithin(List<Session> group, double radius) {
     for (var i = 0; i < group.length; i++) {
@@ -233,9 +272,10 @@ class HotspotStore {
   }
 
   /// Genera ogni sottoinsieme di `items` con esattamente `size` elementi —
-  /// alla scala di un singolo server in RAM (decine di sessioni, non
-  /// migliaia) è la stessa spesa che `nearbyPeople`/`broadcastNearbyUpdates`
-  /// già accettano altrove (O(n²) per broadcast).
+  /// chiamato solo sul vicinato di una fascia di latitudine (vedi sopra),
+  /// non su tutte le sessioni idonee del server: `items` è già piccolo anche
+  /// se il numero totale di sessioni online cresce molto, a patto che non
+  /// siano tutte fisicamente ammassate nella stessa manciata di metri.
   Iterable<List<Session>> _combinationsOfSize(
     List<Session> items,
     int size,
