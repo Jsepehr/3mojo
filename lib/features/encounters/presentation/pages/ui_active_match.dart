@@ -1,3 +1,4 @@
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,6 +10,10 @@ import '/features/chat/presentation/widgets/cmp_chat_message_bubble.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/l10n/generated/app_localizations.dart';
+
+/// Altezza del pannello emoji (stile WhatsApp: sostituisce la tastiera,
+/// non si sovrappone).
+const _emojiPickerHeight = 256.0;
 
 /// Pagina a schermo intero per il match attivo: chat con la persona,
 /// apre da sola (vedi `_MatchGate` in app.dart) e blocca l'uscita
@@ -25,6 +30,8 @@ class UiActiveMatch extends StatefulWidget {
 
 class _UiActiveMatchState extends State<UiActiveMatch> {
   final TextEditingController _textController = TextEditingController();
+  final FocusNode _textFieldFocusNode = FocusNode();
+  bool _showEmojiPicker = false;
 
   @override
   void initState() {
@@ -33,12 +40,30 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
       otherPersonId: widget.request.otherPersonId,
       otherSelfiePath: widget.request.otherSelfiePath,
     );
+    // Se l'utente tocca di nuovo il campo mentre il pannello emoji è aperto,
+    // si comporta come WhatsApp: torna la tastiera, sparisce il pannello.
+    _textFieldFocusNode.addListener(() {
+      if (_textFieldFocusNode.hasFocus && _showEmojiPicker) {
+        setState(() => _showEmojiPicker = false);
+      }
+    });
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    _textFieldFocusNode.dispose();
     super.dispose();
+  }
+
+  void _toggleEmojiPicker() {
+    if (_showEmojiPicker) {
+      setState(() => _showEmojiPicker = false);
+      _textFieldFocusNode.requestFocus();
+    } else {
+      _textFieldFocusNode.unfocus();
+      setState(() => _showEmojiPicker = true);
+    }
   }
 
   void _send() {
@@ -83,6 +108,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
     final proChat = context.watch<ProChat>();
     final photo = imageProviderForPhoto(widget.request.otherSelfiePath);
 
@@ -113,35 +139,109 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
             : Column(
                 children: [
                   Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: proChat.messages.length,
-                      itemBuilder: (context, index) {
-                        final message = proChat
-                            .messages[proChat.messages.length - 1 - index];
-                        return CmpChatMessageBubble(message: message);
-                      },
+                    child: Container(
+                      // Sfondo appena tinto per staccare l'area dei
+                      // messaggi dall'AppBar/barra di composizione, come lo
+                      // sfondo distinto (per noi tinto, non un motivo grafico
+                      // preso da un'altra app) dietro le chat di WhatsApp.
+                      color: Color.alphaBlend(
+                        colorScheme.primary.withValues(alpha: 0.05),
+                        colorScheme.surface,
+                      ),
+                      child: ListView.builder(
+                        reverse: true,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: proChat.messages.length,
+                        itemBuilder: (context, index) {
+                          final message = proChat
+                              .messages[proChat.messages.length - 1 - index];
+                          return CmpChatMessageBubble(message: message);
+                        },
+                      ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _textController,
-                            decoration: InputDecoration(
-                              hintText: l10n.chatInputHint,
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minHeight: 48,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: TextField(
+                                controller: _textController,
+                                focusNode: _textFieldFocusNode,
+                                minLines: 1,
+                                maxLines: 5,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                decoration: InputDecoration(
+                                  hintText: l10n.chatInputHint,
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  prefixIcon: IconButton(
+                                    icon: Icon(
+                                      _showEmojiPicker
+                                          ? Icons.keyboard
+                                          : Icons.emoji_emotions_outlined,
+                                    ),
+                                    onPressed: _toggleEmojiPicker,
+                                  ),
+                                ),
+                                onSubmitted: (_) => _send(),
+                              ),
                             ),
-                            onSubmitted: (_) => _send(),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                            ),
+                            icon: const Icon(Icons.send),
+                            onPressed: _send,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Offstage(
+                    offstage: !_showEmojiPicker,
+                    child: SizedBox(
+                      height: _emojiPickerHeight,
+                      child: EmojiPicker(
+                        textEditingController: _textController,
+                        config: Config(
+                          height: _emojiPickerHeight,
+                          emojiViewConfig: EmojiViewConfig(
+                            backgroundColor: colorScheme.surfaceContainerLow,
+                          ),
+                          categoryViewConfig: CategoryViewConfig(
+                            backgroundColor: colorScheme.surfaceContainerLow,
+                            indicatorColor: colorScheme.primary,
+                            iconColorSelected: colorScheme.primary,
+                            backspaceColor: colorScheme.primary,
+                          ),
+                          bottomActionBarConfig: BottomActionBarConfig(
+                            backgroundColor: colorScheme.surfaceContainerLow,
+                            buttonColor: colorScheme.primary,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.send),
-                          onPressed: _send,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
