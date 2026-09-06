@@ -126,7 +126,9 @@ WatchNearbyPeopleUseCase.call()  (Stream, non Future)
                  └─ resta in ascolto di {"type":"nearby", "people":[...]} spinti dal server
 ```
 
-Il raggio massimo (200m, `WatchNearbyPeopleUseCase.radiusMeters`) è una costante nello use case, non configurabile dall'esterno; il repository lo riapplica anche lato client come difesa in più, anche se il server ha già filtrato.
+Il raggio (100m) **non è più una costante lato client**: `WatchNearbyPeopleUseCase` non lo conosce, `NearbyRepository`/`NearbyRepositoryImpl` non rifiltrano più la lista in arrivo. L'unica autorità è `ConnectionHub.radiusMeters` lato server (§4) — da quando esistono gli hotspot (sotto), il raggio non è più un numero fisso replicabile in autonomia dal client: una persona inclusa dal server solo grazie a un hotspot verrebbe scartata per errore da un vecchio filtro client-side che conoscesse solo il raggio base. Il client si fida della lista così com'è.
+
+**Zone d'incontro (hotspot), rilevate dal server** (`HotspotStore`, [hotspot_store.dart](server/lib/src/hotspot_store.dart), documentato per il resto in §4): quando ≥3 sessioni sono reciprocamente entro 100m tra loro e sono già, ognuna per conto proprio, ferme da almeno 15 minuti, il loro centro diventa un hotspot per 1 ora — dentro **200m** da quel centro, tutti si vedono a vicenda, anche oltre i 100m diretti. Puramente lato server: il client non sa nulla di hotspot, riceve solo una lista "vicinanze" a volte più ampia di quanto il semplice raggio spiegherebbe — coerente col fatto che la distanza non è comunque mai mostrata in UI (vedi sotto).
 
 **In attesa di una lista** (connessione in corso, o lista vuota): `CmpNearbyList` mostra `CmpNearbyWaitingOverlay` ([cmp_nearby_waiting_overlay.dart](lib/features/nearby/presentation/widgets/cmp_nearby_waiting_overlay.dart)) — lo stesso radar animato della schermata Start, con sopra una card che spiega a rotazione (ordine casuale, dissolvenza incrociata) le regole vere del server: raggio, permanenza minima, stadi di probabilità, niente profili permanenti, un incontro alla volta. Serve a far leggere l'attesa come comportamento intenzionale — "il server sta davvero aspettando che tu resti fermo un minuto" — non come un bug o un caricamento infinito.
 
@@ -148,7 +150,7 @@ Su Android 13+ dichiarare `POST_NOTIFICATIONS` nel manifest non basta: va anche 
 
 Tap su una persona in `CmpNearbyList` → non chiama `nearby/`, chiama `ProEncounters.sendRequest(person.id)` (feature diversa, §3.3).
 
-**La distanza non si vede in UI** (rimossa da `CmpNearbyPersonTile`): resta solo un campo interno di `NearbyPerson.distanceMeters`, usato per due regole di business che non riguardano l'utente — il raggio dei 200m lato server/client qui sopra, e l'ordine gratis/a pagamento in `paywall/` (§3.6). Un numero in metri non aggiungeva niente di utile da vedere, solo un modo per stimare quanto sia vicina davvero una persona.
+**La distanza non si vede in UI** (rimossa da `CmpNearbyPersonTile`): resta solo un campo interno di `NearbyPerson.distanceMeters`, usato per due regole di business che non riguardano l'utente — il raggio lato server qui sopra, e l'ordine gratis/a pagamento in `paywall/` (§3.6). Un numero in metri non aggiungeva niente di utile da vedere, solo un modo per stimare quanto sia vicina davvero una persona.
 
 ### 3.3 `encounters/` — richieste d'incontro
 
@@ -222,6 +224,7 @@ server/
     session_store.dart    ← SessionStore: Map<sessionId, Session> in RAM, nessuna persistenza
     encounter_store.dart   ← EncounterStore: Map<requestId, EncounterRequest>, stessa filosofia
     paywall_store.dart     ← PaywallStore: Map<deviceId, unlockedAt>, stessa filosofia
+    hotspot_store.dart      ← HotspotStore: List<Hotspot> in RAM, stessa filosofia
     connection_hub.dart    ← ConnectionHub: canali WebSocket connessi, push degli aggiornamenti
     geo.dart               distanza Haversine tra due coordinate
     meeting_chance.dart     soglie di permanenza → low/medium/high
@@ -235,6 +238,14 @@ server/
 - `{"type":"chatMessage","toSessionId":...,"text":...,"sentAt":...}` → `ConnectionHub.relayChatMessage(...)`, un puro inoltro al destinatario se connesso — nessuno stato, nessuna persistenza: se il destinatario non è online il messaggio va semplicemente perso;
 - alla connessione, subito un `ConnectionHub.pushEncounterSnapshot(sessionId)` (stato già esistente, utile dopo una riconnessione — non serve aspettare un cambiamento);
 - alla chiusura del socket (`onDone`, pulita o no) → `SessionStore.remove(sessionId)` + `ConnectionHub.unregister(...)` + `broadcastNearbyUpdates()` (chi era connesso a quella persona la vede sparire subito) **e** `EncounterStore.cancelAllPendingFor(sessionId)` + `pushEncounterSnapshot` per ogni controparte toccata — le richieste pendenti di chi sparisce non potrebbero comunque mai ottenere risposta.
+
+**`HotspotStore`** ([hotspot_store.dart](server/lib/src/hotspot_store.dart)) rileva zone d'incontro (hotspot) e allarga lì la visibilità reciproca — vedi §3.2 per il comportamento visto dal client. `ConnectionHub.broadcastNearbyUpdates()` chiama `HotspotStore.instance.detectAndRefresh(sessionStore.allSessions)` **prima** di ricalcolare la lista di ognuno, poi passa lo stesso store a `SessionStore.nearbyPeople(...)`, che in più al solito `distance <= radiusMeters` accetta anche la coppia se `HotspotStore.sharesAnyActiveHotspot(...)` è vera (**stesso** hotspot per entrambi — due persone in due zone calde diverse non diventano visibili tra loro solo perché ognuna è "in una qualche zona calda").
+
+Regola di formazione: ≥`minClusterSize` (3) sessioni reciprocamente entro `clusterRadiusMeters` (100m, tutte le coppie — un vero "triangolo" stretto, non solo tutte vicine a un membro comune) e ognuna già ferma da ≥`clusterMinDwellMinutes` (15 min, riusa `Session.arrivedAt`/il dwell già tenuto per ogni sessione — niente nuovo timer di gruppo, niente identità da tracciare nel tempo). **Più alta della soglia di `MeetingChance.high`** (5 min) apposta: un falso positivo qui costa più caro che sul dwell individuale — non colora solo un profilo, allarga la visibilità per un intero gruppo; 5 minuti sarebbero bastati a 3 sconosciuti fermi per caso allo stesso semaforo/fermata/coda.
+
+**Rinnovo, non ricreazione** — e con lo **stesso vincolo della formazione**: a ogni broadcast, per ogni hotspot esistente, i "supporter" sono le sessioni idonee entro il suo raggio (`Hotspot.radiusMeters`, 200m) che sono **anche** reciprocamente entro 100m tra loro. **Bug corretto durante lo sviluppo**: la prima versione rinnovava semplicemente se c'erano ≥3 sessioni idonee entro 200m dal centro, senza richiedere che fossero vicine *tra loro* — così 3 sconosciuti sparsi fino a ~400m l'uno dall'altro, ognuno per conto suo dentro il vecchio cerchio, avrebbero tenuto in vita un hotspot che non avrebbe mai potuto formarsi in quelle condizioni. Con il vincolo corretto: se i supporter sono ≥3, l'hotspot si rinnova (`expiresAt` esteso); se il gruppo è ridotto esattamente al minimo (3) *e* nessun supporter è rimasto vicino al centro originale (tutti oltre i 100m "core"), il centro viene **ricalcolato** sul centroide dei supporter attuali invece di restare ancorato a un punto ormai poco rappresentativo — altrimenti (più supporter, o il minimo ma ancora vicino al centro) resta fermo, per stabilità. Se i supporter scendono sotto 3, l'hotspot semplicemente non viene rinnovato e scade da solo.
+
+Il rilevamento **ignora genere/preferenza** (un fatto fisico — "c'è gente ferma qui" — non una preferenza di incontro): quel filtro si applica dopo, per-osservatore, come sempre in `nearbyPeople`. Più hotspot possono esistere insieme in zone diverse, rilevati/scaduti indipendentemente — nessun limite a uno alla volta.
 
 **`EncounterStore`** ([encounter_store.dart](server/lib/src/encounter_store.dart)) tiene le richieste d'incontro in RAM, keyed per `requestId`. `respondToRequest(accepted: true)` applica da sola, atomicamente, "un solo incontro alla volta": cancella ogni altra richiesta pendente che coinvolga **l'uno o l'altro** partecipante (non solo le proprie) — prima questa regola era divisa tra client e simulazione, ora vive in un solo posto autoritativo, l'unico che può davvero conoscere le richieste pendenti di entrambe le parti. Il selfie di ognuno non è mai conservato nella richiesta: `ConnectionHub.pushEncounterSnapshot` lo prende fresco da `SessionStore.selfieBase64For(...)` a ogni snapshot.
 
