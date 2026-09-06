@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:threemojo_server/src/encounter_store.dart';
+import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 /// Tiene i canali WebSocket dei client online e spinge a ognuno gli
@@ -25,7 +26,7 @@ class ConnectionHub {
     EncounterStore.instance,
   );
 
-  static const double radiusMeters = 200;
+  static const double radiusMeters = 100;
 
   final SessionStore _sessionStore;
   final EncounterStore _encounterStore;
@@ -63,12 +64,16 @@ class ConnectionHub {
 
   /// Ricalcola e manda a ognuno dei client connessi la sua lista
   /// "vicinanze" aggiornata (ognuno riceve la propria, già filtrata per
-  /// genere/raggio/permanenza da `SessionStore.nearbyPeople`).
+  /// genere/raggio/permanenza da `SessionStore.nearbyPeople`, ed
+  /// eventualmente allargata da un hotspot attivo — vedi `HotspotStore`).
   void broadcastNearbyUpdates() {
+    HotspotStore.instance.detectAndRefresh(_sessionStore.allSessions);
+
     for (final sessionId in _sinks.keys) {
       final people = _sessionStore.nearbyPeople(
         sessionId: sessionId,
         radiusMeters: radiusMeters,
+        hotspotStore: HotspotStore.instance,
       );
       if (people == null) continue;
 

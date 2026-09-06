@@ -70,7 +70,6 @@ class _StuckNearbyRepository implements NearbyRepository {
   @override
   Stream<Either<Failure, List<NearbyPerson>>> watchNearbyPeople(
     GeoLocation location, {
-    required double radiusMeters,
     required String sessionId,
     required String gender,
     required String genderPreference,

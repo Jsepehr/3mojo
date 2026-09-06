@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:threemojo_server/src/geo.dart';
+import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
 
 /// Una persona online: la sua posizione più recente, e da quando è "ferma"
@@ -203,16 +204,25 @@ class SessionStore {
     });
   }
 
-  /// Persone entro [radiusMeters] da `sessionId`, con probabilità d'incontro
-  /// già calcolata. Ritorna `null` se `sessionId` non ha ancora mandato una
-  /// posizione (deve prima chiamare `POST /presence`).
+  /// Tutte le sessioni online — usato da `HotspotStore.detectAndRefresh`
+  /// (via `ConnectionHub`) per cercare cluster tra le posizioni note, senza
+  /// dover esporre la mappa interna.
+  Iterable<Session> get allSessions => _sessions.values;
+
+  /// Persone entro [radiusMeters] da `sessionId` (o entro un hotspot attivo
+  /// di cui entrambi fanno parte — vedi [HotspotStore] — anche se la
+  /// distanza diretta tra i due supera [radiusMeters]), con probabilità
+  /// d'incontro già calcolata. Ritorna `null` se `sessionId` non ha ancora
+  /// mandato una posizione (deve prima chiamare `POST /presence`).
   List<NearbyPersonResult>? nearbyPeople({
     required String sessionId,
     required double radiusMeters,
+    HotspotStore? hotspotStore,
   }) {
     final me = _sessions[sessionId];
     if (me == null) return null;
 
+    final hotspots = hotspotStore ?? HotspotStore.instance;
     final now = _now();
     final results = <NearbyPersonResult>[];
 
@@ -227,7 +237,11 @@ class SessionStore {
       }
 
       final distance = distanceMeters(me.lat, me.lng, other.lat, other.lng);
-      if (distance > radiusMeters) continue;
+      final direct = distance <= radiusMeters;
+      final viaHotspot =
+          !direct &&
+          hotspots.sharesAnyActiveHotspot(me.lat, me.lng, other.lat, other.lng);
+      if (!direct && !viaHotspot) continue;
 
       final dwell = now.difference(other.arrivedAt);
       if (dwell.inMinutes < visibilityThresholdMinutes) continue;

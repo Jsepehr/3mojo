@@ -11,9 +11,12 @@ import 'get_current_location_usecase.dart';
 import 'watch_position_usecase.dart';
 
 /// Azione: apri la connessione con chi sono (per farmi riconoscere dal
-/// server) e la mia posizione, poi resta in ascolto di chi c'è entro
-/// `radiusMeters` (200, regola di business fissa) — aggiornato dal server
-/// stesso ogni volta che qualcosa cambia, non richiesto di nuovo a mano.
+/// server) e la mia posizione, poi resta in ascolto di chi c'è vicino —
+/// aggiornato dal server stesso ogni volta che qualcosa cambia, non
+/// richiesto di nuovo a mano. Il raggio non è più una costante qui: la
+/// regola di visibilità è decisa interamente lato server (raggio base, più
+/// eventuali zone d'incontro/hotspot rilevate dal server stesso — il client
+/// non ne sa nulla, riceve solo la lista già pronta).
 /// Compone `GetCurrentSessionUseCase` e `GetCurrentLocationUseCase` invece
 /// di dipendere direttamente dai loro repository — sotto-passi genuini di
 /// "chi c'è vicino a me ora".
@@ -27,8 +30,6 @@ class WatchNearbyPeopleUseCase {
        _getCurrentLocationUseCase = getCurrentLocationUseCase,
        _watchPositionUseCase = watchPositionUseCase,
        _nearbyRepository = nearbyRepository;
-
-  static const double radiusMeters = 200;
 
   final GetCurrentSessionUseCase _getCurrentSessionUseCase;
   final GetCurrentLocationUseCase _getCurrentLocationUseCase;
@@ -76,7 +77,6 @@ class WatchNearbyPeopleUseCase {
     try {
       yield* _nearbyRepository.watchNearbyPeople(
         location!,
-        radiusMeters: radiusMeters,
         sessionId: session!.sessionId,
         gender: session!.gender.name,
         genderPreference: session!.genderPreference.name,

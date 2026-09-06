@@ -2,7 +2,7 @@
   "@@locale": "it",
   "appTitle": "ThreeMojo App",
   "homeTitle": "Incontra chi è vicino a te",
-  "homeSubtitle": "Scopri le persone entro 200 metri, in tempo reale.",
+  "homeSubtitle": "Scopri le persone entro 100 metri, in tempo reale.",
   "homeStartButton": "Start",
   "homeEndButton": "End",
   "startSessionPageTitle": "Vai online",

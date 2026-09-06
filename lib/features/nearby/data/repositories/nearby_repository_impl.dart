@@ -11,8 +11,12 @@ import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/domain/repositories/nearby_repository.dart';
 
 /// Apre la connessione persistente verso il backend reale e traduce ciò che
-/// arriva; rifiltra di nuovo entro `radiusMeters` come difesa in più anche
-/// se il server dovesse già filtrare.
+/// arriva. Non rifiltra più per raggio lato client: da quando esistono le
+/// zone d'incontro (hotspot, `server/lib/src/hotspot_store.dart`) il raggio
+/// non è più un numero fisso replicabile qui — una persona inclusa dal
+/// server solo grazie a un hotspot verrebbe scartata per errore da un
+/// controllo client-side che conoscesse solo il raggio base. Il server resta
+/// l'unica autorità su chi è visibile.
 class NearbyRepositoryImpl implements NearbyRepository {
   const NearbyRepositoryImpl(this._remoteDataSource);
 
@@ -21,7 +25,6 @@ class NearbyRepositoryImpl implements NearbyRepository {
   @override
   Stream<Either<Failure, List<NearbyPerson>>> watchNearbyPeople(
     GeoLocation location, {
-    required double radiusMeters,
     required String sessionId,
     required String gender,
     required String genderPreference,
@@ -41,11 +44,7 @@ class NearbyRepositoryImpl implements NearbyRepository {
         List<NearbyPersonModel>,
         Either<Failure, List<NearbyPerson>>
       >.fromHandlers(
-        handleData: (people, sink) => sink.add(
-          Right(
-            people.where((p) => p.distanceMeters <= radiusMeters).toList(),
-          ),
-        ),
+        handleData: (people, sink) => sink.add(Right(people)),
         handleError: (error, stackTrace, sink) =>
             sink.add(Left(UnexpectedFailure(error.toString()))),
       ),
