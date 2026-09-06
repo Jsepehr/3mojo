@@ -19,7 +19,6 @@
   "nearbyPageTitle": "بالقرب منك",
   "nearbyConnectingMessage": "جارٍ الاتصال بالخادم…",
   "nearbyEmptyMessage": "لا يوجد أحد ضمن 200 متر الآن",
-  "nearbyDistanceLabel": "{meters} م",
   "nearbyMeetingChanceLow": "فرصة ضعيفة للقاء",
   "nearbyMeetingChanceMedium": "فرصة متوسطة للقاء",
   "nearbyMeetingChanceHigh": "فرصة عالية للقاء",

@@ -19,7 +19,6 @@
   "nearbyPageTitle": "Cerca de ti",
   "nearbyConnectingMessage": "Conectando con el servidor…",
   "nearbyEmptyMessage": "Ahora mismo no hay nadie a menos de 200 metros",
-  "nearbyDistanceLabel": "{meters} m",
   "nearbyMeetingChanceLow": "Pocas probabilidades de encontrarse",
   "nearbyMeetingChanceMedium": "Probabilidad media de encontrarse",
   "nearbyMeetingChanceHigh": "Alta probabilidad de encontrarse",

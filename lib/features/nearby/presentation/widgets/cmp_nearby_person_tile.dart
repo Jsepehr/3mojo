@@ -7,12 +7,13 @@ import '/core/widgets/cmp_photo.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/l10n/generated/app_localizations.dart';
 
-/// Riga della lista "Vicinanze": nessun nome (l'app non lo chiede), solo
-/// una foto grande, la distanza, e lo stadio di probabilità d'incontro
+/// Riga della lista "Vicinanze": nessun nome (l'app non lo chiede) e nessuna
+/// distanza (resta un dato interno per l'ordinamento/il paywall, non per
+/// l'utente) — solo una foto grande e lo stadio di probabilità d'incontro
 /// (Bassa/Media/Alta, con colore) — niente barra di caricamento, dato che
 /// sono solo tre stadi discreti, non un valore continuo.
-/// `isLocked` (paywall, `features/paywall/`) sfoca solo la foto — distanza
-/// e probabilità restano visibili anche bloccata, è proprio quel poco di
+/// `isLocked` (paywall, `features/paywall/`) sfoca solo la foto — la
+/// probabilità resta visibile anche bloccata, è proprio quel poco di
 /// informazione a dare un motivo per sbloccare la foto vera.
 class CmpNearbyPersonTile extends StatelessWidget {
   const CmpNearbyPersonTile({
@@ -39,21 +40,12 @@ class CmpNearbyPersonTile extends StatelessWidget {
             _Photo(photo: photo, isLocked: isLocked),
             const SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _meetingChanceLabel(l10n, person.meetingChance),
-                    style: TextStyle(
-                      color: _meetingChanceColor(person.meetingChance),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.nearbyDistanceLabel(person.distanceMeters.round()),
-                  ),
-                ],
+              child: Text(
+                _meetingChanceLabel(l10n, person.meetingChance),
+                style: TextStyle(
+                  color: _meetingChanceColor(person.meetingChance),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
