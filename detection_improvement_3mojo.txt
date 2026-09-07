@@ -1,0 +1,59 @@
+Ok, questo è un design diverso e più interessante — non è matching per prossimità continua, è **rilevamento di aggregazioni spontanee di persone** (hotspot detection) seguito da una fase di visibilità/chat effimera. È concettualmente vicino a come funzionano gli algoritmi di "stay point detection" + clustering usati in mobility analytics. Ti spiego la pipeline.
+
+## I quattro problemi distinti da risolvere
+
+1. **Dwell detection**: capire quando un dispositivo è "fermo" (non in movimento) per ≥15 minuti
+2. **Clustering spaziale**: raggruppare i dispositivi fermi che sono vicini tra loro
+3. **Hotspot lifecycle**: creare, mantenere, rinnovare, far scadere l'hotspot
+4. **Membership/visibilità**: chi entra/esce dall'hotspot vede/perde gli altri, chat effimera legata all'hotspot
+
+Te li faccio vedere come pipeline prima di entrare nel dettaglio di ciascuno.## 1. Rilevamento dwell (stato per dispositivo)
+
+Per ogni dispositivo mantieni una piccola macchina a stati con un buffer delle ultime posizioni:
+
+- Ad ogni ping, se la nuova posizione è entro un piccolo raggio (es. 15-20 m, per assorbire il rumore GPS) dal centroide del buffer corrente → resta "in movimento verso stazionarietà", accumula tempo.
+- Se il tempo accumulato in quel piccolo raggio raggiunge 15 minuti → il dispositivo passa a stato `stationary`, con posizione = centroide del buffer.
+- Se il dispositivo esce dal raggio prima dei 15 minuti, o si muove significativamente da stationary → reset del buffer.
+
+Questo è economico: è calcolo locale per dispositivo (O(1) per update), nessun confronto tra utenti in questa fase. Lo stato si aggiorna solo su nuovi ping GPS, non serve polling continuo.
+
+## 2. Clustering spaziale (solo su chi è stationary)
+
+Qui è dove entra il vero calcolo, ma il dataset è già filtrato — solo i dispositivi `stationary` partecipano, che a runtime sono una piccolissima frazione degli utenti attivi totali.
+
+**DBSCAN è l'algoritmo giusto** perché i suoi due parametri mappano esattamente sul tuo problema:
+- `eps` = raggio di vicinato (es. metà del diametro dell'hotspot desiderato)
+- `minPts` = numero minimo di persone ferme vicine per far scattare un hotspot (es. 3)
+
+Non serve girare DBSCAN su tutta la mappa: bucket i dispositivi stationary per cella geohash (celle leggermente più grandi di `eps`), esegui il clustering per cella + celle adiacenti. Costo O(k log k) dove k è il numero di stationary devices in quella zona — trascurabile.
+
+Esegui questo passo periodicamente (ogni 1-2 minuti) sul sottoinsieme stationary, non ad ogni singolo update di posizione — non serve reagire in tempo reale a questo livello.
+
+## 3. Creazione hotspot
+
+Quando un cluster supera `minPts` sostenuto per un certo periodo (es. rilevato in 2 run consecutivi del clustering, per evitare falsi positivi da un cluster instabile):
+- crea un record hotspot: `id`, `centro` (centroide del cluster), `raggio`, `created_at`, `expires_at = created_at + 1h`
+- salvalo in una struttura indicizzata (es. ancora Redis GEO, o semplicemente in memoria dato il volume basso di hotspot attivi contemporaneamente)
+
+## 4. Visibilità e chat
+
+Un dispositivo diventa "membro" dell'hotspot quando la sua posizione cade dentro il raggio dell'hotspot (semplice test punto-in-cerchio, O(1)). La membership è **effimera e per hotspot**, non un profilo persistente:
+- entra → ottiene accesso alla lista membri + chat room legata a `hotspot_id`
+- esce dall'area (con isteresi: raggio + margine, es. 20% in più, per evitare flickering al bordo) → perde l'accesso
+- quando l'hotspot scade, la chat/room viene distrutta insieme ai dati associati
+
+## 5. Scadenza / rinnovo
+
+Al TTL: se il cluster (persone ancora ferme lì) è ancora sopra soglia, rinnova l'hotspot per un'altra ora mantenendo lo stesso `id` (così la chat non si azzera inutilmente); altrimenti fai scadere e cancella tutto.
+
+## Considerazioni di stabilità specifiche a questo design
+
+- **Isteresi doppia**: sia per entrare/uscire da "stationary" (raggio più stretto per iniziare a contare, più largo per uscire), sia per entrare/uscire dall'hotspot una volta creato.
+- **Debounce sulla creazione**: richiedi che il cluster sia sopra soglia per 2+ cicli di valutazione consecutivi prima di materializzare l'hotspot, altrimenti un gruppo che si scioglie subito dopo essersi formato genera hotspot fantasma.
+- **Merge di hotspot vicini**: se due hotspot finiscono per sovrapporsi (gruppi che si avvicinano), valuta se unirli piuttosto che lasciarli a competere sugli stessi utenti.
+
+## Costo computazionale complessivo
+
+Il grosso del carico (confronto posizioni tra utenti) avviene solo tra il sottoinsieme *stationary*, che per un'app di incontri è realisticamente una frazione piccola degli utenti attivi in un dato momento — la maggior parte delle persone si sposta. Questo rende l'intero pipeline molto più leggero del "raggio dinamico globale" di cui parlavamo prima, a costo di una latenza intrinseca (i 15 minuti di dwell + il ciclo di clustering periodico): non è un sistema real-time, è un sistema che rileva pattern comportamentali con un ritardo accettabile per il tuo caso d'uso.
+
+Una nota di design, non tecnica: dato che qui stai *materializzando* luoghi fisici reali dove le persone sono ferme (bar, panchine, eventi), vale la pena pensare a un consenso esplicito prima che qualcuno diventi visibile agli altri nell'hotspot, oltre al semplice trovarsi lì per errore (es. una persona ferma ad aspettare un autobus).
