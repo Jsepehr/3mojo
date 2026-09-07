@@ -28,6 +28,21 @@ class Hotspot {
   DateTime expiresAt;
 
   static const double radiusMeters = 200;
+
+  /// Isteresi d'uscita: una volta dentro (a [radiusMeters]), serve
+  /// allontanarsi oltre *questo* raggio più largo per uscire dalla
+  /// visibilità — altrimenti chi sta esattamente sul bordo dei 200m
+  /// entrerebbe/uscirebbe dalla lista "Vicinanze" a ogni piccola
+  /// oscillazione GPS. Vedi `HotspotStore._isMember`.
+  static const double exitRadiusMeters = radiusMeters * 1.2;
+
+  /// Chi è attualmente "dentro" questo hotspot, con isteresi — aggiornato
+  /// pigramente, sessione per sessione, da `HotspotStore._isMember` ad ogni
+  /// `sharesAnyActiveHotspot` (istantaneo ad ogni broadcast, come il resto
+  /// della visibilità — non aspetta il prossimo giro di
+  /// `HotspotStore.detectAndRefresh`, che rimane responsabile solo di
+  /// creare/rinnovare/far scadere l'hotspot in sé, non la membership).
+  final Set<String> memberSessionIds = {};
 }
 
 /// Tiene in memoria le zone d'incontro attive — stesso pattern di
@@ -89,22 +104,54 @@ class HotspotStore {
     return List.unmodifiable(_hotspots);
   }
 
-  /// true se esiste un hotspot attivo che copre **entrambe** le posizioni —
-  /// non basta che ognuna sia dentro un hotspot qualsiasi, deve essere lo
-  /// stesso per entrambe (altrimenti due persone in due zone calde diverse,
-  /// dall'altra parte della città, risulterebbero visibili tra loro).
+  /// true se esiste un hotspot attivo di cui **entrambe** le sessioni sono
+  /// membre in questo momento (con isteresi — vedi `_isMember`) — non basta
+  /// che ognuna sia dentro un hotspot qualsiasi, deve essere lo stesso per
+  /// entrambe (altrimenti due persone in due zone calde diverse, dall'altra
+  /// parte della città, risulterebbero visibili tra loro). Aggiorna
+  /// `Hotspot.memberSessionIds` per entrambe le sessioni come effetto
+  /// collaterale, così l'isteresi resta coerente alla chiamata successiva.
   bool sharesAnyActiveHotspot(
+    String sessionId1,
     double lat1,
     double lng1,
+    String sessionId2,
     double lat2,
     double lng2,
-  ) => active.any(
-    (h) =>
-        distanceMeters(lat1, lng1, h.centerLat, h.centerLng) <=
-            Hotspot.radiusMeters &&
-        distanceMeters(lat2, lng2, h.centerLat, h.centerLng) <=
-            Hotspot.radiusMeters,
-  );
+  ) {
+    var shares = false;
+    for (final hotspot in active) {
+      final inFirst = _isMember(hotspot, sessionId1, lat1, lng1);
+      final inSecond = _isMember(hotspot, sessionId2, lat2, lng2);
+      if (inFirst && inSecond) shares = true;
+    }
+    return shares;
+  }
+
+  /// true se `sessionId` (in `lat`/`lng`) è "dentro" [hotspot] in questo
+  /// momento, con isteresi: se non lo era, entra solo scendendo a
+  /// [Hotspot.radiusMeters] o meno; se lo era già, resta dentro finché non
+  /// supera [Hotspot.exitRadiusMeters] — così chi oscilla intorno al bordo
+  /// per rumore GPS non compare/scompare dalla lista "Vicinanze" ad ogni
+  /// controllo. Aggiorna `hotspot.memberSessionIds` di conseguenza.
+  bool _isMember(Hotspot hotspot, String sessionId, double lat, double lng) {
+    final distance = distanceMeters(
+      lat,
+      lng,
+      hotspot.centerLat,
+      hotspot.centerLng,
+    );
+    final wasMember = hotspot.memberSessionIds.contains(sessionId);
+    final isMember = wasMember
+        ? distance <= Hotspot.exitRadiusMeters
+        : distance <= Hotspot.radiusMeters;
+    if (isMember) {
+      hotspot.memberSessionIds.add(sessionId);
+    } else {
+      hotspot.memberSessionIds.remove(sessionId);
+    }
+    return isMember;
+  }
 
   /// true se un cerchio centrato in (lat,lng) si sovrapporrebbe al cerchio di
   /// un altro hotspot attivo (distanza tra i centri < la somma dei due raggi,

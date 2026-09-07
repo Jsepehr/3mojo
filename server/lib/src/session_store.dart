@@ -240,7 +240,14 @@ class SessionStore {
       final direct = distance <= radiusMeters;
       final viaHotspot =
           !direct &&
-          hotspots.sharesAnyActiveHotspot(me.lat, me.lng, other.lat, other.lng);
+          hotspots.sharesAnyActiveHotspot(
+            me.sessionId,
+            me.lat,
+            me.lng,
+            other.sessionId,
+            other.lat,
+            other.lng,
+          );
       if (!direct && !viaHotspot) continue;
 
       final dwell = now.difference(other.arrivedAt);

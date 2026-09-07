@@ -225,7 +225,7 @@ void main() {
       clock = clock.add(const Duration(minutes: 16));
       hotspots.detectAndRefresh(sessions.allSessions);
 
-      expect(hotspots.sharesAnyActiveHotspot(0, 0, 1, 1), isFalse);
+      expect(hotspots.sharesAnyActiveHotspot('a', 0, 0, 'p', 1, 1), isFalse);
     });
 
     test('two genuinely separate clusters only ~250m apart do not both '
