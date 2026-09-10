@@ -1,6 +1,6 @@
 {
   "@@locale": "it",
-  "threemojo_app": "ThreeMojo App",
+  "app_title": "3mojo App",
   "meet_people_near_you": "Incontra chi è vicino a te",
   "discover_people_within_100_meters_in_real_time": "Scopri le persone entro 100 metri, in tempo reale.",
   "start": "Start",
@@ -68,5 +68,5 @@
   "francais": "Français",
   "language_option_arabic": "العربية",
   "meet_people_nearby_in_real_time": "Incontra le persone vicine a te, in tempo reale.",
-  "check_out_threemojo_an_app_to_meet_people_nearby_in_real_time": "Prova ThreeMojo, l'app per incontrare persone vicine a te in tempo reale!"
+  "check_out_3mojo_an_app_to_meet_people_nearby_in_real_time": "Prova 3mojo, l'app per incontrare persone vicine a te in tempo reale!"
 }

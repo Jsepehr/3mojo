@@ -27,7 +27,7 @@ class CmpAppDrawer extends StatelessWidget {
 
     showAboutDialog(
       context: context,
-      applicationName: l10n.threemojo_app,
+      applicationName: l10n.app_title,
       applicationVersion: packageInfo.version,
       children: [Text(l10n.meet_people_nearby_in_real_time)],
     );
@@ -37,7 +37,7 @@ class CmpAppDrawer extends StatelessWidget {
     final box = context.findRenderObject() as RenderBox?;
     SharePlus.instance.share(
       ShareParams(
-        text: l10n.check_out_threemojo_an_app_to_meet_people_nearby_in_real_time,
+        text: l10n.check_out_3mojo_an_app_to_meet_people_nearby_in_real_time,
         sharePositionOrigin: box == null
             ? null
             : box.localToGlobal(Offset.zero) & box.size,

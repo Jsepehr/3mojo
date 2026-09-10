@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
-  "threemojo_app": "ThreeMojo App",
-  "@threemojo_app": {
+  "app_title": "3mojo App",
+  "@app_title": {
     "description": "The application title shown in the OS task switcher"
   },
   "meet_people_near_you": "Meet people near you",
@@ -272,8 +272,8 @@
   "@meet_people_nearby_in_real_time": {
     "description": "Short description shown in the About dialog"
   },
-  "check_out_threemojo_an_app_to_meet_people_nearby_in_real_time": "Check out ThreeMojo, an app to meet people nearby in real time!",
-  "@check_out_threemojo_an_app_to_meet_people_nearby_in_real_time": {
+  "check_out_3mojo_an_app_to_meet_people_nearby_in_real_time": "Check out 3mojo, an app to meet people nearby in real time!",
+  "@check_out_3mojo_an_app_to_meet_people_nearby_in_real_time": {
     "description": "Text shared through the native share sheet when the user taps Share app"
   }
 }

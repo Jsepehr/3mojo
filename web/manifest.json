@@ -1,6 +1,6 @@
 {
-    "name": "threemojo_app",
-    "short_name": "threemojo_app",
+    "name": "3mojo",
+    "short_name": "3mojo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
