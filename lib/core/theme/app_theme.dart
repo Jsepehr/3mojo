@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Temi Material 3 per tutta l'app, chiaro e scuro, generati dallo stesso
 /// colore seme — l'app segue il tema di sistema (`ThemeMode.system`).
@@ -6,6 +7,12 @@ class AppTheme {
   const AppTheme._();
 
   static const _seedColor = Color.fromARGB(255, 26, 60, 209);
+
+  static TextTheme _textTheme(ColorScheme colorScheme) =>
+      GoogleFonts.manropeTextTheme().apply(
+        bodyColor: colorScheme.onSurface,
+        displayColor: colorScheme.onSurface,
+      );
 
   // Superfici scure blu (non il grigio quasi nero che Material 3 genera di
   // default dal seed) — stessa tonalità del seed, solo molto più scura.
@@ -22,10 +29,14 @@ class AppTheme {
   static const _darkOutline = Color(0xFF5C6B94);
   static const _darkOutlineVariant = Color(0xFF3A4568);
 
-  static ThemeData get light => ThemeData(
-    colorScheme: ColorScheme.fromSeed(seedColor: _seedColor),
-    useMaterial3: true,
-  );
+  static ThemeData get light {
+    final colorScheme = ColorScheme.fromSeed(seedColor: _seedColor);
+    return ThemeData(
+      colorScheme: colorScheme,
+      textTheme: _textTheme(colorScheme),
+      useMaterial3: true,
+    );
+  }
 
   static ThemeData get dark {
     final colorScheme =
@@ -51,6 +62,7 @@ class AppTheme {
 
     return ThemeData(
       colorScheme: colorScheme,
+      textTheme: _textTheme(colorScheme),
       scaffoldBackgroundColor: colorScheme.surface,
       useMaterial3: true,
     );
