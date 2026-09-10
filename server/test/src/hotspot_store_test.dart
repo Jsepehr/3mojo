@@ -144,6 +144,48 @@ void main() {
       expect(hotspots.active, isEmpty);
     });
 
+    test('a founding trio that stays put renews the SAME hotspot in place -- '
+        'not discarded and silently re-created -- even if an unrelated '
+        'straggler also lingers within the old radius', () {
+      placeTrio();
+      clock = clock.add(const Duration(minutes: 16));
+      hotspots.detectAndRefresh(sessions.allSessions);
+      final original = hotspots.active.single;
+
+      // 'd' is unrelated to the trio: ~150m from the hotspot center (still
+      // within its 200m reach, so it counts as a "supporter"), but >100m
+      // from each of a/b/c, so it can never join their clique. The founding
+      // trio itself hasn't moved -- it alone should still be enough to
+      // renew, the same way it was enough to form the hotspot in the first
+      // place. A naive renewal check that demands the *entire* supporter
+      // set (trio + straggler) be one clique would reject renewal outright;
+      // the object would then get purged as expired and, in this
+      // particular layout, happen to be immediately re-detected from
+      // scratch as a look-alike replacement -- masking the bug unless we
+      // check identity/creation time, not just where it ends up.
+      sessions.upsertPosition(sessionId: 'd', lat: 0.0013803, lng: 0.0000333);
+      clock = clock.add(const Duration(hours: 1, minutes: 1));
+
+      hotspots.detectAndRefresh(sessions.allSessions);
+
+      expect(hotspots.active, hasLength(1));
+      final renewed = hotspots.active.single;
+      expect(
+        identical(renewed, original),
+        isTrue,
+        reason:
+            'renewal must extend the existing hotspot, not discard it and '
+            'create a look-alike -- that would silently reset '
+            'Hotspot.memberSessionIds (losing exit hysteresis for anyone '
+            'who drifted into the 200-240m ring) and could even fail '
+            'outright if re-creation happened to overlap another hotspot, '
+            'something plain renewal is never subject to',
+      );
+      expect(renewed.createdAt, original.createdAt);
+      expect(renewed.centerLat, original.centerLat);
+      expect(renewed.centerLng, original.centerLng);
+    });
+
     test(
       'recenters when the bare minimum remains and has drifted to the edge',
       () {

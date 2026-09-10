@@ -173,17 +173,24 @@ class HotspotStore {
 
   /// Chiamato a ogni broadcast (vedi `ConnectionHub.broadcastNearbyUpdates`):
   /// 1. Rinnovo: per ogni hotspot esistente, i "supporter" sono le sessioni
-  ///    idonee entro il suo raggio che sono **anche** reciprocamente entro
-  ///    [clusterRadiusMeters] tra loro (stesso vincolo della formazione —
-  ///    altrimenti persone sparse fino a 400m l'una dall'altra, vicine solo
-  ///    al vecchio centro, terrebbero in vita un hotspot che non potrebbe mai
-  ///    essersi formato in quelle condizioni). Se sono ≥[minClusterSize]:
-  ///    se il gruppo è ridotto proprio al minimo *e* si è spostato verso il
-  ///    bordo (nessun supporter entro [clusterRadiusMeters] dal centro
-  ///    attuale), il centro viene ricalcolato sul centroide dei supporter
-  ///    attuali — altrimenti resta fermo. In entrambi i casi `expiresAt` si
-  ///    estende. Se i supporter sono meno di [minClusterSize], l'hotspot non
-  ///    viene rinnovato (scadrà da solo quando si supera `expiresAt`).
+  ///    idonee entro il suo raggio; tra questi, `_findSupportingClique` cerca
+  ///    un gruppo di **almeno [minClusterSize] reciprocamente entro
+  ///    [clusterRadiusMeters]** (stesso vincolo della formazione — altrimenti
+  ///    persone sparse fino a 400m l'una dall'altra, vicine solo al vecchio
+  ///    centro, terrebbero in vita un hotspot che non potrebbe mai essersi
+  ///    formato in quelle condizioni). Non serve che **tutti** i supporter lo
+  ///    siano: un estraneo fermo altrove nello stesso raggio, ma troppo
+  ///    lontano dal gruppo che sostiene davvero l'hotspot, non deve poter far
+  ///    fallire il rinnovo di quel gruppo (vedi test "a founding trio that
+  ///    stays put..."). Se una cricca esiste: quando è ridotta proprio al
+  ///    minimo *e* si è spostata verso il bordo (nessun suo membro entro
+  ///    [clusterRadiusMeters] dal centro attuale), il centro viene
+  ///    ricalcolato sul centroide della cricca — altrimenti resta fermo. In
+  ///    entrambi i casi `expiresAt` si estende sullo **stesso** oggetto
+  ///    `Hotspot` (mai ricreato da zero: lo perderebbe `memberSessionIds`,
+  ///    l'isteresi di uscita per chi è nell'anello 200-240m). Se nessuna
+  ///    cricca valida esiste tra i supporter, l'hotspot non viene rinnovato
+  ///    (scadrà da solo quando si supera `expiresAt`).
   /// 2. Scadenza: chi non è stato rinnovato ed è oltre `expiresAt` viene tolto.
   /// 3. Rilevamento: tra le sessioni idonee **vicine in latitudine** (vedi
   ///    partizionamento spaziale sotto — non tra tutte, ovunque si trovino),
@@ -216,24 +223,22 @@ class HotspotStore {
           )
           .toList();
 
-      final isValidGroup =
-          supporters.length >= minClusterSize &&
-          _allPairwiseWithin(supporters, clusterRadiusMeters);
-      if (!isValidGroup) continue;
+      final clique = supporters.length >= minClusterSize
+          ? _findSupportingClique(supporters)
+          : null;
+      if (clique == null) continue;
 
-      final onlyBareMinimum = supporters.length == minClusterSize;
-      final noneNearCore = supporters.every(
+      final onlyBareMinimum = clique.length == minClusterSize;
+      final noneNearCore = clique.every(
         (s) =>
             distanceMeters(s.lat, s.lng, hotspot.centerLat, hotspot.centerLng) >
             clusterRadiusMeters,
       );
       if (onlyBareMinimum && noneNearCore) {
         final recenteredLat =
-            supporters.map((s) => s.lat).reduce((a, b) => a + b) /
-            supporters.length;
+            clique.map((s) => s.lat).reduce((a, b) => a + b) / clique.length;
         final recenteredLng =
-            supporters.map((s) => s.lng).reduce((a, b) => a + b) /
-            supporters.length;
+            clique.map((s) => s.lng).reduce((a, b) => a + b) / clique.length;
         // Non spostarlo se il nuovo punto farebbe sovrapporre il suo cerchio
         // a un altro hotspot attivo -- resta fermo al vecchio centro (viene
         // comunque rinnovato subito sotto) piuttosto che violare la regola
@@ -298,6 +303,44 @@ class HotspotStore {
         );
       }
     }
+  }
+
+  /// Cerca, dentro `supporters`, un gruppo di almeno [minClusterSize]
+  /// reciprocamente entro [clusterRadiusMeters] — a differenza di
+  /// `_allPairwiseWithin(supporters, ...)` da solo, non pretende che **tutti**
+  /// i supporter lo siano: un estraneo fermo altrove nello stesso raggio del
+  /// centro non deve poter far fallire il rinnovo del gruppo che davvero lo
+  /// sostiene (vedi `detectAndRefresh`, punto 1). Parte dalla prima tripla
+  /// valida trovata (stessa combinatoria della rilevazione, § sotto), poi la
+  /// allarga con chiunque altro tra i supporter sia entro
+  /// [clusterRadiusMeters] da **ogni** membro già nel gruppo — non
+  /// necessariamente la cricca più grande possibile, ma economica e
+  /// sufficiente a decidere rinnovo/ricentraggio. `null` se nessuna tripla
+  /// valida esiste. `supporters` è già limitato a chi è entro il raggio di
+  /// *questo* hotspot, quindi resta piccolo indipendentemente da quante
+  /// sessioni sono online in tutto il server.
+  List<Session>? _findSupportingClique(List<Session> supporters) {
+    for (final seed in _combinationsOfSize(supporters, minClusterSize)) {
+      if (!_allPairwiseWithin(seed, clusterRadiusMeters)) continue;
+
+      final clique = [...seed];
+      for (final candidate in supporters) {
+        if (clique.contains(candidate)) continue;
+        final closeToWholeClique = clique.every(
+          (member) =>
+              distanceMeters(
+                member.lat,
+                member.lng,
+                candidate.lat,
+                candidate.lng,
+              ) <=
+              clusterRadiusMeters,
+        );
+        if (closeToWholeClique) clique.add(candidate);
+      }
+      return clique;
+    }
+    return null;
   }
 
   int _latitudeBand(double lat) =>
