@@ -27,9 +27,9 @@ class CmpAppDrawer extends StatelessWidget {
 
     showAboutDialog(
       context: context,
-      applicationName: l10n.appTitle,
+      applicationName: l10n.threemojo_app,
       applicationVersion: packageInfo.version,
-      children: [Text(l10n.aboutAppDescription)],
+      children: [Text(l10n.meet_people_nearby_in_real_time)],
     );
   }
 
@@ -37,7 +37,7 @@ class CmpAppDrawer extends StatelessWidget {
     final box = context.findRenderObject() as RenderBox?;
     SharePlus.instance.share(
       ShareParams(
-        text: l10n.shareAppMessage,
+        text: l10n.check_out_threemojo_an_app_to_meet_people_nearby_in_real_time,
         sharePositionOrigin: box == null
             ? null
             : box.localToGlobal(Offset.zero) & box.size,
@@ -49,7 +49,7 @@ class CmpAppDrawer extends StatelessWidget {
     context.read<ProSettings>().setFakeMode(enabled);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(l10n.drawerFakeModeRestartNotice)));
+    ).showSnackBar(SnackBar(content: Text(l10n.restart_the_app_to_apply_this_change)));
   }
 
   @override
@@ -66,7 +66,7 @@ class CmpAppDrawer extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.language),
-              title: Text(l10n.drawerChangeLanguage),
+              title: Text(l10n.change_language),
               onTap: () {
                 Navigator.of(context).pop();
                 _changeLanguage(context);
@@ -74,20 +74,20 @@ class CmpAppDrawer extends StatelessWidget {
             ),
             SwitchListTile(
               secondary: const Icon(Icons.dark_mode_outlined),
-              title: Text(l10n.drawerDarkMode),
+              title: Text(l10n.dark_mode),
               value: isDarkMode,
               onChanged: (enabled) =>
                   context.read<ProSettings>().setDarkMode(enabled),
             ),
             SwitchListTile(
               secondary: const Icon(Icons.wifi_off_outlined),
-              title: Text(l10n.drawerFakeMode),
+              title: Text(l10n.fake_data_no_network),
               value: isFakeMode,
               onChanged: (enabled) => _toggleFakeMode(context, l10n, enabled),
             ),
             ListTile(
               leading: const Icon(Icons.info_outline),
-              title: Text(l10n.drawerAbout),
+              title: Text(l10n.about),
               onTap: () {
                 Navigator.of(context).pop();
                 _showAbout(context);
@@ -95,7 +95,7 @@ class CmpAppDrawer extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.share),
-              title: Text(l10n.drawerShareApp),
+              title: Text(l10n.share_app),
               onTap: () {
                 Navigator.of(context).pop();
                 _shareApp(context, l10n);

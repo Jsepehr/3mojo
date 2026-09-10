@@ -23,11 +23,11 @@ class UiEncounters extends StatelessWidget {
     final outgoing = proEncounters.outgoingRequests;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.encountersPageTitle)),
+      appBar: AppBar(title: Text(l10n.requests)),
       body: ListView(
         children: [
           if (pendingIncoming.isNotEmpty) ...[
-            _SectionHeader(title: l10n.encountersIncomingSectionTitle),
+            _SectionHeader(title: l10n.someone_wants_to_meet_you),
             for (final request in pendingIncoming)
               CmpIncomingRequestTile(
                 request: request,
@@ -41,12 +41,12 @@ class UiEncounters extends StatelessWidget {
                 ),
               ),
           ],
-          _SectionHeader(title: l10n.encountersOutgoingSectionTitle),
+          _SectionHeader(title: l10n.your_requests),
           if (outgoing.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                l10n.encountersEmptyMessage,
+                l10n.you_havent_sent_any_requests_yet,
                 textAlign: TextAlign.center,
               ),
             )

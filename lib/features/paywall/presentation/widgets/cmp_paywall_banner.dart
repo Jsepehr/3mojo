@@ -29,7 +29,7 @@ class CmpPaywallBanner extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                l10n.paywallBannerMessage,
+                l10n.the_closest_profiles_are_blurred,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
@@ -38,7 +38,7 @@ class CmpPaywallBanner extends StatelessWidget {
             const SizedBox(width: 12),
             FilledButton(
               onPressed: () => showPaywallConfirmDialog(context),
-              child: Text(l10n.paywallUnlockButton),
+              child: Text(l10n.unlock_eur_1),
             ),
           ],
         ),
@@ -57,12 +57,12 @@ Future<void> showPaywallConfirmDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(l10n.paywallConfirmDialogTitle),
-      content: Text(l10n.paywallConfirmDialogMessage),
+      title: Text(l10n.unlock_nearby_profiles),
+      content: Text(l10n.unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text(l10n.paywallConfirmDialogCancel),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () async {
@@ -70,11 +70,11 @@ Future<void> showPaywallConfirmDialog(BuildContext context) {
             await proPaywall.purchase();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.paywallPurchaseSuccessMessage)),
+                SnackBar(content: Text(l10n.unlocked_for_the_next_2_hours)),
               );
             }
           },
-          child: Text(l10n.paywallConfirmDialogConfirm),
+          child: Text(l10n.pay_eur_1),
         ),
       ],
     ),

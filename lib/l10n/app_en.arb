@@ -1,279 +1,279 @@
 {
   "@@locale": "en",
-  "appTitle": "ThreeMojo App",
-  "@appTitle": {
+  "threemojo_app": "ThreeMojo App",
+  "@threemojo_app": {
     "description": "The application title shown in the OS task switcher"
   },
-  "homeTitle": "Meet people near you",
-  "@homeTitle": {
+  "meet_people_near_you": "Meet people near you",
+  "@meet_people_near_you": {
     "description": "Headline on the home page while offline"
   },
-  "homeSubtitle": "Discover people within 100 meters, in real time.",
-  "@homeSubtitle": {
+  "discover_people_within_100_meters_in_real_time": "Discover people within 100 meters, in real time.",
+  "@discover_people_within_100_meters_in_real_time": {
     "description": "Subtitle on the home page while offline"
   },
-  "homeStartButton": "Start",
-  "@homeStartButton": {
+  "start": "Start",
+  "@start": {
     "description": "Button on the home page that goes online, starting the selfie/gender wizard"
   },
-  "homeEndButton": "End",
-  "@homeEndButton": {
+  "end": "End",
+  "@end": {
     "description": "Button on the home page (while online) that ends the session and goes back offline"
   },
-  "startSessionPageTitle": "Go online",
-  "@startSessionPageTitle": {
+  "go_online": "Go online",
+  "@go_online": {
     "description": "Title of the wizard shown after pressing Start: selfie, then gender/preference"
   },
-  "startSessionSubmitButton": "Go online",
-  "@startSessionSubmitButton": {
+  "go_online_2": "Go online",
+  "@go_online_2": {
     "description": "Final button of the start-session wizard, actually starts the online session"
   },
-  "profileTakeSelfieButton": "Take a selfie",
-  "@profileTakeSelfieButton": {
+  "take_a_selfie": "Take a selfie",
+  "@take_a_selfie": {
     "description": "Button that opens the camera to take the selfie for this session"
   },
-  "profileRetakeSelfieButton": "Retake",
-  "@profileRetakeSelfieButton": {
+  "retake": "Retake",
+  "@retake": {
     "description": "Button that opens the camera again to retake the selfie"
   },
-  "profileFlipSelfieButton": "Flip photo",
-  "@profileFlipSelfieButton": {
+  "flip_photo": "Flip photo",
+  "@flip_photo": {
     "description": "Button shown over the selfie to manually mirror it horizontally, for cameras that save it flipped"
   },
-  "profileLikeSelfieButton": "I like it, continue",
-  "@profileLikeSelfieButton": {
+  "i_like_it_continue": "I like it, continue",
+  "@i_like_it_continue": {
     "description": "Button confirming the selfie and moving to the gender/preference step"
   },
-  "profileGenderQuestion": "You are",
-  "@profileGenderQuestion": {
+  "you_are": "You are",
+  "@you_are": {
     "description": "Question asking the user's own gender"
   },
-  "profileGenderPreferenceQuestion": "Looking for",
-  "@profileGenderPreferenceQuestion": {
+  "looking_for": "Looking for",
+  "@looking_for": {
     "description": "Question asking which gender the user wants to see nearby"
   },
-  "profileGenderMale": "Male",
-  "@profileGenderMale": {
+  "male": "Male",
+  "@male": {
     "description": "Male gender option"
   },
-  "profileGenderFemale": "Female",
-  "@profileGenderFemale": {
+  "female": "Female",
+  "@female": {
     "description": "Female gender option"
   },
-  "profileGenderPreferenceEveryone": "Everyone",
-  "@profileGenderPreferenceEveryone": {
+  "everyone": "Everyone",
+  "@everyone": {
     "description": "Gender preference option meaning no filter"
   },
-  "nearbyPageTitle": "Nearby",
-  "@nearbyPageTitle": {
+  "nearby": "Nearby",
+  "@nearby": {
     "description": "Title of the nearby people page and its home button tooltip"
   },
-  "nearbyConnectingMessage": "Connecting to the server…",
-  "@nearbyConnectingMessage": {
+  "connecting_to_the_server": "Connecting to the server…",
+  "@connecting_to_the_server": {
     "description": "Shown while the nearby-people connection to the server is still being established"
   },
-  "nearbyEmptyMessage": "No one within 200 meters right now",
-  "@nearbyEmptyMessage": {
+  "no_one_within_200_meters_right_now": "No one within 200 meters right now",
+  "@no_one_within_200_meters_right_now": {
     "description": "Shown when no nearby people are found within the radius"
   },
-  "nearbyMeetingChanceLow": "Low chance to meet",
-  "@nearbyMeetingChanceLow": {
+  "low_chance_to_meet": "Low chance to meet",
+  "@low_chance_to_meet": {
     "description": "Low bucket of the meeting chance, based on how long the person has stayed in place"
   },
-  "nearbyMeetingChanceMedium": "Medium chance to meet",
-  "@nearbyMeetingChanceMedium": {
+  "medium_chance_to_meet": "Medium chance to meet",
+  "@medium_chance_to_meet": {
     "description": "Medium bucket of the meeting chance, based on how long the person has stayed in place"
   },
-  "nearbyMeetingChanceHigh": "High chance to meet",
-  "@nearbyMeetingChanceHigh": {
+  "high_chance_to_meet": "High chance to meet",
+  "@high_chance_to_meet": {
     "description": "High bucket of the meeting chance, based on how long the person has stayed in place"
   },
-  "nearbyRequestSentMessage": "Request sent",
-  "@nearbyRequestSentMessage": {
+  "request_sent": "Request sent",
+  "@request_sent": {
     "description": "Snackbar shown after tapping a nearby person to send an encounter request"
   },
-  "nearbyEmptyTipRadius": "We only show people who stay within 200 meters for at least a minute — not everyone just passing by.",
-  "@nearbyEmptyTipRadius": {
+  "we_only_show_people_who_stay_within_200_meters": "We only show people who stay within 200 meters for at least a minute — not everyone just passing by.",
+  "@we_only_show_people_who_stay_within_200_meters": {
     "description": "Empty-state tip explaining the radius and minimum-presence rule"
   },
-  "nearbyEmptyTipMeetingChance": "The longer someone stays close to you, the higher their meeting chance: low, medium, high.",
-  "@nearbyEmptyTipMeetingChance": {
+  "the_longer_someone_stays_close_to_you": "The longer someone stays close to you, the higher their meeting chance: low, medium, high.",
+  "@the_longer_someone_stays_close_to_you": {
     "description": "Empty-state tip explaining the meeting chance stages"
   },
-  "nearbyEmptyTipEphemeral": "No names, no permanent profile: just today's photo and distance, only while you're online.",
-  "@nearbyEmptyTipEphemeral": {
+  "no_names_no_permanent_profile": "No names, no permanent profile: just today's photo and distance, only while you're online.",
+  "@no_names_no_permanent_profile": {
     "description": "Empty-state tip explaining there are no accounts or stored profiles"
   },
-  "nearbyEmptyTipOneAtATime": "Accept one request and the others cancel automatically — one encounter at a time.",
-  "@nearbyEmptyTipOneAtATime": {
+  "accept_one_request_and_the_others_cancel_automatically": "Accept one request and the others cancel automatically — one encounter at a time.",
+  "@accept_one_request_and_the_others_cancel_automatically": {
     "description": "Empty-state tip explaining encounter exclusivity"
   },
-  "paywallBannerMessage": "The closest profiles are blurred — unlock to see everyone nearby.",
-  "@paywallBannerMessage": {
+  "the_closest_profiles_are_blurred": "The closest profiles are blurred — unlock to see everyone nearby.",
+  "@the_closest_profiles_are_blurred": {
     "description": "Banner shown above the nearby list when some profiles are paywalled"
   },
-  "paywallUnlockButton": "Unlock — €1",
-  "@paywallUnlockButton": {
+  "unlock_eur_1": "Unlock — €1",
+  "@unlock_eur_1": {
     "description": "Button that opens the unlock purchase confirmation"
   },
-  "paywallConfirmDialogTitle": "Unlock nearby profiles",
-  "@paywallConfirmDialogTitle": {
+  "unlock_nearby_profiles": "Unlock nearby profiles",
+  "@unlock_nearby_profiles": {
     "description": "Title of the unlock purchase confirmation dialog"
   },
-  "paywallConfirmDialogMessage": "Unlock every nearby profile for the next 2 hours for €1. This is a mock payment for now — nothing is really charged.",
-  "@paywallConfirmDialogMessage": {
+  "unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1": "Unlock every nearby profile for the next 2 hours for €1. This is a mock payment for now — nothing is really charged.",
+  "@unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1": {
     "description": "Body of the unlock purchase confirmation dialog, explaining it's a mock payment"
   },
-  "paywallConfirmDialogCancel": "Cancel",
-  "@paywallConfirmDialogCancel": {
+  "cancel": "Cancel",
+  "@cancel": {
     "description": "Cancel button in the unlock purchase confirmation dialog"
   },
-  "paywallConfirmDialogConfirm": "Pay €1",
-  "@paywallConfirmDialogConfirm": {
+  "pay_eur_1": "Pay €1",
+  "@pay_eur_1": {
     "description": "Confirm button in the unlock purchase confirmation dialog"
   },
-  "paywallPurchaseSuccessMessage": "Unlocked for the next 2 hours",
-  "@paywallPurchaseSuccessMessage": {
+  "unlocked_for_the_next_2_hours": "Unlocked for the next 2 hours",
+  "@unlocked_for_the_next_2_hours": {
     "description": "Snackbar shown after the (mock) unlock purchase succeeds"
   },
-  "encountersPageTitle": "Requests",
-  "@encountersPageTitle": {
+  "requests": "Requests",
+  "@requests": {
     "description": "Title of the encounter requests page and its home button tooltip"
   },
-  "encountersIncomingSectionTitle": "Someone wants to meet you",
-  "@encountersIncomingSectionTitle": {
+  "someone_wants_to_meet_you": "Someone wants to meet you",
+  "@someone_wants_to_meet_you": {
     "description": "Section header for incoming encounter requests"
   },
-  "encountersOutgoingSectionTitle": "Your requests",
-  "@encountersOutgoingSectionTitle": {
+  "your_requests": "Your requests",
+  "@your_requests": {
     "description": "Section header for outgoing encounter requests"
   },
-  "encountersEmptyMessage": "You haven't sent any requests yet",
-  "@encountersEmptyMessage": {
+  "you_havent_sent_any_requests_yet": "You haven't sent any requests yet",
+  "@you_havent_sent_any_requests_yet": {
     "description": "Shown when there are no outgoing encounter requests"
   },
-  "encountersWantsToMeetYou": "This person wants to meet you",
-  "@encountersWantsToMeetYou": {
+  "this_person_wants_to_meet_you": "This person wants to meet you",
+  "@this_person_wants_to_meet_you": {
     "description": "Message shown on an incoming encounter request card"
   },
-  "encountersAcceptButton": "Yes",
-  "@encountersAcceptButton": {
+  "yes": "Yes",
+  "@yes": {
     "description": "Button to accept an incoming encounter request"
   },
-  "encountersDeclineButton": "No",
-  "@encountersDeclineButton": {
+  "no": "No",
+  "@no": {
     "description": "Button to decline an incoming encounter request"
   },
-  "encountersStatusPending": "Waiting for a reply",
-  "@encountersStatusPending": {
+  "waiting_for_a_reply": "Waiting for a reply",
+  "@waiting_for_a_reply": {
     "description": "Status label for a pending outgoing encounter request"
   },
-  "encountersStatusAccepted": "Accepted!",
-  "@encountersStatusAccepted": {
+  "accepted": "Accepted!",
+  "@accepted": {
     "description": "Status label for an accepted outgoing encounter request"
   },
-  "encountersStatusDeclined": "Declined",
-  "@encountersStatusDeclined": {
+  "declined": "Declined",
+  "@declined": {
     "description": "Status label for a declined outgoing encounter request"
   },
-  "encountersStatusCancelled": "Cancelled (you matched with someone else)",
-  "@encountersStatusCancelled": {
+  "cancelled_you_matched_with_someone_else": "Cancelled (you matched with someone else)",
+  "@cancelled_you_matched_with_someone_else": {
     "description": "Status label for a request auto-cancelled because another match was accepted"
   },
-  "encountersStatusEnded": "Ended",
-  "@encountersStatusEnded": {
+  "ended": "Ended",
+  "@ended": {
     "description": "Status label for a match that was manually ended"
   },
-  "chatPageTitle": "Chat",
-  "@chatPageTitle": {
+  "chat": "Chat",
+  "@chat": {
     "description": "Title of the active-match chat page"
   },
-  "chatInputHint": "Write a message…",
-  "@chatInputHint": {
+  "write_a_message": "Write a message…",
+  "@write_a_message": {
     "description": "Placeholder text for the chat message input field"
   },
-  "matchEndButton": "End",
-  "@matchEndButton": {
+  "end_2": "End",
+  "@end_2": {
     "description": "Button on the active-match page that ends the match, after confirmation"
   },
-  "matchLeaveWarningTitle": "End this match?",
-  "@matchLeaveWarningTitle": {
+  "end_this_match": "End this match?",
+  "@end_this_match": {
     "description": "Title of the confirmation dialog shown when leaving the active-match page"
   },
-  "matchLeaveWarningMessage": "You'll lose contact with this person for good.",
-  "@matchLeaveWarningMessage": {
+  "youll_lose_contact_with_this_person_for_good": "You'll lose contact with this person for good.",
+  "@youll_lose_contact_with_this_person_for_good": {
     "description": "Message of the confirmation dialog shown when leaving the active-match page"
   },
-  "matchLeaveWarningCancel": "Stay",
-  "@matchLeaveWarningCancel": {
+  "stay": "Stay",
+  "@stay": {
     "description": "Cancel option of the leave-match confirmation dialog"
   },
-  "matchLeaveWarningConfirm": "End it",
-  "@matchLeaveWarningConfirm": {
+  "end_it": "End it",
+  "@end_it": {
     "description": "Confirm option of the leave-match confirmation dialog"
   },
-  "drawerChangeLanguage": "Change language",
-  "@drawerChangeLanguage": {
+  "change_language": "Change language",
+  "@change_language": {
     "description": "Side menu entry that opens the language picker"
   },
-  "drawerDarkMode": "Dark mode",
-  "@drawerDarkMode": {
+  "dark_mode": "Dark mode",
+  "@dark_mode": {
     "description": "Side menu switch that toggles between light and dark theme"
   },
-  "drawerAbout": "About",
-  "@drawerAbout": {
+  "about": "About",
+  "@about": {
     "description": "Side menu entry that opens the About dialog"
   },
-  "drawerShareApp": "Share app",
-  "@drawerShareApp": {
+  "share_app": "Share app",
+  "@share_app": {
     "description": "Side menu entry that opens the native share sheet for the app"
   },
-  "drawerFakeMode": "Fake data (no network)",
-  "@drawerFakeMode": {
+  "fake_data_no_network": "Fake data (no network)",
+  "@fake_data_no_network": {
     "description": "Side menu switch that toggles fake, offline data instead of the real backend"
   },
-  "drawerFakeModeRestartNotice": "Restart the app to apply this change",
-  "@drawerFakeModeRestartNotice": {
+  "restart_the_app_to_apply_this_change": "Restart the app to apply this change",
+  "@restart_the_app_to_apply_this_change": {
     "description": "Snackbar shown after toggling fake mode, since it only applies on next app start"
   },
-  "languagePickerTitle": "Choose a language",
-  "@languagePickerTitle": {
+  "choose_a_language": "Choose a language",
+  "@choose_a_language": {
     "description": "Title of the language picker dialog opened from the side menu"
   },
-  "languageOptionSystem": "System default",
-  "@languageOptionSystem": {
+  "system_default": "System default",
+  "@system_default": {
     "description": "Language option that follows the phone's system language"
   },
-  "languageOptionEnglish": "English",
-  "@languageOptionEnglish": {
+  "english": "English",
+  "@english": {
     "description": "Language option: English"
   },
-  "languageOptionItalian": "Italiano",
-  "@languageOptionItalian": {
+  "italiano": "Italiano",
+  "@italiano": {
     "description": "Language option: Italian"
   },
-  "languageOptionGerman": "Deutsch",
-  "@languageOptionGerman": {
+  "deutsch": "Deutsch",
+  "@deutsch": {
     "description": "Language option: German"
   },
-  "languageOptionSpanish": "Español",
-  "@languageOptionSpanish": {
+  "espanol": "Español",
+  "@espanol": {
     "description": "Language option: Spanish"
   },
-  "languageOptionFrench": "Français",
-  "@languageOptionFrench": {
+  "francais": "Français",
+  "@francais": {
     "description": "Language option: French"
   },
-  "languageOptionArabic": "العربية",
-  "@languageOptionArabic": {
+  "language_option_arabic": "العربية",
+  "@language_option_arabic": {
     "description": "Language option: Arabic"
   },
-  "aboutAppDescription": "Meet people nearby, in real time.",
-  "@aboutAppDescription": {
+  "meet_people_nearby_in_real_time": "Meet people nearby, in real time.",
+  "@meet_people_nearby_in_real_time": {
     "description": "Short description shown in the About dialog"
   },
-  "shareAppMessage": "Check out ThreeMojo, an app to meet people nearby in real time!",
-  "@shareAppMessage": {
+  "check_out_threemojo_an_app_to_meet_people_nearby_in_real_time": "Check out ThreeMojo, an app to meet people nearby in real time!",
+  "@check_out_threemojo_an_app_to_meet_people_nearby_in_real_time": {
     "description": "Text shared through the native share sheet when the user taps Share app"
   }
 }

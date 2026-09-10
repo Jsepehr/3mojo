@@ -31,18 +31,18 @@ class CmpIncomingRequestTile extends StatelessWidget {
           children: [
             CmpPhoto(image: photo, size: 96),
             const SizedBox(height: 12),
-            Text(l10n.encountersWantsToMeetYou, textAlign: TextAlign.center),
+            Text(l10n.this_person_wants_to_meet_you, textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 OutlinedButton(
                   onPressed: onDecline,
-                  child: Text(l10n.encountersDeclineButton),
+                  child: Text(l10n.no),
                 ),
                 FilledButton(
                   onPressed: onAccept,
-                  child: Text(l10n.encountersAcceptButton),
+                  child: Text(l10n.yes),
                 ),
               ],
             ),

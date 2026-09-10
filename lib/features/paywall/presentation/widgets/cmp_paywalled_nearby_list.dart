@@ -28,7 +28,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
     final proPaywall = context.watch<ProPaywall>();
 
     if (proNearby.isLoading) {
-      return CmpNearbyWaitingOverlay(title: l10n.nearbyConnectingMessage);
+      return CmpNearbyWaitingOverlay(title: l10n.connecting_to_the_server);
     }
 
     if (proNearby.errorMessage != null) {
@@ -36,7 +36,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
     }
 
     if (proNearby.people.isEmpty) {
-      return CmpNearbyWaitingOverlay(title: l10n.nearbyEmptyMessage);
+      return CmpNearbyWaitingOverlay(title: l10n.no_one_within_200_meters_right_now);
     }
 
     final lockedPeople = _getLockedNearbyPeopleUseCase(
@@ -74,7 +74,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(l10n.nearbyRequestSentMessage),
+                                content: Text(l10n.request_sent),
                               ),
                             );
                           },

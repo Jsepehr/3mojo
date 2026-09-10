@@ -57,11 +57,11 @@ class CmpNearbyPersonTile extends StatelessWidget {
   String _meetingChanceLabel(AppLocalizations l10n, MeetingChance chance) {
     switch (chance) {
       case MeetingChance.low:
-        return l10n.nearbyMeetingChanceLow;
+        return l10n.low_chance_to_meet;
       case MeetingChance.medium:
-        return l10n.nearbyMeetingChanceMedium;
+        return l10n.medium_chance_to_meet;
       case MeetingChance.high:
-        return l10n.nearbyMeetingChanceHigh;
+        return l10n.high_chance_to_meet;
     }
   }
 

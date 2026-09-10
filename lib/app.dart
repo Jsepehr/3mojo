@@ -233,7 +233,7 @@ class App extends StatelessWidget {
       ],
       child: Consumer<ProSettings>(
         builder: (context, proSettings, _) => MaterialApp(
-          onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+          onGenerateTitle: (context) => AppLocalizations.of(context)!.threemojo_app,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: proSettings.themeMode,

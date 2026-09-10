@@ -64,10 +64,10 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final tips = [
-      l10n.nearbyEmptyTipRadius,
-      l10n.nearbyEmptyTipMeetingChance,
-      l10n.nearbyEmptyTipEphemeral,
-      l10n.nearbyEmptyTipOneAtATime,
+      l10n.we_only_show_people_who_stay_within_200_meters,
+      l10n.the_longer_someone_stays_close_to_you,
+      l10n.no_names_no_permanent_profile,
+      l10n.accept_one_request_and_the_others_cancel_automatically,
     ];
 
     return Stack(

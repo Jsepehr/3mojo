@@ -120,7 +120,7 @@ class _UiStartSessionState extends State<UiStartSession> {
     final errorMessage = context.watch<ProSession>().errorMessage;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.startSessionPageTitle)),
+      appBar: AppBar(title: Text(l10n.go_online)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: _step == 0
@@ -173,7 +173,7 @@ class _UiStartSessionState extends State<UiStartSession> {
                     ),
                     child: IconButton(
                       onPressed: _isFlipping ? null : _flipSelfie,
-                      tooltip: l10n.profileFlipSelfieButton,
+                      tooltip: l10n.flip_photo,
                       icon: Icon(
                         Icons.flip,
                         color: Theme.of(context).colorScheme.onPrimary,
@@ -190,8 +190,8 @@ class _UiStartSessionState extends State<UiStartSession> {
             onPressed: _takeSelfie,
             child: Text(
               _selfiePath == null
-                  ? l10n.profileTakeSelfieButton
-                  : l10n.profileRetakeSelfieButton,
+                  ? l10n.take_a_selfie
+                  : l10n.retake,
             ),
           ),
         ),
@@ -213,7 +213,7 @@ class _UiStartSessionState extends State<UiStartSession> {
                   size: 20,
                   color: Theme.of(context).colorScheme.onPrimary,
                 )
-              : Text(l10n.profileLikeSelfieButton),
+              : Text(l10n.i_like_it_continue),
         ),
       ],
     );
@@ -224,7 +224,7 @@ class _UiStartSessionState extends State<UiStartSession> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          l10n.profileGenderQuestion,
+          l10n.you_are,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
@@ -232,11 +232,11 @@ class _UiStartSessionState extends State<UiStartSession> {
           segments: [
             ButtonSegment(
               value: Gender.male,
-              label: Text(l10n.profileGenderMale),
+              label: Text(l10n.male),
             ),
             ButtonSegment(
               value: Gender.female,
-              label: Text(l10n.profileGenderFemale),
+              label: Text(l10n.female),
             ),
           ],
           selected: _gender == null ? {} : {_gender!},
@@ -247,7 +247,7 @@ class _UiStartSessionState extends State<UiStartSession> {
         ),
         const SizedBox(height: 24),
         Text(
-          l10n.profileGenderPreferenceQuestion,
+          l10n.looking_for,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
@@ -255,15 +255,15 @@ class _UiStartSessionState extends State<UiStartSession> {
           segments: [
             ButtonSegment(
               value: GenderPreference.male,
-              label: Text(l10n.profileGenderMale),
+              label: Text(l10n.male),
             ),
             ButtonSegment(
               value: GenderPreference.female,
-              label: Text(l10n.profileGenderFemale),
+              label: Text(l10n.female),
             ),
             ButtonSegment(
               value: GenderPreference.everyone,
-              label: Text(l10n.profileGenderPreferenceEveryone),
+              label: Text(l10n.everyone),
             ),
           ],
           selected: _genderPreference == null ? {} : {_genderPreference!},
@@ -284,7 +284,7 @@ class _UiStartSessionState extends State<UiStartSession> {
         const Spacer(),
         FilledButton(
           onPressed: _submit,
-          child: Text(l10n.startSessionSubmitButton),
+          child: Text(l10n.go_online_2),
         ),
       ],
     );

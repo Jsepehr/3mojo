@@ -52,13 +52,13 @@ class _OfflineHome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.homeTitle,
+                    l10n.meet_people_near_you,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    l10n.homeSubtitle,
+                    l10n.discover_people_within_100_meters_in_real_time,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
@@ -67,7 +67,7 @@ class _OfflineHome extends StatelessWidget {
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const UiStartSession()),
                     ),
-                    child: Text(l10n.homeStartButton),
+                    child: Text(l10n.start),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -96,14 +96,14 @@ class _OnlineHome extends StatelessWidget {
     return Scaffold(
       drawer: const CmpAppDrawer(),
       appBar: AppBar(
-        title: Text(l10n.nearbyPageTitle),
+        title: Text(l10n.nearby),
         actions: [
           TextButton(
             onPressed: () => context.read<ProSession>().end(),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: Text(l10n.homeEndButton),
+            child: Text(l10n.end),
           ),
         ],
       ),
@@ -120,7 +120,7 @@ class _OnlineHome extends StatelessWidget {
                       label: Text('$pendingCount'),
                       child: const Icon(Icons.favorite_border),
                     ),
-              tooltip: l10n.encountersPageTitle,
+              tooltip: l10n.requests,
               onPressed: () => Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => const UiEncounters())),

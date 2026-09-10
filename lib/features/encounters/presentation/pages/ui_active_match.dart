@@ -77,16 +77,16 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.matchLeaveWarningTitle),
-        content: Text(l10n.matchLeaveWarningMessage),
+        title: Text(l10n.end_this_match),
+        content: Text(l10n.youll_lose_contact_with_this_person_for_good),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.matchLeaveWarningCancel),
+            child: Text(l10n.stay),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.matchLeaveWarningConfirm),
+            child: Text(l10n.end_it),
           ),
         ],
       ),
@@ -124,13 +124,13 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
             children: [
               CmpPhoto(image: photo, size: 40),
               const SizedBox(width: 12),
-              Text(l10n.chatPageTitle),
+              Text(l10n.chat),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => _leaveMatch(l10n),
-              child: Text(l10n.matchEndButton),
+              child: Text(l10n.end_2),
             ),
           ],
         ),
@@ -187,7 +187,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
                                 textCapitalization:
                                     TextCapitalization.sentences,
                                 decoration: InputDecoration(
-                                  hintText: l10n.chatInputHint,
+                                  hintText: l10n.write_a_message,
                                   border: InputBorder.none,
                                   isDense: true,
                                   contentPadding: const EdgeInsets.symmetric(

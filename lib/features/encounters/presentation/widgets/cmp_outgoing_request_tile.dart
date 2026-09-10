@@ -25,15 +25,15 @@ class CmpOutgoingRequestTile extends StatelessWidget {
   String _statusLabel(AppLocalizations l10n, EncounterRequestStatus status) {
     switch (status) {
       case EncounterRequestStatus.pending:
-        return l10n.encountersStatusPending;
+        return l10n.waiting_for_a_reply;
       case EncounterRequestStatus.accepted:
-        return l10n.encountersStatusAccepted;
+        return l10n.accepted;
       case EncounterRequestStatus.declined:
-        return l10n.encountersStatusDeclined;
+        return l10n.declined;
       case EncounterRequestStatus.cancelled:
-        return l10n.encountersStatusCancelled;
+        return l10n.cancelled_you_matched_with_someone_else;
       case EncounterRequestStatus.ended:
-        return l10n.encountersStatusEnded;
+        return l10n.ended;
     }
   }
 }

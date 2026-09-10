@@ -16,7 +16,7 @@ class CmpLanguagePickerDialog extends StatelessWidget {
     final currentLanguage = context.watch<ProSettings>().language;
 
     return SimpleDialog(
-      title: Text(l10n.languagePickerTitle),
+      title: Text(l10n.choose_a_language),
       children: [
         RadioGroup<AppLanguage>(
           groupValue: currentLanguage,
@@ -43,19 +43,19 @@ class CmpLanguagePickerDialog extends StatelessWidget {
   String _labelFor(AppLocalizations l10n, AppLanguage language) {
     switch (language) {
       case AppLanguage.system:
-        return l10n.languageOptionSystem;
+        return l10n.system_default;
       case AppLanguage.english:
-        return l10n.languageOptionEnglish;
+        return l10n.english;
       case AppLanguage.italian:
-        return l10n.languageOptionItalian;
+        return l10n.italiano;
       case AppLanguage.german:
-        return l10n.languageOptionGerman;
+        return l10n.deutsch;
       case AppLanguage.spanish:
-        return l10n.languageOptionSpanish;
+        return l10n.espanol;
       case AppLanguage.french:
-        return l10n.languageOptionFrench;
+        return l10n.francais;
       case AppLanguage.arabic:
-        return l10n.languageOptionArabic;
+        return l10n.language_option_arabic;
     }
   }
 }

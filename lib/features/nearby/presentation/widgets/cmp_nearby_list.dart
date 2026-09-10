@@ -46,7 +46,7 @@ class _NearbyBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (proNearby.isLoading) {
-      return CmpNearbyWaitingOverlay(title: l10n.nearbyConnectingMessage);
+      return CmpNearbyWaitingOverlay(title: l10n.connecting_to_the_server);
     }
 
     if (proNearby.errorMessage != null) {
@@ -54,7 +54,7 @@ class _NearbyBody extends StatelessWidget {
     }
 
     if (proNearby.people.isEmpty) {
-      return CmpNearbyWaitingOverlay(title: l10n.nearbyEmptyMessage);
+      return CmpNearbyWaitingOverlay(title: l10n.no_one_within_200_meters_right_now);
     }
 
     return ListView.builder(
@@ -73,7 +73,7 @@ class _NearbyBody extends StatelessWidget {
                       context.read<ProEncounters>().sendRequest(person.id);
                       context.read<ProNearby>().markRequested(person.id);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l10n.nearbyRequestSentMessage)),
+                        SnackBar(content: Text(l10n.request_sent)),
                       );
                     },
               child: CmpNearbyPersonTile(person: person),
