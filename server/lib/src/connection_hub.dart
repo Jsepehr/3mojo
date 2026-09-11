@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
+import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 /// Tiene i canali WebSocket dei client online e spinge a ognuno gli
@@ -12,19 +13,24 @@ import 'package:threemojo_server/src/session_store.dart';
 /// interpretare i messaggi): solo il lato di scrittura, cosicché resti
 /// testabile senza un vero `WebSocketChannel`.
 class ConnectionHub {
-  ConnectionHub._(this._sessionStore, this._encounterStore);
+  ConnectionHub._(this._sessionStore, this._encounterStore, this._paywallStore);
 
   /// Solo per i test: un hub agganciato a store controllabili invece dei
   /// singleton condivisi.
   factory ConnectionHub.withStore(
     SessionStore sessionStore, {
     EncounterStore? encounterStore,
-  }) =>
-      ConnectionHub._(sessionStore, encounterStore ?? EncounterStore.instance);
+    PaywallStore? paywallStore,
+  }) => ConnectionHub._(
+    sessionStore,
+    encounterStore ?? EncounterStore.instance,
+    paywallStore ?? PaywallStore.instance,
+  );
 
   static final ConnectionHub instance = ConnectionHub._(
     SessionStore.instance,
     EncounterStore.instance,
+    PaywallStore.instance,
   );
 
   static const double radiusMeters = 100;
@@ -43,6 +49,7 @@ class ConnectionHub {
 
   final SessionStore _sessionStore;
   final EncounterStore _encounterStore;
+  final PaywallStore _paywallStore;
   final Map<String, StreamSink<dynamic>> _sinks = {};
   Timer? _hotspotDetectionTimer;
 
@@ -108,6 +115,7 @@ class ConnectionHub {
         sessionId: sessionId,
         radiusMeters: radiusMeters,
         hotspotStore: HotspotStore.instance,
+        paywallStore: _paywallStore,
       );
       if (people == null) continue;
 

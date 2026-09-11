@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '/core/device/device_id_provider.dart';
 import '/core/network/realtime_connection.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import 'nearby_remote_data_source.dart';
@@ -17,6 +19,18 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   String _genderPreference = 'everyone';
   String _selfieBase64 = '';
 
+  // `deviceId` (core/device/, condiviso con `paywall/`) non è disponibile in
+  // modo sincrono al connect -- arriva un istante dopo, via
+  // `_attachDeviceId`. Fino ad allora resta vuoto: il server tratta una
+  // sessione senza deviceId collegato come "non sbloccata" (fallback
+  // sicuro), mai come un errore. `_lastLatitude`/`_lastLongitude` servono
+  // solo a rimandare la presenza una seconda volta non appena il deviceId
+  // è pronto, senza dover aspettare il prossimo vero aggiornamento di
+  // posizione.
+  String _deviceId = '';
+  double _lastLatitude = 0;
+  double _lastLongitude = 0;
+
   @override
   Stream<List<NearbyPersonModel>> connect({
     required String sessionId,
@@ -32,6 +46,7 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
 
     final messages = RealtimeConnection.instance.connect(sessionId);
     updatePosition(latitude: latitude, longitude: longitude);
+    unawaited(_attachDeviceId());
 
     return messages.expand((decoded) {
       if (decoded['type'] != 'nearby') return const <List<NearbyPersonModel>>[];
@@ -47,8 +62,15 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
     });
   }
 
+  Future<void> _attachDeviceId() async {
+    _deviceId = await DeviceIdProvider.instance.getOrCreateDeviceId();
+    updatePosition(latitude: _lastLatitude, longitude: _lastLongitude);
+  }
+
   @override
   void updatePosition({required double latitude, required double longitude}) {
+    _lastLatitude = latitude;
+    _lastLongitude = longitude;
     RealtimeConnection.instance.send({
       'type': 'presence',
       'lat': latitude,
@@ -56,6 +78,7 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
       'gender': _gender,
       'genderPreference': _genderPreference,
       'selfieBase64': _selfieBase64,
+      'deviceId': _deviceId,
     });
   }
 

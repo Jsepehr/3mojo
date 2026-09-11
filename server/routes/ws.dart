@@ -13,8 +13,10 @@ import 'package:threemojo_server/src/session_store.dart';
 ///
 /// Messaggi in arrivo dal client, un JSON per riga, distinti da `"type"`:
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
-///   "genderPreference": ..., "selfieBase64": ...}` — mandato alla
-///   connessione e poi ogni volta che la posizione va aggiornata;
+///   "genderPreference": ..., "selfieBase64": ..., "deviceId": ...}` —
+///   mandato alla connessione e poi ogni volta che la posizione va
+///   aggiornata; `deviceId` (`core/device/` nel client) collega la sessione
+///   al dispositivo per `PaywallStore` — vedi `SessionStore.nearbyPeople`;
 /// - `{"type": "sendEncounterRequest", "toSessionId": ...}`;
 /// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
 /// - `{"type": "endMatch", "requestId": ...}`;
@@ -116,6 +118,7 @@ void _handlePresence(String sessionId, Map<String, dynamic> decoded) {
     gender: decoded['gender'] as String? ?? 'unspecified',
     genderPreference: decoded['genderPreference'] as String? ?? 'everyone',
     selfieBase64: decoded['selfieBase64'] as String? ?? '',
+    deviceId: decoded['deviceId'] as String? ?? '',
   );
   ConnectionHub.instance.broadcastNearbyUpdates();
 }

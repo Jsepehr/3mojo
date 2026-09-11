@@ -1,6 +1,7 @@
 import 'package:test/test.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
+import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 void main() {
@@ -256,6 +257,133 @@ void main() {
         )!;
 
         expect(result.map((p) => p.sessionId), isNot(contains('e')));
+      });
+    });
+
+    group('paywall visibility', () {
+      late PaywallStore paywall;
+
+      setUp(() {
+        paywall = PaywallStore.withClock(() => clock);
+      });
+
+      void placeViewerAndSix() {
+        // 'a' is the viewer. Six others at clearly increasing distances
+        // (~11m apart), each with a distinct selfie so the free/locked
+        // split is unambiguous to check by content.
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0, deviceId: 'dev-a');
+        for (var i = 1; i <= 6; i++) {
+          store.upsertPosition(
+            sessionId: 'p$i',
+            lat: 0.0001 * i,
+            lng: 0,
+            selfieBase64: 'selfie-$i',
+          );
+        }
+        clock = clock.add(const Duration(minutes: 5));
+      }
+
+      test(
+        'a viewer with no linked device is treated as locked -- the '
+        'closest two thirds arrive with no selfie',
+        () {
+          placeViewerAndSix();
+
+          final result = store.nearbyPeople(
+            sessionId: 'a',
+            radiusMeters: 1000,
+            paywallStore: paywall,
+          )!;
+
+          // 6 people: floor(6/3) = 2 free -- the two FARTHEST (p5, p6).
+          final bySessionId = {for (final p in result) p.sessionId: p};
+          expect(bySessionId['p5']!.selfieBase64, 'selfie-5');
+          expect(bySessionId['p6']!.selfieBase64, 'selfie-6');
+          for (final id in ['p1', 'p2', 'p3', 'p4']) {
+            expect(bySessionId[id]!.selfieBase64, isEmpty);
+          }
+        },
+      );
+
+      test(
+        'distance and meeting chance stay populated even when the selfie '
+        'is withheld -- only the photo is paywalled, never those',
+        () {
+          placeViewerAndSix();
+
+          final result = store.nearbyPeople(
+            sessionId: 'a',
+            radiusMeters: 1000,
+            paywallStore: paywall,
+          )!;
+
+          final locked = result.firstWhere((p) => p.sessionId == 'p1');
+          expect(locked.selfieBase64, isEmpty);
+          expect(locked.distanceMeters, greaterThan(0));
+          expect(locked.meetingChance, MeetingChance.high);
+        },
+      );
+
+      test('an unlocked device sees every selfie, none withheld', () {
+        placeViewerAndSix();
+        paywall.recordUnlock('dev-a');
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 1000,
+          paywallStore: paywall,
+        )!;
+
+        for (final person in result) {
+          expect(person.selfieBase64, isNotEmpty);
+        }
+      });
+
+      test(
+        'a linked device only unlocks once ITS OWN deviceId is unlocked -- '
+        'unlocking a different device does nothing for this viewer',
+        () {
+          placeViewerAndSix();
+          paywall.recordUnlock('someone-elses-device');
+
+          final result = store.nearbyPeople(
+            sessionId: 'a',
+            radiusMeters: 1000,
+            paywallStore: paywall,
+          )!;
+
+          expect(
+            result.where((p) => p.selfieBase64.isEmpty),
+            hasLength(4),
+          );
+        },
+      );
+
+      test('never blanks below the 2-free minimum, even on a short list', () {
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0, deviceId: 'dev-a');
+        store.upsertPosition(
+          sessionId: 'p1',
+          lat: 0.0001,
+          lng: 0,
+          selfieBase64: 'selfie-1',
+        );
+        store.upsertPosition(
+          sessionId: 'p2',
+          lat: 0.0002,
+          lng: 0,
+          selfieBase64: 'selfie-2',
+        );
+        clock = clock.add(const Duration(minutes: 5));
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 1000,
+          paywallStore: paywall,
+        )!;
+
+        for (final person in result) {
+          expect(person.selfieBase64, isNotEmpty);
+        }
       });
     });
   });

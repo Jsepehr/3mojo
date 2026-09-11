@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:threemojo_server/src/geo.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
+import 'package:threemojo_server/src/paywall_store.dart';
 
 /// Una persona online: la sua posizione più recente, e da quando è "ferma"
 /// nello stesso punto — l'ancora di stazionarietà, non la posizione grezza.
@@ -20,6 +22,7 @@ class Session {
     this.gender = 'unspecified',
     this.genderPreference = 'everyone',
     this.selfieBase64 = '',
+    this.deviceId = '',
   }) : anchorLat = lat,
        anchorLng = lng;
 
@@ -55,6 +58,15 @@ class Session {
   /// server non lo decodifica né lo valida, lo tiene solo per ridistribuirlo
   /// a chi lo vede in "Vicinanze".
   String selfieBase64;
+
+  /// L'identificatore anonimo persistente del dispositivo (`core/device/` nel
+  /// client, mai il `sessionId` — quello è usa-e-getta), mandato con la
+  /// presenza solo per poter chiedere a `PaywallStore` se questo dispositivo
+  /// ha sbloccato l'accesso completo. Stringa vuota finché il client non
+  /// l'ha ancora collegato (subito dopo il connect, vedi
+  /// `NearbyRemoteDataSourceImpl._attachDeviceId` lato client) — trattata
+  /// come "non sbloccato", mai come errore.
+  String deviceId;
 }
 
 /// Una persona vicina già pronta per il client: distanza, stadio di
@@ -124,6 +136,7 @@ class SessionStore {
     String gender = 'unspecified',
     String genderPreference = 'everyone',
     String selfieBase64 = '',
+    String deviceId = '',
   }) {
     final now = _now();
     final existing = _sessions[sessionId];
@@ -138,6 +151,7 @@ class SessionStore {
         gender: gender,
         genderPreference: genderPreference,
         selfieBase64: selfieBase64,
+        deviceId: deviceId,
       );
       return;
     }
@@ -162,6 +176,7 @@ class SessionStore {
     existing.gender = gender;
     existing.genderPreference = genderPreference;
     existing.selfieBase64 = selfieBase64;
+    existing.deviceId = deviceId;
   }
 
   /// Rimuove `sessionId` dallo store — equivalente del bottone End (o della
@@ -214,15 +229,27 @@ class SessionStore {
   /// distanza diretta tra i due supera [radiusMeters]), con probabilità
   /// d'incontro già calcolata. Ritorna `null` se `sessionId` non ha ancora
   /// mandato una posizione (deve prima chiamare `POST /presence`).
+  ///
+  /// **Paywall**: se `sessionId` non ha sbloccato l'accesso (vedi
+  /// [PaywallStore], per il suo `Session.deviceId`), il terzo più vicino
+  /// delle persone qui sotto viene rimandato con `selfieBase64` vuoto
+  /// (stessa regola — un terzo, i più vicini, minimo 2 gratis — di
+  /// `GetLockedNearbyPeopleUseCase` nel client Flutter, ma qui è dove viene
+  /// davvero **applicata**: il client la duplica solo per decidere come
+  /// disegnare la lista, non più per decidere cosa arriva sul dispositivo —
+  /// altrimenti un client modificato potrebbe leggere i selfie veri senza
+  /// aver mai pagato, dato che li avrebbe comunque ricevuti tutti).
   List<NearbyPersonResult>? nearbyPeople({
     required String sessionId,
     required double radiusMeters,
     HotspotStore? hotspotStore,
+    PaywallStore? paywallStore,
   }) {
     final me = _sessions[sessionId];
     if (me == null) return null;
 
     final hotspots = hotspotStore ?? HotspotStore.instance;
+    final paywall = paywallStore ?? PaywallStore.instance;
     final now = _now();
     final results = <NearbyPersonResult>[];
 
@@ -263,7 +290,8 @@ class SessionStore {
       );
     }
 
-    return results;
+    final isUnlocked = me.deviceId.isNotEmpty && paywall.isUnlocked(me.deviceId);
+    return _withPaywallVisibility(results, isUnlocked: isUnlocked);
   }
 
   /// Solo per debug locale: tutte le sessioni in memoria, senza filtri di
@@ -298,4 +326,54 @@ class SessionStore {
         )
         .toList();
   }
+}
+
+// Stessa identica regola di `GetLockedNearbyPeopleUseCase` nel client
+// Flutter (lib/features/paywall/domain/usecases/) -- se una cambia, va
+// cambiata anche l'altra. Tenuta qui come funzione libera (non un metodo di
+// `SessionStore`) perché è pura: nessuno stato, solo la lista in ingresso.
+const _paywallFreeFraction = 1 / 3;
+const _paywallMinFreeCount = 2;
+
+/// Un terzo delle persone più **lontane** resta sempre gratis (chi è più
+/// vicino, più probabile da incontrare davvero, è il contenuto a
+/// pagamento) -- minimo [_paywallMinFreeCount] anche su liste corte, dove
+/// un terzo arrotonderebbe a 0 o 1. Se sbloccato, o la lista è vuota,
+/// ritorna `people` invariata. Altrimenti ritorna una nuova lista con lo
+/// stesso ordine, ma `selfieBase64` svuotato per chi non è nel terzo
+/// gratis -- `distanceMeters`/`meetingChance` restano sempre presenti (mai
+/// stati sensibili, servono al client per decidere come disegnare la
+/// lista).
+List<NearbyPersonResult> _withPaywallVisibility(
+  List<NearbyPersonResult> people, {
+  required bool isUnlocked,
+}) {
+  if (isUnlocked || people.isEmpty) return people;
+
+  final byFarthestFirst = [...people]
+    ..sort((a, b) => b.distanceMeters.compareTo(a.distanceMeters));
+  final freeCount = math.min(
+    people.length,
+    math.max(
+      (people.length * _paywallFreeFraction).floor(),
+      _paywallMinFreeCount,
+    ),
+  );
+  final freeIds = byFarthestFirst
+      .take(freeCount)
+      .map((p) => p.sessionId)
+      .toSet();
+
+  return [
+    for (final person in people)
+      if (freeIds.contains(person.sessionId))
+        person
+      else
+        NearbyPersonResult(
+          sessionId: person.sessionId,
+          distanceMeters: person.distanceMeters,
+          meetingChance: person.meetingChance,
+          selfieBase64: '',
+        ),
+  ];
 }

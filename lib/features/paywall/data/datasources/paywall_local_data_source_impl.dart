@@ -1,22 +1,11 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
-
+import '/core/device/device_id_provider.dart';
 import 'paywall_local_data_source.dart';
 
-/// Implementazione **reale**: `shared_preferences`, come `settings/` — a
-/// differenza della sessione online, il `deviceId` deve sopravvivere alla
-/// chiusura dell'app.
+/// Implementazione **reale**: delega a `DeviceIdProvider` (`core/device/`)
+/// — lo stesso id, non uno separato, è anche quello che `nearby/` manda al
+/// server insieme alla presenza, per lo stesso dispositivo.
 class PaywallLocalDataSourceImpl implements PaywallLocalDataSource {
-  static const _deviceIdKey = 'paywall_device_id';
-
   @override
-  Future<String> getOrCreateDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getString(_deviceIdKey);
-    if (existing != null) return existing;
-
-    final created = const Uuid().v4();
-    await prefs.setString(_deviceIdKey, created);
-    return created;
-  }
+  Future<String> getOrCreateDeviceId() =>
+      DeviceIdProvider.instance.getOrCreateDeviceId();
 }
