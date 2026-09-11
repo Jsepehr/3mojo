@@ -122,6 +122,24 @@ void main() {
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
     });
 
+    test(
+      'finds someone within radius even across a latitude-band boundary '
+      '(the spatial index must not miss a valid neighbor just because it '
+      'straddles a band edge)',
+      () {
+        // ~89m apart -- within the 100m radius -- but on opposite sides of
+        // the band edge at lat=0 (band width 100m): 'a' falls in band -1,
+        // 'b' in band 0.
+        store.upsertPosition(sessionId: 'a', lat: -0.0004, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0.0004, lng: 0);
+        clock = clock.add(const Duration(minutes: 5));
+
+        final result = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
+
+        expect(result.map((p) => p.sessionId), contains('b'));
+      },
+    );
+
     test('genderPreference filters out non-matching genders', () {
       store.upsertPosition(
         sessionId: 'a',

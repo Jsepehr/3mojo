@@ -13,7 +13,12 @@ import 'package:threemojo_server/src/session_store.dart';
 /// interpretare i messaggi): solo il lato di scrittura, cosicché resti
 /// testabile senza un vero `WebSocketChannel`.
 class ConnectionHub {
-  ConnectionHub._(this._sessionStore, this._encounterStore, this._paywallStore);
+  ConnectionHub._(
+    this._sessionStore,
+    this._encounterStore,
+    this._paywallStore, {
+    Duration broadcastThrottleInterval = ConnectionHub.broadcastThrottleInterval,
+  }) : _broadcastThrottleInterval = broadcastThrottleInterval;
 
   /// Solo per i test: un hub agganciato a store controllabili invece dei
   /// singleton condivisi.
@@ -21,10 +26,12 @@ class ConnectionHub {
     SessionStore sessionStore, {
     EncounterStore? encounterStore,
     PaywallStore? paywallStore,
+    Duration broadcastThrottleInterval = ConnectionHub.broadcastThrottleInterval,
   }) => ConnectionHub._(
     sessionStore,
     encounterStore ?? EncounterStore.instance,
     paywallStore ?? PaywallStore.instance,
+    broadcastThrottleInterval: broadcastThrottleInterval,
   );
 
   static final ConnectionHub instance = ConnectionHub._(
@@ -34,6 +41,16 @@ class ConnectionHub {
   );
 
   static const double radiusMeters = 100;
+
+  // `broadcastNearbyUpdates` ricalcola-e-spinge per OGNI sessione connessa,
+  // e viene chiamato ad ogni singolo messaggio "presence" di CHIUNQUE sia
+  // online -- con N persone online, il lavoro totale cresce peggio di N²
+  // (N ricalcoli per messaggio, O(N) messaggi per intervallo). Nessun
+  // ricalcolo va perso: la posizione è già scritta in `SessionStore`
+  // all'istante (mai rallentata), solo il ricalcolo-e-invio, la parte
+  // costosa, viene fatto al più una volta per questa finestra — vedi
+  // `broadcastNearbyUpdates` sotto.
+  static const Duration broadcastThrottleInterval = Duration(milliseconds: 500);
 
   // Un hotspot si forma in minClusterSize/clusterMinDwellMinutes (minuti) e
   // vive un'ora: non serve rilevarlo di nuovo a ogni singolo aggiornamento
@@ -50,8 +67,11 @@ class ConnectionHub {
   final SessionStore _sessionStore;
   final EncounterStore _encounterStore;
   final PaywallStore _paywallStore;
+  final Duration _broadcastThrottleInterval;
   final Map<String, StreamSink<dynamic>> _sinks = {};
   Timer? _hotspotDetectionTimer;
+  Timer? _broadcastThrottleTimer;
+  bool _broadcastRequestedDuringThrottle = false;
 
   /// Avvia (se non già attivo) il rilevamento periodico degli hotspot —
   /// non è automatico dentro il costruttore, stesso motivo e stessa forma di
@@ -109,7 +129,34 @@ class ConnectionHub {
   /// eventualmente allargata da un hotspot attivo — vedi `HotspotStore`).
   /// Non rileva/rinnova hotspot di persona: usa quelli già noti in questo
   /// momento a `HotspotStore.instance` — vedi `startHotspotDetection`.
+  ///
+  /// **Throttle** (leading+trailing, vedi [broadcastThrottleInterval]): la
+  /// prima chiamata dopo un periodo di calma parte subito (nessun ritardo
+  /// percepibile con poco traffico, uguale a prima) — le chiamate
+  /// successive entro la finestra non ricalcolano di nuovo, si limitano a
+  /// segnare "è arrivato altro" (`_broadcastRequestedDuringThrottle`); alla
+  /// fine della finestra, se è successo, parte **un solo** ricalcolo in
+  /// più che vede comunque tutte le posizioni più recenti (già scritte in
+  /// `SessionStore` all'istante da chi chiama — solo il ricalcolo-e-invio è
+  /// rimandato, mai la scrittura). Così un ricalcolo completo costa al più
+  /// una volta per finestra, invece che una volta per messaggio.
   void broadcastNearbyUpdates() {
+    if (_broadcastThrottleTimer != null) {
+      _broadcastRequestedDuringThrottle = true;
+      return;
+    }
+
+    _pushNearbyToEveryone();
+    _broadcastThrottleTimer = Timer(_broadcastThrottleInterval, () {
+      _broadcastThrottleTimer = null;
+      if (_broadcastRequestedDuringThrottle) {
+        _broadcastRequestedDuringThrottle = false;
+        broadcastNearbyUpdates();
+      }
+    });
+  }
+
+  void _pushNearbyToEveryone() {
     for (final sessionId in _sinks.keys) {
       final people = _sessionStore.nearbyPeople(
         sessionId: sessionId,

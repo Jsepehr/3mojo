@@ -119,9 +119,63 @@ class SessionStore {
   /// singolo balzo rumoroso che poi torna vicino all'ancora).
   static const int confirmMovementReadings = 2;
 
+  // Indice spaziale: bucket per fascia di latitudine larga
+  // `_gridBandMeters`, mantenuto incrementale ad ogni upsertPosition/
+  // remove/purgeStale (mai ricostruito da zero in `nearbyPeople`, altrimenti
+  // si perderebbe il vantaggio) -- stessa idea del partizionamento per
+  // fascia già usato in `HotspotStore.detectAndRefresh`, qui però tenuto nel
+  // tempo invece che ricalcolato una tantum. Riduce `nearbyPeople` da uno
+  // scan O(sessioni totali online) a uno scan O(densità locale): con N
+  // persone online ma sparse, non serve più confrontare ognuna con tutte le
+  // altre N-1 ad ogni ricalcolo.
+  static const double _gridBandMeters = 100;
+  static const double _metersPerDegreeLat = 111320;
+
   final DateTime Function() _now;
   final Map<String, Session> _sessions = {};
+  final Map<int, Set<String>> _sessionIdsByLatBand = {};
+  final Map<String, int> _latBandOfSession = {};
   Timer? _autoPurgeTimer;
+
+  int _latBandFor(double lat) => (lat * _metersPerDegreeLat / _gridBandMeters).floor();
+
+  void _indexPosition(String sessionId, double lat) {
+    final band = _latBandFor(lat);
+    if (_latBandOfSession[sessionId] == band) return;
+
+    _deindexPosition(sessionId);
+    _sessionIdsByLatBand.putIfAbsent(band, () => {}).add(sessionId);
+    _latBandOfSession[sessionId] = band;
+  }
+
+  void _deindexPosition(String sessionId) {
+    final band = _latBandOfSession.remove(sessionId);
+    if (band == null) return;
+
+    final bucket = _sessionIdsByLatBand[band];
+    bucket?.remove(sessionId);
+    if (bucket != null && bucket.isEmpty) _sessionIdsByLatBand.remove(band);
+  }
+
+  /// Gli id delle sessioni **candidate** ad essere entro `radiusMeters` da
+  /// `lat` — filtra solo per fascia di latitudine (ignora la longitudine,
+  /// stesso limite di `HotspotStore._latitudeBand`: chi condivide la
+  /// latitudine ma è lontanissimo in longitudine resta candidato, scartato
+  /// poi dall'Haversine esatto). Una sovrastima sicura, mai un difetto: chi
+  /// torna qui va comunque riverificato con `distanceMeters`, questo serve
+  /// solo a non dover scandire ogni sessione online per scoprirlo.
+  Set<String> _sessionIdsNear(double lat, double radiusMeters) {
+    final centerBand = _latBandFor(lat);
+    // +1 di margine di sicurezza oltre al rapporto esatto.
+    final bandSpan = (radiusMeters / _gridBandMeters).ceil() + 1;
+
+    final ids = <String>{};
+    for (var band = centerBand - bandSpan; band <= centerBand + bandSpan; band++) {
+      final bucket = _sessionIdsByLatBand[band];
+      if (bucket != null) ids.addAll(bucket);
+    }
+    return ids;
+  }
 
   /// Aggiorna la posizione di `sessionId`. Se una lettura risulta oltre
   /// [stationarityRadiusMeters] dall'ancora attuale, non resetta subito la
@@ -153,6 +207,7 @@ class SessionStore {
         selfieBase64: selfieBase64,
         deviceId: deviceId,
       );
+      _indexPosition(sessionId, lat);
       return;
     }
 
@@ -177,12 +232,16 @@ class SessionStore {
     existing.genderPreference = genderPreference;
     existing.selfieBase64 = selfieBase64;
     existing.deviceId = deviceId;
+    _indexPosition(sessionId, lat);
   }
 
   /// Rimuove `sessionId` dallo store — equivalente del bottone End (o della
   /// chiusura del WebSocket): chi esce non deve più comparire nella lista
   /// di nessuno.
-  void remove(String sessionId) => _sessions.remove(sessionId);
+  void remove(String sessionId) {
+    _sessions.remove(sessionId);
+    _deindexPosition(sessionId);
+  }
 
   /// Il selfie di `sessionId`, così com'è arrivato dal client — usato da
   /// `ConnectionHub` per arricchire le richieste d'incontro con una foto
@@ -201,7 +260,10 @@ class SessionStore {
       for (final session in _sessions.values)
         if (now.difference(session.lastSeen) > maxAge) session.sessionId,
     ];
-    staleIds.forEach(_sessions.remove);
+    for (final id in staleIds) {
+      _sessions.remove(id);
+      _deindexPosition(id);
+    }
     return staleIds;
   }
 
@@ -230,6 +292,17 @@ class SessionStore {
   /// d'incontro già calcolata. Ritorna `null` se `sessionId` non ha ancora
   /// mandato una posizione (deve prima chiamare `POST /presence`).
   ///
+  /// Non scandisce più *tutte* le sessioni online: raccoglie prima i
+  /// candidati dall'indice spaziale (vicini a `sessionId` per il raggio
+  /// base, più chiunque sia vicino a un hotspot attivo di cui `sessionId`
+  /// potrebbe far parte — vedi `_sessionIdsNear`), poi applica su
+  /// quell'insieme, tipicamente molto più piccolo, le stesse identiche
+  /// regole di sempre (genere/raggio-o-hotspot/permanenza). Una sovrastima
+  /// dei candidati è innocua (viene comunque scartata dai controlli esatti
+  /// sotto); un difetto no — per questo l'hotspot check usa
+  /// `Hotspot.exitRadiusMeters` (il raggio più largo, con isteresi) e non
+  /// quello base.
+  ///
   /// **Paywall**: se `sessionId` non ha sbloccato l'accesso (vedi
   /// [PaywallStore], per il suo `Session.deviceId`), il terzo più vicino
   /// delle persone qui sotto viene rimandato con `selfieBase64` vuoto
@@ -253,8 +326,24 @@ class SessionStore {
     final now = _now();
     final results = <NearbyPersonResult>[];
 
-    for (final other in _sessions.values) {
-      if (other.sessionId == sessionId) continue;
+    final candidateIds = _sessionIdsNear(me.lat, radiusMeters);
+    for (final hotspot in hotspots.active) {
+      // Sovrastima deliberata: non sappiamo ancora (senza toccare lo stato
+      // interno di HotspotStore) se `me` è davvero membro con isteresi, solo
+      // che potrebbe esserlo -- il controllo esatto, `sharesAnyActiveHotspot`
+      // qui sotto, decide per davvero.
+      if (distanceMeters(me.lat, me.lng, hotspot.centerLat, hotspot.centerLng) <=
+          Hotspot.exitRadiusMeters) {
+        candidateIds.addAll(
+          _sessionIdsNear(hotspot.centerLat, Hotspot.exitRadiusMeters),
+        );
+      }
+    }
+    candidateIds.remove(sessionId);
+
+    for (final otherId in candidateIds) {
+      final other = _sessions[otherId];
+      if (other == null) continue; // difesa: indice e mappa mai disallineati per costruzione, ma economico da controllare.
 
       // "Il genere che l'utente vuole vedere in Vicinanze" — filtro a senso
       // unico sulla mia preferenza, non serve reciprocità.
