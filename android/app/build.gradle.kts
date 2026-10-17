@@ -42,3 +42,10 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Rilevamento volto sul dispositivo per il canale `raen/face_detection`
+    // (FaceDetectionChannel.kt): stessa versione che usava il plugin
+    // google_mlkit_face_detection, modello incluso nell'APK.
+    implementation("com.google.mlkit:face-detection:16.1.7")
+}

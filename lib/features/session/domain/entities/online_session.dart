@@ -15,7 +15,7 @@ enum GenderPreference { male, female, everyone }
 /// online, nella connessione persistente `GET /ws`.
 ///
 /// Il selfie vive in due forme: `selfiePath` (un percorso file reale solo
-/// su Android/iOS/desktop, usato dal controllo ML Kit) e `selfieBytes` (il
+/// su Android/iOS/desktop, usato dal controllo volto) e `selfieBytes` (il
 /// contenuto vero e proprio, sempre disponibile su ogni piattaforma — è
 /// quello che si mostra in UI e che viene mandato al server, mai `File()`).
 class OnlineSession extends Equatable {

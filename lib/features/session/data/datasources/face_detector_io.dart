@@ -1,15 +1,21 @@
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:flutter/services.dart';
 
-/// Vero rilevamento volto (Android/iOS): ML Kit sul dispositivo, nessuna
-/// foto lascia il telefono. Isolato in un file a parte perché
-/// `google_mlkit_face_detection` importa `dart:io`, non compilabile per
-/// web — vedi l'import condizionale in `face_detection_local_data_source_impl.dart`.
+/// Canale verso il rilevamento volto **nativo**, tutto sul dispositivo —
+/// nessuna foto lascia il telefono:
+/// - Android: Google ML Kit (`FaceDetectionChannel.kt`)
+/// - iOS: Apple Vision (`AppDelegate.swift`)
+///
+/// Non si usa il plugin `google_mlkit_face_detection`: i suoi Pod iOS
+/// escludono arm64 dal simulatore, quindi bastava averlo tra le dipendenze
+/// per non poter più avviare l'app sul simulatore iOS di un Mac Apple Silicon.
+///
+/// Isolato in un file a parte perché il web non ha questo canale — vedi
+/// l'import condizionale in `face_detection_local_data_source_impl.dart`.
+const _channel = MethodChannel('raen/face_detection');
+
 Future<bool> detectFace(String imagePath) async {
-  final detector = FaceDetector(options: FaceDetectorOptions());
-  try {
-    final faces = await detector.processImage(InputImage.fromFilePath(imagePath));
-    return faces.isNotEmpty;
-  } finally {
-    await detector.close();
-  }
+  final hasFace = await _channel.invokeMethod<bool>('detectFace', {
+    'path': imagePath,
+  });
+  return hasFace ?? false;
 }

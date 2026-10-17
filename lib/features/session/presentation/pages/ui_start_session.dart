@@ -21,9 +21,9 @@ Uint8List _flipImageBytes(Uint8List bytes) {
 }
 
 /// Wizard aperto da "Start": prima il selfie (scatta e confermi — un
-/// controllo ML Kit verifica al volo che ci sia un volto, altrimenti blocca
-/// il passo), poi genere/preferenza. Alla fine avvia la sessione e torna
-/// alla home.
+/// controllo sul dispositivo verifica al volo che ci sia un volto,
+/// altrimenti blocca il passo), poi genere/preferenza. Alla fine avvia la
+/// sessione e torna alla home.
 class UiStartSession extends StatefulWidget {
   const UiStartSession({super.key});
 
