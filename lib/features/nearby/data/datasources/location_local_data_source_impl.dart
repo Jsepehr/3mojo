@@ -56,7 +56,7 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
             intervalDuration: const Duration(seconds: 60),
             distanceFilter: 0,
             foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: '3mojo è online',
+              notificationTitle: 'Raen è online',
               notificationText:
                   'Stai comparendo a chi ti è vicino, anche con l\'app '
                   'in background.',
