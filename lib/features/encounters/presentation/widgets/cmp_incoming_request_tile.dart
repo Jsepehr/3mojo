@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -21,6 +22,7 @@ class CmpIncomingRequestTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final raen = RaenColors.of(context);
     final photo = imageProviderForPhoto(request.otherSelfiePath);
 
     return Card(
@@ -40,9 +42,16 @@ class CmpIncomingRequestTile extends StatelessWidget {
                   onPressed: onDecline,
                   child: Text(l10n.no),
                 ),
-                FilledButton(
+                // "Sì" è la CTA del cuore: rosso-cuore col glifo ♥, mai
+                // confondibile col rosso di End/errori.
+                FilledButton.icon(
                   onPressed: onAccept,
-                  child: Text(l10n.yes),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: raen.heart,
+                    foregroundColor: raen.onHeart,
+                  ),
+                  icon: const Icon(Icons.favorite),
+                  label: Text(l10n.yes),
                 ),
               ],
             ),

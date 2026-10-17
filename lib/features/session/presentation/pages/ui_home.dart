@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/theme/app_theme.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
@@ -29,52 +30,65 @@ class UiHome extends StatelessWidget {
   }
 }
 
-/// Stato offline: claim + bottone Start, sfondo radar decorativo.
+/// Stato offline: claim + bottone Start, sfondo radar decorativo. Usa il
+/// tema "hero" (`AppTheme.hero`): blu pieno del brand, testi e radar bianchi,
+/// Start come pillola bianca — l'unica schermata immersiva dell'app.
 class _OfflineHome extends StatelessWidget {
   const _OfflineHome();
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final appTheme = Theme.of(context);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-      drawer: const CmpAppDrawer(),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: CmpRadarBackground()),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.meet_people_near_you,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
+    return Theme(
+      data: AppTheme.hero(appTheme),
+      // Builder: i widget sotto devono leggere il tema hero, non quello
+      // del `context` esterno.
+      child: Builder(
+        builder: (context) => Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(),
+          // Il drawer resta col tema normale dell'app, non quello blu.
+          drawer: Theme(data: appTheme, child: const CmpAppDrawer()),
+          body: Stack(
+            children: [
+              const Positioned.fill(child: CmpRadarBackground()),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l10n.meet_people_near_you,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.discover_people_within_100_meters_in_real_time,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const UiStartSession(),
+                          ),
+                        ),
+                        child: Text(l10n.start),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l10n.discover_people_within_100_meters_in_real_time,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const UiStartSession()),
-                    ),
-                    child: Text(l10n.start),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -98,12 +112,13 @@ class _OnlineHome extends StatelessWidget {
       appBar: AppBar(
         title: Text(l10n.nearby),
         actions: [
-          TextButton(
+          TextButton.icon(
             onPressed: () => context.read<ProSession>().end(),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: Text(l10n.end),
+            icon: const Icon(Icons.stop_circle_outlined),
+            label: Text(l10n.end),
           ),
         ],
       ),

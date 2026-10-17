@@ -4,6 +4,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '/core/theme/raen_colors.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/features/session/domain/entities/online_session.dart';
@@ -152,13 +153,15 @@ class _UiStartSessionState extends State<UiStartSession> {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
+                      color: RaenColors.of(context).photoScrim,
                       borderRadius: BorderRadius.circular(
                         CmpPhoto.cornerRadius,
                       ),
                     ),
-                    child: const Center(
-                      child: CmpLoadingIndicator(color: Colors.white),
+                    child: Center(
+                      child: CmpLoadingIndicator(
+                        color: RaenColors.of(context).onPhoto,
+                      ),
                     ),
                   ),
                 ),

@@ -51,8 +51,7 @@ class CmpChatMessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
                     timeLabel,
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: textColor.withValues(alpha: 0.7),
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
@@ -84,8 +85,13 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
             onPressed: () => Navigator.of(context).pop(false),
             child: Text(l10n.stay),
           ),
+          // Azione irreversibile: rosso errore, non il primario.
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             child: Text(l10n.end_it),
           ),
         ],
@@ -122,7 +128,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
         appBar: AppBar(
           title: Row(
             children: [
-              CmpPhoto(image: photo, size: 40),
+              _MatchPhoto(photo: photo),
               const SizedBox(width: 12),
               Text(l10n.chat),
             ],
@@ -130,6 +136,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
           actions: [
             TextButton(
               onPressed: () => _leaveMatch(l10n),
+              style: TextButton.styleFrom(foregroundColor: colorScheme.error),
               child: Text(l10n.end_2),
             ),
           ],
@@ -140,14 +147,12 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
                 children: [
                   Expanded(
                     child: Container(
-                      // Sfondo appena tinto per staccare l'area dei
-                      // messaggi dall'AppBar/barra di composizione, come lo
-                      // sfondo distinto (per noi tinto, non un motivo grafico
-                      // preso da un'altra app) dietro le chat di WhatsApp.
-                      color: Color.alphaBlend(
-                        colorScheme.primary.withValues(alpha: 0.05),
-                        colorScheme.surface,
-                      ),
+                      // Sfondo appena tinto di blu (surfaceContainerLow) per
+                      // staccare l'area dei messaggi dall'AppBar/barra di
+                      // composizione, come lo sfondo distinto (per noi tinto,
+                      // non un motivo grafico preso da un'altra app) dietro
+                      // le chat di WhatsApp.
+                      color: colorScheme.surfaceContainerLow,
                       child: ListView.builder(
                         reverse: true,
                         padding: const EdgeInsets.all(16),
@@ -247,6 +252,40 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Foto dell'altra persona nell'AppBar col cuore nel disco bianco, come
+/// nell'icona dell'app: segnala a colpo d'occhio che questo è un match.
+class _MatchPhoto extends StatelessWidget {
+  const _MatchPhoto({required this.photo});
+
+  final ImageProvider? photo;
+
+  @override
+  Widget build(BuildContext context) {
+    final raen = RaenColors.of(context);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CmpPhoto(image: photo, size: 40),
+        Positioned(
+          right: -6,
+          bottom: -6,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: raen.heartDisc,
+              shape: BoxShape.circle,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Icon(Icons.favorite, size: 14, color: raen.onHeartDisc),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
