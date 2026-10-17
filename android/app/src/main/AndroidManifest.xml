@@ -14,9 +14,10 @@
          prova a tenere sveglio il device durante il tracking. -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
-        android:label="3mojo"
+        android:label="Raen"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round">
         <activity
             android:name=".MainActivity"
             android:exported="true"
