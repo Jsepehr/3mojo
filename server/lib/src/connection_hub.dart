@@ -97,8 +97,16 @@ class ConnectionHub {
     _sinks[sessionId] = sink;
   }
 
-  void unregister(String sessionId) {
+  /// Stacca il canale di [sessionId]. Con [sink], solo se è ancora quello
+  /// registrato: quando una sessione si riconnette, la chiusura in ritardo
+  /// del vecchio socket non deve staccare quello nuovo. Ritorna `true` se ha
+  /// davvero staccato qualcosa.
+  bool unregister(String sessionId, {StreamSink<dynamic>? sink}) {
+    final current = _sinks[sessionId];
+    if (current == null) return false;
+    if (sink != null && !identical(current, sink)) return false;
     _sinks.remove(sessionId);
+    return true;
   }
 
   void _sendTo(String sessionId, Map<String, dynamic> message) {
@@ -109,12 +117,17 @@ class ConnectionHub {
   /// momento — il server fa solo da postino, non lo conserva da nessuna
   /// parte: se il destinatario non è online, il messaggio va perso (chi
   /// l'ha mandato lo tiene comunque nella propria cronologia locale).
+  ///
+  /// Solo tra due sessioni con un match attivo: senza, chiunque abbia visto
+  /// un id nella lista vicinanze potrebbe scrivere a quella persona senza
+  /// che abbia mai accettato nulla.
   void relayChatMessage({
     required String fromSessionId,
     required String toSessionId,
     required String text,
     required String sentAt,
   }) {
+    if (!_encounterStore.hasActiveMatch(fromSessionId, toSessionId)) return;
     _sendTo(toSessionId, {
       'type': 'chatMessage',
       'fromSessionId': fromSessionId,

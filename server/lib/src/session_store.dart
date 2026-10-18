@@ -386,8 +386,9 @@ class SessionStore {
   /// Solo per debug locale: tutte le sessioni in memoria, senza filtri di
   /// raggio/genere/tempo di permanenza — per verificare "chi risulta al
   /// server" indipendentemente da cosa vede un client specifico. Niente
-  /// posizione grezza né selfie: solo ciò che serve a controllare che una
-  /// sessione sia arrivata. `distanceMetersToOthers` (anch'essa derivata,
+  /// posizione grezza, selfie, genere né preferenza (insieme lasciano
+  /// dedurre l'orientamento sessuale): solo ciò che serve a controllare che
+  /// una sessione sia arrivata. `distanceMetersToOthers` (anch'essa derivata,
   /// non la posizione grezza) aiuta a distinguere "troppo lontani" da
   /// "genere/permanenza" quando qualcuno non si vede.
   List<Map<String, dynamic>> debugSnapshot() {
@@ -397,8 +398,6 @@ class SessionStore {
         .map(
           (s) => {
             'sessionId': s.sessionId,
-            'gender': s.gender,
-            'genderPreference': s.genderPreference,
             'dwellSeconds': now.difference(s.arrivedAt).inSeconds,
             'lastSeenSecondsAgo': now.difference(s.lastSeen).inSeconds,
             'distanceMetersToOthers': {

@@ -4,9 +4,10 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
+import 'package:threemojo_server/src/session_credentials.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
-/// `GET /ws?sessionId=...`, upgradato a WebSocket — un solo canale
+/// `GET /ws?sessionId=<segreto>`, upgradato a WebSocket — un solo canale
 /// persistente per sessione porta presenza/vicinanze, richieste d'incontro
 /// **e** i messaggi di chat, spinti dal server appena cambia qualcosa
 /// invece che richiesti dal client a intervalli.
@@ -32,18 +33,28 @@ import 'package:threemojo_server/src/session_store.dart';
 ///   riconnessione) e di nuovo a ogni cambiamento che riguarda la sessione;
 /// - `{"type": "chatMessage", "fromSessionId": ..., "text": ..., "sentAt": ...}`.
 ///
+/// **Credenziale vs id pubblico**: il `sessionId` della query è un segreto
+/// del client (mai mostrato ad altri), non l'id con cui gli altri lo vedono.
+/// Qui viene subito tradotto nell'id pubblico casuale di
+/// `SessionCredentials`, ed è solo quello a circolare nel resto del server e
+/// nei payload (`sessionId` in "nearby", `otherSessionId`, `fromSessionId`,
+/// e i `toSessionId` che il client manda indietro). Conoscere l'id pubblico
+/// di qualcuno non permette di aprire il suo canale.
+///
 /// Quando il socket si chiude (pulito o no): la sessione viene rimossa
 /// subito da `SessionStore` (niente più sessioni fantasma), e le sue
 /// richieste d'incontro ancora pendenti vengono cancellate (chi le aveva
 /// mandate/ricevute non potrebbe comunque mai ottenere risposta).
 Future<Response> onRequest(RequestContext context) async {
-  final sessionId = context.request.uri.queryParameters['sessionId'];
-  if (sessionId == null || sessionId.isEmpty) {
+  final secret = context.request.uri.queryParameters['sessionId'];
+  if (!SessionCredentials.isValidSecret(secret)) {
     return Response.json(
       statusCode: 400,
-      body: {'error': 'sessionId è obbligatorio'},
+      body: {'error': 'sessionId mancante o troppo corto'},
     );
   }
+  final sessionSecret = secret!;
+  final sessionId = SessionCredentials.instance.publicIdFor(sessionSecret);
 
   SessionStore.instance.startAutoPurge(
     onPurged: (removedIds) {
@@ -86,8 +97,16 @@ Future<Response> onRequest(RequestContext context) async {
           }
         },
         onDone: () {
+          // Se nel frattempo la stessa sessione si è riconnessa, questo è il
+          // vecchio socket: non toccare quello nuovo né la sessione.
+          final wasCurrent = ConnectionHub.instance.unregister(
+            sessionId,
+            sink: webSocket.sink,
+          );
+          if (!wasCurrent) return;
+
           SessionStore.instance.remove(sessionId);
-          ConnectionHub.instance.unregister(sessionId);
+          SessionCredentials.instance.forget(sessionSecret);
           ConnectionHub.instance.broadcastNearbyUpdates();
 
           final affected = EncounterStore.instance.cancelAllPendingFor(
@@ -152,6 +171,7 @@ void _handleRespondToEncounterRequest(
     result = EncounterStore.instance.respondToRequest(
       requestId: requestId,
       accepted: accepted,
+      bySessionId: sessionId,
     );
   } on ArgumentError {
     return;
@@ -190,7 +210,10 @@ void _handleEndMatch(String sessionId, Map<String, dynamic> decoded) {
 
   final EncounterRequest request;
   try {
-    request = EncounterStore.instance.endMatch(requestId);
+    request = EncounterStore.instance.endMatch(
+      requestId,
+      bySessionId: sessionId,
+    );
   } on ArgumentError {
     return;
   }

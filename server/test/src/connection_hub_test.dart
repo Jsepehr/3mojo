@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
+import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 void main() {
@@ -76,9 +77,48 @@ void main() {
       expect(aMessages, isEmpty);
     });
 
+    test('unregister with a stale sink keeps the newer connection', () async {
+      store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      clock = clock.add(const Duration(minutes: 5));
+
+      final oldSink = StreamController<dynamic>()..stream.listen((_) {});
+      final newMessages = <dynamic>[];
+      final newSink = StreamController<dynamic>()
+        ..stream.listen(newMessages.add);
+      hub
+        ..register('a', oldSink)
+        // Riconnessione: il nuovo socket sostituisce il vecchio...
+        ..register('a', newSink);
+
+      // ...e la chiusura in ritardo del vecchio non deve staccarlo.
+      expect(hub.unregister('a', sink: oldSink), isFalse);
+
+      hub.broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(newMessages, isNotEmpty);
+      expect(hub.unregister('a', sink: newSink), isTrue);
+    });
+
     test(
       'relayChatMessage forwards to the recipient only, if connected',
       () async {
+        final encounters = EncounterStore.empty();
+        final request = encounters.sendRequest(
+          fromSessionId: 'a',
+          toSessionId: 'b',
+        );
+        encounters.respondToRequest(
+          requestId: request.id,
+          accepted: true,
+          bySessionId: 'b',
+        );
+        hub = ConnectionHub.withStore(
+          store,
+          encounterStore: encounters,
+          broadcastThrottleInterval: Duration.zero,
+        );
         final aMessages = <dynamic>[];
         final bMessages = <dynamic>[];
         hub.register(
@@ -109,6 +149,30 @@ void main() {
         });
       },
     );
+
+    test('relayChatMessage drops messages between sessions without an active '
+        'match', () async {
+      hub = ConnectionHub.withStore(
+        store,
+        encounterStore: EncounterStore.empty(),
+        broadcastThrottleInterval: Duration.zero,
+      );
+      final bMessages = <dynamic>[];
+      hub.register(
+        'b',
+        StreamController<dynamic>()..stream.listen(bMessages.add),
+      );
+
+      hub.relayChatMessage(
+        fromSessionId: 'stranger',
+        toSessionId: 'b',
+        text: 'ciao',
+        sentAt: '2026-01-01T00:00:00.000Z',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(bMessages, isEmpty);
+    });
 
     test('startHotspotDetection pushes nearby updates on its own timer, '
         'without any presence message triggering it', () async {

@@ -68,11 +68,30 @@ class EncounterStore {
   /// partecipanti — cancellando ogni altra richiesta pendente che coinvolga
   /// l'uno o l'altro. Ritorna la richiesta aggiornata più quelle cancellate
   /// come effetto collaterale, così chi chiama sa a chi altro notificare.
+  ///
+  /// Solo il destinatario ([bySessionId] == `toSessionId`) può rispondere, e
+  /// solo finché è pendente: gli id delle richieste sono sequenziali, quindi
+  /// indovinabili — senza questo controllo chiunque potrebbe accettare o
+  /// rifiutare le richieste degli altri.
   ({EncounterRequest request, List<EncounterRequest> alsoCancelled})
-  respondToRequest({required String requestId, required bool accepted}) {
+  respondToRequest({
+    required String requestId,
+    required bool accepted,
+    required String bySessionId,
+  }) {
     final request = _requests[requestId];
     if (request == null) {
       throw ArgumentError.value(requestId, 'requestId', 'Richiesta non trovata');
+    }
+    if (request.toSessionId != bySessionId) {
+      throw ArgumentError.value(
+        bySessionId,
+        'bySessionId',
+        'Solo il destinatario può rispondere',
+      );
+    }
+    if (request.status != EncounterRequestStatus.pending) {
+      throw ArgumentError.value(requestId, 'requestId', 'Non più pendente');
     }
 
     request.status = accepted
@@ -96,14 +115,36 @@ class EncounterStore {
     return (request: request, alsoCancelled: alsoCancelled);
   }
 
-  EncounterRequest endMatch(String requestId) {
+  /// Chiude un match. Solo uno dei due partecipanti ([bySessionId]) può
+  /// farlo, e solo su un match davvero attivo.
+  EncounterRequest endMatch(String requestId, {required String bySessionId}) {
     final request = _requests[requestId];
     if (request == null) {
       throw ArgumentError.value(requestId, 'requestId', 'Richiesta non trovata');
     }
+    if (!request.involves(bySessionId)) {
+      throw ArgumentError.value(
+        bySessionId,
+        'bySessionId',
+        'Solo i partecipanti possono chiudere il match',
+      );
+    }
+    if (request.status != EncounterRequestStatus.accepted) {
+      throw ArgumentError.value(requestId, 'requestId', 'Nessun match attivo');
+    }
     request.status = EncounterRequestStatus.ended;
     return request;
   }
+
+  /// `true` se tra le due sessioni c'è un match attivo (richiesta accettata
+  /// e non ancora chiusa) — l'unico caso in cui il server inoltra la chat.
+  bool hasActiveMatch(String sessionIdA, String sessionIdB) =>
+      _requests.values.any(
+        (r) =>
+            r.status == EncounterRequestStatus.accepted &&
+            r.involves(sessionIdA) &&
+            r.involves(sessionIdB),
+      );
 
   /// Quando una sessione sparisce (fine socket), le sue richieste ancora
   /// pendenti non hanno più senso: chi le ha ricevute non potrebbe comunque

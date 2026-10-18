@@ -1,15 +1,31 @@
 import 'package:flutter/foundation.dart';
 
-/// Indirizzo del server locale (`server/`, dart_frog) usato dai datasource
-/// remoti reali. Di default punta all'host della macchina di sviluppo vista
-/// dall'emulatore/simulatore/browser; su un device fisico va sovrascritto
-/// con `--dart-define=API_BASE_URL=http://<ip-lan-del-pc>:8080`.
+/// Indirizzo del server (`server/`, dart_frog) usato dai datasource remoti
+/// reali.
+///
+/// - **Debug/profile**: di default punta all'host della macchina di sviluppo
+///   vista dall'emulatore/simulatore/browser, in chiaro; su un device fisico
+///   va sovrascritto con `--dart-define=API_BASE_URL=http://<ip-lan-del-pc>:8080`.
+/// - **Release**: `API_BASE_URL` è obbligatorio e deve essere `https://`.
+///   Tutto ciò che passa di qui — selfie, posizione precisa, genere,
+///   preferenza, chat — in chiaro sarebbe leggibile e modificabile da
+///   chiunque sulla stessa rete (Wi-Fi pubblici compresi), proprio nei luoghi
+///   dove l'app si usa.
 class ApiConfig {
   const ApiConfig._();
 
   static const String _override = String.fromEnvironment('API_BASE_URL');
 
   static String get baseUrl {
+    if (kReleaseMode) {
+      if (!_override.startsWith('https://')) {
+        throw StateError(
+          'Build di release senza server sicuro: avvia con '
+          '--dart-define=API_BASE_URL=https://<dominio-del-server>.',
+        );
+      }
+      return _override;
+    }
     if (_override.isNotEmpty) return _override;
     // Sul web il browser gira sulla stessa macchina del server: localhost
     // va bene com'è, prima ancora di guardare la piattaforma sottostante
@@ -25,6 +41,6 @@ class ApiConfig {
 
   /// Stesso host di [baseUrl], ma con schema `ws`/`wss` — per la connessione
   /// persistente di `nearby/` (`GET /ws`), che sostituisce le richieste
-  /// HTTP separate di presenza/vicinanze.
+  /// HTTP separate di presenza/vicinanze. `https://` diventa `wss://`.
   static String get wsBaseUrl => baseUrl.replaceFirst('http', 'ws');
 }

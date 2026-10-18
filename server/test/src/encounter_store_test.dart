@@ -24,6 +24,7 @@ void main() {
       final result = store.respondToRequest(
         requestId: declined.id,
         accepted: false,
+        bySessionId: 'b',
       );
 
       expect(result.request.status, EncounterRequestStatus.declined);
@@ -48,6 +49,7 @@ void main() {
         final result = store.respondToRequest(
           requestId: accepted.id,
           accepted: true,
+          bySessionId: 'b',
         );
 
         expect(result.request.status, EncounterRequestStatus.accepted);
@@ -75,11 +77,91 @@ void main() {
 
     test('endMatch marks a request as ended', () {
       final request = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
-      store.respondToRequest(requestId: request.id, accepted: true);
+      store.respondToRequest(
+        requestId: request.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
 
-      final ended = store.endMatch(request.id);
+      final ended = store.endMatch(request.id, bySessionId: 'a');
 
       expect(ended.status, EncounterRequestStatus.ended);
+      expect(store.hasActiveMatch('a', 'b'), isFalse);
+    });
+
+    test('only the recipient can respond, and only while pending', () {
+      final request = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+
+      // Né il mittente né un estraneo possono rispondere al posto di 'b'.
+      expect(
+        () => store.respondToRequest(
+          requestId: request.id,
+          accepted: true,
+          bySessionId: 'a',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => store.respondToRequest(
+          requestId: request.id,
+          accepted: true,
+          bySessionId: 'intruder',
+        ),
+        throwsArgumentError,
+      );
+      expect(request.status, EncounterRequestStatus.pending);
+
+      store.respondToRequest(
+        requestId: request.id,
+        accepted: false,
+        bySessionId: 'b',
+      );
+      // Una volta rifiutata non si può più ribaltare la risposta.
+      expect(
+        () => store.respondToRequest(
+          requestId: request.id,
+          accepted: true,
+          bySessionId: 'b',
+        ),
+        throwsArgumentError,
+      );
+      expect(request.status, EncounterRequestStatus.declined);
+    });
+
+    test('only a participant can end an active match', () {
+      final request = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+
+      // Non ancora accettata: niente match da chiudere.
+      expect(
+        () => store.endMatch(request.id, bySessionId: 'a'),
+        throwsArgumentError,
+      );
+
+      store.respondToRequest(
+        requestId: request.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
+      expect(store.hasActiveMatch('a', 'b'), isTrue);
+      expect(
+        () => store.endMatch(request.id, bySessionId: 'intruder'),
+        throwsArgumentError,
+      );
+      expect(request.status, EncounterRequestStatus.accepted);
+    });
+
+    test('hasActiveMatch is false for pending, declined and unrelated pairs', () {
+      final pending = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+      final declined = store.sendRequest(fromSessionId: 'c', toSessionId: 'd');
+      store.respondToRequest(
+        requestId: declined.id,
+        accepted: false,
+        bySessionId: 'd',
+      );
+
+      expect(store.hasActiveMatch(pending.fromSessionId, 'b'), isFalse);
+      expect(store.hasActiveMatch('c', 'd'), isFalse);
+      expect(store.hasActiveMatch('a', 'd'), isFalse);
     });
 
     test('cancelAllPendingFor cancels only pending requests for a session', () {
@@ -89,7 +171,11 @@ void main() {
         fromSessionId: 'a',
         toSessionId: 'd',
       );
-      store.respondToRequest(requestId: alreadyDeclined.id, accepted: false);
+      store.respondToRequest(
+        requestId: alreadyDeclined.id,
+        accepted: false,
+        bySessionId: 'd',
+      );
 
       final affected = store.cancelAllPendingFor('a');
 
