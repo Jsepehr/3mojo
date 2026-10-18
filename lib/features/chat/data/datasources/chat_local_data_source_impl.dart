@@ -1,54 +1,42 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 import '/core/network/realtime_connection.dart';
 import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
+import 'chat_legacy_storage.dart';
 import 'chat_local_data_source.dart';
 
-/// Implementazione **reale**: cronologia salvata come JSON in
-/// `shared_preferences` (il server fa solo da postino, non la conserva), e
-/// consegna vera tramite la connessione WebSocket condivisa con `nearby`/
-/// `encounters` (`RealtimeConnection`) — nessun autoreply finto.
+/// Implementazione **reale**: cronologia tenuta **solo in memoria** (né il
+/// server né il telefono la conservano: chiusa l'app o finito il match, non
+/// ne resta traccia), e consegna vera tramite la connessione WebSocket
+/// condivisa con `nearby`/`encounters` (`RealtimeConnection`) — nessun
+/// autoreply finto.
 class ChatLocalDataSourceImpl implements ChatLocalDataSource {
-  static const String _conversationsKey = 'chat_conversations';
-  static const String _messagesKeyPrefix = 'chat_messages_';
+  ChatLocalDataSourceImpl() {
+    unawaited(purgeLegacyChatStorage());
+  }
+
+  final Map<String, ConversationModel> _conversations = {};
+  final Map<String, List<ChatMessageModel>> _messages = {};
 
   @override
   Future<ConversationModel> getOrCreateConversation({
     required String otherPersonId,
     required String otherSelfiePath,
   }) async {
-    final conversations = await _loadConversations();
-    final existingIndex = conversations.indexWhere(
-      (c) => c.otherPersonId == otherPersonId,
+    return _conversations.putIfAbsent(
+      otherPersonId,
+      () => ConversationModel(
+        id: 'conv-$otherPersonId',
+        otherPersonId: otherPersonId,
+        otherSelfiePath: otherSelfiePath,
+      ),
     );
-    if (existingIndex != -1) {
-      return conversations[existingIndex];
-    }
-
-    final created = ConversationModel(
-      id: 'conv-$otherPersonId',
-      otherPersonId: otherPersonId,
-      otherSelfiePath: otherSelfiePath,
-    );
-    conversations.add(created);
-    await _saveConversations(conversations);
-    return created;
   }
 
   @override
-  Future<List<ChatMessageModel>> getMessages(String conversationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_messagesKeyPrefix$conversationId');
-    if (raw == null) return [];
-
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((e) => ChatMessageModel.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
+  Future<List<ChatMessageModel>> getMessages(String conversationId) async =>
+      List.of(_messages[conversationId] ?? const []);
 
   @override
   Future<ChatMessageModel> appendMessage({
@@ -62,7 +50,7 @@ class ChatLocalDataSourceImpl implements ChatLocalDataSource {
       text: text,
       sentAt: DateTime.now(),
     );
-    await _storeMessage(conversationId, message);
+    _storeMessage(conversationId, message);
 
     RealtimeConnection.instance.send({
       'type': 'chatMessage',
@@ -87,65 +75,25 @@ class ChatLocalDataSourceImpl implements ChatLocalDataSource {
               decoded['type'] == 'chatMessage' &&
               decoded['fromSessionId'] == otherPersonId,
         )
-        .asyncMap((decoded) async {
+        .map((decoded) {
           final message = ChatMessageModel(
             id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
             isMine: false,
             text: decoded['text'] as String,
             sentAt: DateTime.parse(decoded['sentAt'] as String),
           );
-          await _storeMessage('conv-$otherPersonId', message);
+          _storeMessage('conv-$otherPersonId', message);
           return message;
         });
   }
 
   @override
   Future<void> deleteConversation(String otherPersonId) async {
-    final conversationId = 'conv-$otherPersonId';
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('$_messagesKeyPrefix$conversationId');
-
-    final conversations = await _loadConversations();
-    conversations.removeWhere((c) => c.otherPersonId == otherPersonId);
-    await _saveConversations(conversations);
+    _messages.remove('conv-$otherPersonId');
+    _conversations.remove(otherPersonId);
   }
 
-  Future<void> _storeMessage(
-    String conversationId,
-    ChatMessageModel message,
-  ) async {
-    final messages = await getMessages(conversationId);
-    messages.add(message);
-    await _saveMessages(conversationId, messages);
-  }
-
-  Future<List<ConversationModel>> _loadConversations() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_conversationsKey);
-    if (raw == null) return [];
-
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((e) => ConversationModel.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<void> _saveConversations(List<ConversationModel> conversations) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _conversationsKey,
-      jsonEncode(conversations.map((c) => c.toJson()).toList()),
-    );
-  }
-
-  Future<void> _saveMessages(
-    String conversationId,
-    List<ChatMessageModel> messages,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      '$_messagesKeyPrefix$conversationId',
-      jsonEncode(messages.map((m) => m.toJson()).toList()),
-    );
+  void _storeMessage(String conversationId, ChatMessageModel message) {
+    _messages.putIfAbsent(conversationId, () => []).add(message);
   }
 }

@@ -1,7 +1,8 @@
 import '../../domain/entities/chat_message.dart';
 
-/// Versione di `ChatMessage` con `fromJson`/`toJson`, per salvarlo in
-/// `shared_preferences` come JSON codificato.
+/// Versione di `ChatMessage` con `fromJson`/`toJson`. La cronologia non
+/// viene più salvata su disco (vive solo in memoria, vedi
+/// `ChatLocalDataSourceImpl`): il JSON resta per il formato dei messaggi.
 class ChatMessageModel extends ChatMessage {
   const ChatMessageModel({
     required super.id,
