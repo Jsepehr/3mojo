@@ -1,11 +1,13 @@
-/// Contratto per l'identificatore anonimo del dispositivo usato dal
-/// paywall — mai un nome/email/profilo, solo un ID casuale che permette al
-/// server di ricordare "questo dispositivo ha già sbloccato" tra un
-/// controllo e l'altro.
+/// Contratto per il token di sblocco a pagamento sul telefono — mai un
+/// identificativo del dispositivo: esiste solo dopo un acquisto e solo
+/// finché vale (2 ore), chi non paga non ne ha nessuno.
 abstract class PaywallLocalDataSource {
-  /// Lo crea al primo utilizzo e lo persiste per sempre (a differenza del
-  /// `sessionId` di `session/`, che è usa-e-getta e cambia a ogni Start):
-  /// uno sblocco pagato deve restare riconoscibile anche dopo aver
-  /// chiuso/riaperto l'app, o End/Start più volte.
-  Future<String> getOrCreateDeviceId();
+  /// Il token salvato, o `null` se non c'è (mai pagato, o già scaduto).
+  Future<String?> readUnlockToken();
+
+  /// Salva il token appena emesso dal server, valido per [validFor].
+  Future<void> saveUnlockToken(String token, Duration validFor);
+
+  /// Dimentica il token (es. il server dice che non vale più).
+  Future<void> clearUnlockToken();
 }

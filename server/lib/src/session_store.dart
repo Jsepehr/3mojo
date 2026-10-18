@@ -22,7 +22,7 @@ class Session {
     this.gender = 'unspecified',
     this.genderPreference = 'everyone',
     this.selfieBase64 = '',
-    this.deviceId = '',
+    this.unlockToken = '',
   }) : anchorLat = lat,
        anchorLng = lng;
 
@@ -59,14 +59,12 @@ class Session {
   /// a chi lo vede in "Vicinanze".
   String selfieBase64;
 
-  /// L'identificatore anonimo persistente del dispositivo (`core/device/` nel
-  /// client, mai il `sessionId` — quello è usa-e-getta), mandato con la
-  /// presenza solo per poter chiedere a `PaywallStore` se questo dispositivo
-  /// ha sbloccato l'accesso completo. Stringa vuota finché il client non
-  /// l'ha ancora collegato (subito dopo il connect, vedi
-  /// `NearbyRemoteDataSourceImpl._attachDeviceId` lato client) — trattata
-  /// come "non sbloccato", mai come errore.
-  String deviceId;
+  /// Il token di sblocco a pagamento (`PaywallStore.issueUnlockToken`),
+  /// mandato con la presenza solo da chi ha pagato e solo finché vale (2
+  /// ore). Stringa vuota per chi non ha pagato — trattata come "non
+  /// sbloccato", mai come errore. Non identifica il dispositivo: scaduto,
+  /// non collega più nulla.
+  String unlockToken;
 }
 
 /// Una persona vicina già pronta per il client: distanza, stadio di
@@ -190,7 +188,7 @@ class SessionStore {
     String gender = 'unspecified',
     String genderPreference = 'everyone',
     String selfieBase64 = '',
-    String deviceId = '',
+    String unlockToken = '',
   }) {
     final now = _now();
     final existing = _sessions[sessionId];
@@ -205,7 +203,7 @@ class SessionStore {
         gender: gender,
         genderPreference: genderPreference,
         selfieBase64: selfieBase64,
-        deviceId: deviceId,
+        unlockToken: unlockToken,
       );
       _indexPosition(sessionId, lat);
       return;
@@ -231,7 +229,7 @@ class SessionStore {
     existing.gender = gender;
     existing.genderPreference = genderPreference;
     existing.selfieBase64 = selfieBase64;
-    existing.deviceId = deviceId;
+    existing.unlockToken = unlockToken;
     _indexPosition(sessionId, lat);
   }
 
@@ -304,7 +302,7 @@ class SessionStore {
   /// quello base.
   ///
   /// **Paywall**: se `sessionId` non ha sbloccato l'accesso (vedi
-  /// [PaywallStore], per il suo `Session.deviceId`), il terzo più vicino
+  /// [PaywallStore], per il suo `Session.unlockToken`), il terzo più vicino
   /// delle persone qui sotto viene rimandato con `selfieBase64` vuoto
   /// (stessa regola — un terzo, i più vicini, minimo 2 gratis — di
   /// `GetLockedNearbyPeopleUseCase` nel client Flutter, ma qui è dove viene
@@ -379,7 +377,8 @@ class SessionStore {
       );
     }
 
-    final isUnlocked = me.deviceId.isNotEmpty && paywall.isUnlocked(me.deviceId);
+    final isUnlocked =
+        me.unlockToken.isNotEmpty && paywall.isUnlocked(me.unlockToken);
     return _withPaywallVisibility(results, isUnlocked: isUnlocked);
   }
 

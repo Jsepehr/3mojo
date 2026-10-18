@@ -285,11 +285,16 @@ void main() {
         paywall = PaywallStore.withClock(() => clock);
       });
 
-      void placeViewerAndSix() {
+      void placeViewerAndSix({String unlockToken = ''}) {
         // 'a' is the viewer. Six others at clearly increasing distances
         // (~11m apart), each with a distinct selfie so the free/locked
         // split is unambiguous to check by content.
-        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0, deviceId: 'dev-a');
+        store.upsertPosition(
+          sessionId: 'a',
+          lat: 0,
+          lng: 0,
+          unlockToken: unlockToken,
+        );
         for (var i = 1; i <= 6; i++) {
           store.upsertPosition(
             sessionId: 'p$i',
@@ -342,9 +347,8 @@ void main() {
         },
       );
 
-      test('an unlocked device sees every selfie, none withheld', () {
-        placeViewerAndSix();
-        paywall.recordUnlock('dev-a');
+      test('a viewer with a valid unlock token sees every selfie', () {
+        placeViewerAndSix(unlockToken: paywall.issueUnlockToken());
 
         final result = store.nearbyPeople(
           sessionId: 'a',
@@ -358,11 +362,11 @@ void main() {
       });
 
       test(
-        'a linked device only unlocks once ITS OWN deviceId is unlocked -- '
-        'unlocking a different device does nothing for this viewer',
+        "someone else's purchase does nothing for this viewer, and an "
+        'invented token unlocks nothing',
         () {
-          placeViewerAndSix();
-          paywall.recordUnlock('someone-elses-device');
+          paywall.issueUnlockToken();
+          placeViewerAndSix(unlockToken: 'not-a-real-token');
 
           final result = store.nearbyPeople(
             sessionId: 'a',
@@ -378,7 +382,7 @@ void main() {
       );
 
       test('never blanks below the 2-free minimum, even on a short list', () {
-        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0, deviceId: 'dev-a');
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
         store.upsertPosition(
           sessionId: 'p1',
           lat: 0.0001,

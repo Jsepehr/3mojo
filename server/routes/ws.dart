@@ -14,10 +14,10 @@ import 'package:threemojo_server/src/session_store.dart';
 ///
 /// Messaggi in arrivo dal client, un JSON per riga, distinti da `"type"`:
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
-///   "genderPreference": ..., "selfieBase64": ..., "deviceId": ...}` —
+///   "genderPreference": ..., "selfieBase64": ..., "unlockToken": ...}` —
 ///   mandato alla connessione e poi ogni volta che la posizione va
-///   aggiornata; `deviceId` (`core/device/` nel client) collega la sessione
-///   al dispositivo per `PaywallStore` — vedi `SessionStore.nearbyPeople`;
+///   aggiornata; `unlockToken` (facoltativo) c'è solo se chi lo manda ha
+///   pagato lo sblocco — vedi `PaywallStore` e `SessionStore.nearbyPeople`;
 /// - `{"type": "sendEncounterRequest", "toSessionId": ...}`;
 /// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
 /// - `{"type": "endMatch", "requestId": ...}`;
@@ -137,7 +137,7 @@ void _handlePresence(String sessionId, Map<String, dynamic> decoded) {
     gender: decoded['gender'] as String? ?? 'unspecified',
     genderPreference: decoded['genderPreference'] as String? ?? 'everyone',
     selfieBase64: decoded['selfieBase64'] as String? ?? '',
-    deviceId: decoded['deviceId'] as String? ?? '',
+    unlockToken: decoded['unlockToken'] as String? ?? '',
   );
   ConnectionHub.instance.broadcastNearbyUpdates();
 }

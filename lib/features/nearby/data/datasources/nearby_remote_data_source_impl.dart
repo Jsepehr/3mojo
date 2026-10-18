@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '/core/device/device_id_provider.dart';
 import '/core/network/realtime_connection.dart';
+import '/core/unlock/unlock_token_store.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import 'nearby_remote_data_source.dart';
 
@@ -19,15 +19,17 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   String _genderPreference = 'everyone';
   String _selfieBase64 = '';
 
-  // `deviceId` (core/device/, condiviso con `paywall/`) non è disponibile in
-  // modo sincrono al connect -- arriva un istante dopo, via
-  // `_attachDeviceId`. Fino ad allora resta vuoto: il server tratta una
-  // sessione senza deviceId collegato come "non sbloccata" (fallback
-  // sicuro), mai come un errore. `_lastLatitude`/`_lastLongitude` servono
-  // solo a rimandare la presenza una seconda volta non appena il deviceId
-  // è pronto, senza dover aspettare il prossimo vero aggiornamento di
-  // posizione.
-  String _deviceId = '';
+  // Il token di sblocco a pagamento (core/unlock/, condiviso con
+  // `paywall/`), solo se si è pagato: chi non paga non manda nulla che lo
+  // identifichi. Si legge in modo asincrono un istante dopo il connect
+  // (`_attachUnlockToken`) e si aggiorna da solo dopo un acquisto a sessione
+  // già avviata (`UnlockTokenStore.changes`): in entrambi i casi la
+  // presenza viene rimandata subito, senza aspettare il prossimo vero
+  // aggiornamento di posizione — `_lastLatitude`/`_lastLongitude` servono
+  // solo a questo. Finché non c'è, il server tratta la sessione come "non
+  // sbloccata", mai come un errore.
+  String? _unlockToken;
+  StreamSubscription<String?>? _unlockTokenChanges;
   double _lastLatitude = 0;
   double _lastLongitude = 0;
 
@@ -46,7 +48,7 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
 
     final messages = RealtimeConnection.instance.connect(sessionId);
     updatePosition(latitude: latitude, longitude: longitude);
-    unawaited(_attachDeviceId());
+    unawaited(_attachUnlockToken());
 
     return messages.expand((decoded) {
       if (decoded['type'] != 'nearby') return const <List<NearbyPersonModel>>[];
@@ -62,8 +64,15 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
     });
   }
 
-  Future<void> _attachDeviceId() async {
-    _deviceId = await DeviceIdProvider.instance.getOrCreateDeviceId();
+  Future<void> _attachUnlockToken() async {
+    await _unlockTokenChanges?.cancel();
+    _unlockTokenChanges = UnlockTokenStore.instance.changes.listen((token) {
+      _unlockToken = token;
+      updatePosition(latitude: _lastLatitude, longitude: _lastLongitude);
+    });
+    final token = await UnlockTokenStore.instance.read();
+    if (token == null) return;
+    _unlockToken = token;
     updatePosition(latitude: _lastLatitude, longitude: _lastLongitude);
   }
 
@@ -78,10 +87,14 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
       'gender': _gender,
       'genderPreference': _genderPreference,
       'selfieBase64': _selfieBase64,
-      'deviceId': _deviceId,
+      if (_unlockToken != null) 'unlockToken': _unlockToken,
     });
   }
 
   @override
-  Future<void> disconnect() => RealtimeConnection.instance.disconnect();
+  Future<void> disconnect() async {
+    await _unlockTokenChanges?.cancel();
+    _unlockTokenChanges = null;
+    await RealtimeConnection.instance.disconnect();
+  }
 }
