@@ -47,5 +47,14 @@ dependencies {
     // Rilevamento volto sul dispositivo per il canale `raen/face_detection`
     // (FaceDetectionChannel.kt): stessa versione che usava il plugin
     // google_mlkit_face_detection, modello incluso nell'APK.
+    //
+    // Privacy: le immagini non escono dal telefono, ma ML Kit invia a Google
+    // (via com.google.android.datatransport, HTTPS) telemetria di diagnostica
+    // e uso: modello/OS del dispositivo, nome pacchetto e versione app, un
+    // identificativo per installazione, latenza, configurazione dell'API,
+    // dimensione di input/output, codici d'errore. Google non documenta un
+    // modo supportato per disattivarla (togliere a mano datatransport non è
+    // supportato e può rompere il rilevamento): va dichiarata nel Data Safety
+    // di Play — vedi https://developers.google.com/ml-kit/android-data-disclosure
     implementation("com.google.mlkit:face-detection:16.1.7")
 }

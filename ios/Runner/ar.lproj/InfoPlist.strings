@@ -1,0 +1,3 @@
+/* Testi delle richieste di permesso iOS (chiavi di Info.plist). Regola: raggio 100 m, posizione al server solo da online, controllo volto solo sul dispositivo. */
+"NSCameraUsageDescription" = "يستخدم Raen الكاميرا فقط لالتقاط صورة السيلفي الخاصة بجلستك، والتي يمكن للأشخاص القريبين منك رؤيتها أثناء اتصالك. يتم التحقق من الوجه على جهازك فقط: لا يتم حفظ أي بيانات بيومترية أو إرسالها.";
+"NSLocationWhenInUseUsageDescription" = "يستخدم Raen موقعك الدقيق فقط أثناء اتصالك: يُرسَل إلى الخادم ليُظهر لك الأشخاص ضمن 100 متر منك ويُظهرك لهم. عندما تقطع الاتصال، تتوقف مشاركته.";
