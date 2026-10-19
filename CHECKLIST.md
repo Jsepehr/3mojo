@@ -25,7 +25,7 @@ Se non sai rispondere a questa, fermati prima di scegliere la cartella — il re
 ## 2. Sto scrivendo l'implementazione di un'interfaccia?
 
 - [ ] È in un **file separato** da quello dell'interfaccia, con suffisso `_impl.dart`? (mai nello stesso file, nemmeno quando interfaccia e impl stanno nel medesimo layer, come i datasource)
-- [ ] Il nome della classe segue `XxxImpl` (es. `CounterRepositoryImpl`, `TodoLocalDataSourceImpl`)?
+- [ ] Il nome della classe segue `XxxImpl` (es. `NearbyRepositoryImpl`, `LocationLocalDataSourceImpl`)? Una versione finta senza rete (modalità finta, solo debug) va in `*_fake_impl.dart` come `XxxFakeImpl` (es. `NearbyRemoteDataSourceFakeImpl`).
 
 ## 3. Sto aggiungendo/modificando un campo o una proprietà?
 
@@ -44,10 +44,11 @@ Se non sai rispondere a questa, fermati prima di scegliere la cartella — il re
 - [ ] Sto scrivendo codice in `data/` (datasource o repository impl) che può fallire per motivi tecnici (rete, cache vuota, parsing)? → lancia/cattura un'**`Exception`** tua (`core/errors/exceptions.dart`), non una `Failure`.
 - [ ] Sto scrivendo il **repository impl**? → cattura le `Exception`, traducile in **`Failure`** (`core/errors/failures.dart`), ritorna `Either<Failure, T>`.
 - [ ] Sto scrivendo qualcosa in `domain/` o `presentation/`? → non toccare mai un try/catch su un'eccezione tecnica: lì esiste solo `Either<Failure, T>`.
+- [ ] L'utente deve vedere questo errore? → serve un `Failure` **tipizzato** (es. `NoFaceInSelfieFailure`), e la UI sceglie il testo tradotto dal tipo — mai `failure.message` a schermo.
 
 ## 6. Sto scrivendo testo visibile all'utente?
 
-- [ ] È hardcoded in un widget? → **no**: va in `lib/l10n/app_en.arb` (il template, sempre aggiornato per primo) e poi in `app_it.arb` (e nelle altre lingue).
+- [ ] È hardcoded in un widget? → **no**: va in `lib/l10n/app_en.arb` (il template, sempre aggiornato per primo) e poi in tutte le altre lingue (`app_it`, `app_de`, `app_es`, `app_fr`, `app_ar`).
 - [ ] Hai rigenerato con `flutter gen-l10n` dopo aver toccato gli ARB?
 
 ## 7. Come chiamo il file e la classe?
@@ -59,7 +60,7 @@ Se non sai rispondere a questa, fermati prima di scegliere la cartella — il re
 | `presentation/providers` | `pro_*.dart` | `ProXxx` |
 | `domain/repositories` | `*_repository.dart` | `XxxRepository` |
 | `data/repositories` | `*_repository_impl.dart` | `XxxRepositoryImpl` |
-| `data/datasources` | `*_data_source.dart` / `_impl.dart` | `XxxDataSource` / `Impl` |
+| `data/datasources` | `*_data_source.dart` / `_impl.dart` / `_fake_impl.dart` | `XxxDataSource` / `Impl` / `FakeImpl` |
 | `domain/usecases` | `*_usecase.dart` | `XxxUseCase` |
 
 ## 8. Controllo finale — la direzione delle dipendenze
@@ -71,7 +72,7 @@ Se non sai rispondere a questa, fermati prima di scegliere la cartella — il re
 ## 9. Sto creando una feature intera da zero?
 
 - [ ] Hai copiato la struttura di `lib/features/profile/` o `lib/features/nearby/` e rinominato, invece di creare le cartelle a mano?
-- [ ] Hai guardato `lib/features/nearby/` come riferimento per la versione "completa" (datasource remoto+locale, validazione, entity+model separati)?
+- [ ] Hai guardato `lib/features/nearby/` come riferimento per la versione "completa" (datasource remoto+locale, reale+finto, entity+model separati, use case che ne compone altri)?
 
 ## 10. Sto usando lo strumento giusto per lo stato?
 
