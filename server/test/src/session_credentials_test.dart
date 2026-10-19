@@ -12,7 +12,10 @@ void main() {
     });
 
     test('the public id is stable for the same secret', () {
-      expect(credentials.publicIdFor(secretA), credentials.publicIdFor(secretA));
+      expect(
+        credentials.publicIdFor(secretA),
+        credentials.publicIdFor(secretA),
+      );
     });
 
     test('the public id never reveals the secret', () {
@@ -38,7 +41,17 @@ void main() {
       expect(credentials.publicIdFor(secretA), isNot(before));
     });
 
-    test('rejects missing or short secrets', () {
+    test('forgetPublicId ends the link from the public side too', () {
+      final before = credentials.publicIdFor(secretA);
+
+      credentials.forgetPublicId(before);
+
+      expect(credentials.knows(secretA), isFalse);
+      expect(credentials.publicIdFor(secretA), isNot(before));
+    });
+
+    test('rejects missing, short or absurdly long secrets', () {
+      expect(SessionCredentials.isValidSecret('x' * 129), isFalse);
       expect(SessionCredentials.isValidSecret(null), isFalse);
       expect(SessionCredentials.isValidSecret(''), isFalse);
       expect(SessionCredentials.isValidSecret('abc'), isFalse);

@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
+import 'package:threemojo_server/src/presence_profile.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 void main() {
@@ -83,19 +84,23 @@ void main() {
 
     test('detection ignores gender -- it is a physical fact, not a dating '
         'preference', () {
-      sessions.upsertPosition(sessionId: 'a', lat: 0, lng: 0, gender: 'male');
+      sessions.upsertPosition(
+        sessionId: 'a',
+        lat: 0,
+        lng: 0,
+        profile: const PresenceProfile(gender: 'male'),
+      );
       sessions.upsertPosition(
         sessionId: 'b',
         lat: 0.0001,
         lng: 0,
-        gender: 'female',
+        profile: const PresenceProfile(gender: 'female'),
       );
       sessions.upsertPosition(
         sessionId: 'c',
         lat: 0,
         lng: 0.0001,
-        gender: 'female',
-        genderPreference: 'male',
+        profile: const PresenceProfile(gender: 'female', lookingFor: {'male'}),
       );
       clock = clock.add(const Duration(minutes: 16));
 
@@ -130,9 +135,11 @@ void main() {
       // Scattered far apart from each other too, so they don't
       // incidentally form a brand-new hotspot of their own at their new
       // location -- that would mask what this test actually checks.
-      sessions.upsertPosition(sessionId: 'a', lat: 5, lng: 5);
-      sessions.upsertPosition(sessionId: 'b', lat: 6, lng: 6);
-      sessions.upsertPosition(sessionId: 'c', lat: 7, lng: 7);
+      // (Tens of km, not hundreds: further than that in 16 minutes would be
+      // discarded by SessionStore's speed check as a teleport.)
+      sessions.upsertPosition(sessionId: 'a', lat: 0.1, lng: 0.1);
+      sessions.upsertPosition(sessionId: 'b', lat: 0.2, lng: 0.2);
+      sessions.upsertPosition(sessionId: 'c', lat: 0.3, lng: 0.3);
       sessions.upsertPosition(sessionId: 'x', lat: 0.0016, lng: 0);
       sessions.upsertPosition(sessionId: 'y', lat: -0.0016, lng: 0);
       sessions.upsertPosition(sessionId: 'z', lat: 0, lng: 0.0016);
@@ -236,9 +243,11 @@ void main() {
 
       // Scattered far apart from each other too, so they don't incidentally
       // form a brand-new hotspot of their own at their new location.
-      sessions.upsertPosition(sessionId: 'a', lat: 5, lng: 5);
-      sessions.upsertPosition(sessionId: 'b', lat: 6, lng: 6);
-      sessions.upsertPosition(sessionId: 'c', lat: 7, lng: 7);
+      // (Tens of km, not hundreds: further than that in 16 minutes would be
+      // discarded by SessionStore's speed check as a teleport.)
+      sessions.upsertPosition(sessionId: 'a', lat: 0.1, lng: 0.1);
+      sessions.upsertPosition(sessionId: 'b', lat: 0.2, lng: 0.2);
+      sessions.upsertPosition(sessionId: 'c', lat: 0.3, lng: 0.3);
       clock = clock.add(const Duration(hours: 1, minutes: 1));
 
       hotspots.detectAndRefresh(sessions.allSessions);

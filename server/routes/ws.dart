@@ -1,223 +1,92 @@
-import 'dart:convert';
-
 import 'package:dart_frog/dart_frog.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:threemojo_server/src/client_ip.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
-import 'package:threemojo_server/src/encounter_store.dart';
-import 'package:threemojo_server/src/session_credentials.dart';
-import 'package:threemojo_server/src/session_store.dart';
+import 'package:threemojo_server/src/session_lifecycle.dart';
+import 'package:threemojo_server/src/socket_session.dart';
 
-/// `GET /ws?sessionId=<segreto>`, upgradato a WebSocket — un solo canale
-/// persistente per sessione porta presenza/vicinanze, richieste d'incontro
-/// **e** i messaggi di chat, spinti dal server appena cambia qualcosa
-/// invece che richiesti dal client a intervalli.
+/// `GET /ws`, upgradato a WebSocket — un solo canale persistente per
+/// sessione porta presenza/vicinanze, richieste d'incontro **e** i messaggi
+/// di chat, spinti dal server appena cambia qualcosa invece che richiesti
+/// dal client a intervalli. **Nessun parametro nell'URL**: il segreto della
+/// sessione arriva col primo messaggio (vedi sotto), mai in query string.
 ///
-/// Messaggi in arrivo dal client, un JSON per riga, distinti da `"type"`:
+/// Messaggi dal client, un JSON per frame di testo, distinti da `"type"`:
+/// - `{"type": "hello", "secret": "<segreto>"}` — **obbligatorio e primo**,
+///   entro 10 s, altrimenti il socket viene chiuso (codice 4001) senza aver
+///   registrato nulla. Risposta: `welcome` (sotto), oppure
+///   `{"type": "error", "code": "invalidSecret" | "rateLimited"}` e chiusura
+///   (4002 / 4008);
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
-///   "genderPreference": ..., "selfieBase64": ..., "unlockToken": ...}` —
-///   mandato alla connessione e poi ogni volta che la posizione va
-///   aggiornata; `unlockToken` (facoltativo) c'è solo se chi lo manda ha
-///   pagato lo sblocco — vedi `PaywallStore` e `SessionStore.nearbyPeople`;
-/// - `{"type": "sendEncounterRequest", "toSessionId": ...}`;
+///   "lookingFor": [...], "intent": ..., "languages": [...],
+///   "showGender": bool, "selfieBase64": ..., "unlockToken": ...}` — dopo
+///   ogni `welcome` e poi a ogni aggiornamento di posizione. Profilo e
+///   selfie (JPEG, ≤ ~230 KB) contano solo alla nascita della sessione:
+///   dopo si possono omettere. `unlockToken` solo se si è pagato;
+/// - `{"type": "sendEncounterRequest", "toPersonId": ...}`;
 /// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
 /// - `{"type": "endMatch", "requestId": ...}`;
-/// - `{"type": "chatMessage", "toSessionId": ..., "text": ..., "sentAt": ...}`
-///   — inoltrato al destinatario se online, non conservato da nessuna
-///   parte (il server fa solo da postino: se il destinatario non è
-///   connesso in questo momento, il messaggio va perso).
+/// - `{"type": "chatMessage", "toPersonId": ..., "text": ...,
+///   "clientMessageId": ...}` (l'ultimo facoltativo) — inoltrato solo con un
+///   match attivo, mai conservato (il server fa solo da postino); un testo
+///   oltre 1000 unità UTF-16 torna `rejected` `invalidText` (il socket resta
+///   aperto, solo un frame oltre 16 KB lo chiude con 4009);
+/// - `{"type": "ping"}` — ogni 20 s, per dire "sono vivo" (risposta:
+///   `pong`);
+/// - `{"type": "end"}` — End esplicito: la sessione finisce subito.
 ///
-/// Messaggi in uscita verso il client:
-/// - `{"type": "nearby", "people": [...]}`;
-/// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}` — mandato
-///   subito alla connessione (con lo stato già esistente, utile dopo una
-///   riconnessione) e di nuovo a ogni cambiamento che riguarda la sessione;
-/// - `{"type": "chatMessage", "fromSessionId": ..., "text": ..., "sentAt": ...}`.
+/// Messaggi dal server:
+/// - `{"type": "welcome", "resumed": bool, "graceSeconds": 45}` — dopo un
+///   hello valido; `resumed: true` = stessa sessione di prima (stessa
+///   permanenza, richieste e match), `false` = sessione nuova;
+/// - `{"type": "nearby", "people": [{"personId", "meetingChance", "locked",
+///   "selfieBase64"?, "intent"?, "languages"?, "gender"?}]}` — già ordinata
+///   dalla persona più vicina, **senza distanze**; `locked` = dietro il
+///   paywall (niente selfie);
+/// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}`, ogni
+///   richiesta `{"id", "otherPersonId", "status", "otherSelfieBase64"?,
+///   "otherIntent"?, "otherLanguages"?, "otherGender"?}` (selfie e profilo
+///   solo per `pending`/`accepted`; il selfie solo la prima volta per
+///   richiesta su ogni socket, poi il client riusa quello già ricevuto);
+/// - `{"type": "pong"}` — risposta a ogni `ping`;
+/// - `{"type": "chatMessage", "fromPersonId": ..., "text": ..., "sentAt": ...}`;
+/// - `{"type": "rejected", "action": ..., "reason": ..., ...}` — un'azione
+///   rifiutata dalle regole del server (vedi `RealtimeMessageHandler`).
 ///
-/// **Credenziale vs id pubblico**: il `sessionId` della query è un segreto
-/// del client (mai mostrato ad altri), non l'id con cui gli altri lo vedono.
-/// Qui viene subito tradotto nell'id pubblico casuale di
-/// `SessionCredentials`, ed è solo quello a circolare nel resto del server e
-/// nei payload (`sessionId` in "nearby", `otherSessionId`, `fromSessionId`,
-/// e i `toSessionId` che il client manda indietro). Conoscere l'id pubblico
-/// di qualcuno non permette di aprire il suo canale.
+/// **Id**: `personId`/`otherPersonId`/`fromPersonId` sono pseudonimi per
+/// osservatore (`Pseudonyms`): la stessa persona ha un id diverso per ognuno
+/// che la vede, e il client rimanda indietro quello che ha ricevuto.
 ///
-/// Quando il socket si chiude (pulito o no): la sessione viene rimossa
-/// subito da `SessionStore` (niente più sessioni fantasma), e le sue
-/// richieste d'incontro ancora pendenti vengono cancellate (chi le aveva
-/// mandate/ricevute non potrebbe comunque mai ottenere risposta).
+/// **Chiusura**: con `end` la sessione finisce subito; ogni altra chiusura
+/// (rete persa, app uccisa) la nasconde e avvia un periodo di grazia di 45 s
+/// in cui riconnettersi con lo stesso segreto la riprende intatta (vedi
+/// `SessionLifecycle`). Il server manda un ping WebSocket ogni 20 s
+/// ([pingInterval]): un socket morto senza chiusura viene scoperto e chiuso.
 Future<Response> onRequest(RequestContext context) async {
-  final secret = context.request.uri.queryParameters['sessionId'];
-  if (!SessionCredentials.isValidSecret(secret)) {
-    return Response.json(
-      statusCode: 400,
-      body: {'error': 'sessionId mancante o troppo corto'},
-    );
-  }
-  final sessionSecret = secret!;
-  final sessionId = SessionCredentials.instance.publicIdFor(sessionSecret);
-
-  SessionStore.instance.startAutoPurge(
-    onPurged: (removedIds) {
-      for (final id in removedIds) {
-        ConnectionHub.instance.unregister(id);
-      }
-      ConnectionHub.instance.broadcastNearbyUpdates();
-    },
+  final clientIp = resolveClientIp(
+    remoteAddress: context.request.connectionInfo.remoteAddress.address,
+    forwardedFor: context.request.headers['x-forwarded-for'],
+    trustedProxies: _trustedProxies,
   );
+
+  SessionLifecycle.instance.startAutoPurge();
   ConnectionHub.instance.startHotspotDetection();
 
   final handler = fromShelfHandler(
     webSocketHandler((webSocket, protocol) {
-      ConnectionHub.instance.register(sessionId, webSocket.sink);
-      // Stato già esistente (es. richieste ricevute prima di una
-      // riconnessione) — non aspettare il prossimo cambiamento per vederlo.
-      ConnectionHub.instance.pushEncounterSnapshot(sessionId);
-
-      webSocket.stream.listen(
-        (raw) {
-          final Object? decoded;
-          try {
-            decoded = jsonDecode(raw as String);
-          } catch (_) {
-            return;
-          }
-          if (decoded is! Map<String, dynamic>) return;
-
-          switch (decoded['type']) {
-            case 'presence':
-              _handlePresence(sessionId, decoded);
-            case 'sendEncounterRequest':
-              _handleSendEncounterRequest(sessionId, decoded);
-            case 'respondToEncounterRequest':
-              _handleRespondToEncounterRequest(sessionId, decoded);
-            case 'endMatch':
-              _handleEndMatch(sessionId, decoded);
-            case 'chatMessage':
-              _handleChatMessage(sessionId, decoded);
-          }
-        },
-        onDone: () {
-          // Se nel frattempo la stessa sessione si è riconnessa, questo è il
-          // vecchio socket: non toccare quello nuovo né la sessione.
-          final wasCurrent = ConnectionHub.instance.unregister(
-            sessionId,
-            sink: webSocket.sink,
-          );
-          if (!wasCurrent) return;
-
-          SessionStore.instance.remove(sessionId);
-          SessionCredentials.instance.forget(sessionSecret);
-          ConnectionHub.instance.broadcastNearbyUpdates();
-
-          final affected = EncounterStore.instance.cancelAllPendingFor(
-            sessionId,
-          );
-          for (final request in affected) {
-            ConnectionHub.instance.pushEncounterSnapshot(
-              request.otherSessionId(sessionId),
-            );
-          }
-        },
-      );
-    }),
+      SocketSession(
+        incoming: webSocket.stream,
+        outgoing: webSocket.sink,
+        clientIp: clientIp,
+      ).start();
+    }, pingInterval: pingInterval),
   );
 
   return handler(context);
 }
 
-void _handlePresence(String sessionId, Map<String, dynamic> decoded) {
-  final lat = (decoded['lat'] as num?)?.toDouble();
-  final lng = (decoded['lng'] as num?)?.toDouble();
-  if (lat == null || lng == null) return;
+/// Ping WebSocket del server: senza, un socket mezzo aperto (telefono che
+/// perde la rete senza chiudere) resterebbe "connesso" per minuti.
+const pingInterval = Duration(seconds: 20);
 
-  SessionStore.instance.upsertPosition(
-    sessionId: sessionId,
-    lat: lat,
-    lng: lng,
-    gender: decoded['gender'] as String? ?? 'unspecified',
-    genderPreference: decoded['genderPreference'] as String? ?? 'everyone',
-    selfieBase64: decoded['selfieBase64'] as String? ?? '',
-    unlockToken: decoded['unlockToken'] as String? ?? '',
-  );
-  ConnectionHub.instance.broadcastNearbyUpdates();
-}
-
-void _handleSendEncounterRequest(
-  String sessionId,
-  Map<String, dynamic> decoded,
-) {
-  final toSessionId = decoded['toSessionId'] as String?;
-  if (toSessionId == null || toSessionId.isEmpty) return;
-
-  EncounterStore.instance.sendRequest(
-    fromSessionId: sessionId,
-    toSessionId: toSessionId,
-  );
-  ConnectionHub.instance.pushEncounterSnapshot(sessionId);
-  ConnectionHub.instance.pushEncounterSnapshot(toSessionId);
-}
-
-void _handleRespondToEncounterRequest(
-  String sessionId,
-  Map<String, dynamic> decoded,
-) {
-  final requestId = decoded['requestId'] as String?;
-  final accepted = decoded['accepted'] as bool?;
-  if (requestId == null || accepted == null) return;
-
-  final ({EncounterRequest request, List<EncounterRequest> alsoCancelled})
-  result;
-  try {
-    result = EncounterStore.instance.respondToRequest(
-      requestId: requestId,
-      accepted: accepted,
-      bySessionId: sessionId,
-    );
-  } on ArgumentError {
-    return;
-  }
-
-  final touchedSessionIds = {
-    result.request.fromSessionId,
-    result.request.toSessionId,
-    for (final cancelled in result.alsoCancelled) ...[
-      cancelled.fromSessionId,
-      cancelled.toSessionId,
-    ],
-  };
-  for (final id in touchedSessionIds) {
-    ConnectionHub.instance.pushEncounterSnapshot(id);
-  }
-}
-
-void _handleChatMessage(String sessionId, Map<String, dynamic> decoded) {
-  final toSessionId = decoded['toSessionId'] as String?;
-  final text = decoded['text'] as String?;
-  final sentAt = decoded['sentAt'] as String?;
-  if (toSessionId == null || text == null || sentAt == null) return;
-
-  ConnectionHub.instance.relayChatMessage(
-    fromSessionId: sessionId,
-    toSessionId: toSessionId,
-    text: text,
-    sentAt: sentAt,
-  );
-}
-
-void _handleEndMatch(String sessionId, Map<String, dynamic> decoded) {
-  final requestId = decoded['requestId'] as String?;
-  if (requestId == null) return;
-
-  final EncounterRequest request;
-  try {
-    request = EncounterStore.instance.endMatch(
-      requestId,
-      bySessionId: sessionId,
-    );
-  } on ArgumentError {
-    return;
-  }
-
-  ConnectionHub.instance.pushEncounterSnapshot(request.fromSessionId);
-  ConnectionHub.instance.pushEncounterSnapshot(request.toSessionId);
-}
+final Set<String> _trustedProxies = trustedProxiesFromEnvironment();

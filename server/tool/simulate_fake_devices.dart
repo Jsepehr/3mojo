@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:threemojo_server/src/new_session_rate_limiter.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -54,6 +55,18 @@ Future<void> main(List<String> args) async {
   stdout.writeln('Ctrl+C per fermare tutto in modo pulito.\n');
 
   final devices = _seedDevices();
+  if (devices.length >= NewSessionRateLimiter.maxNewSessions) {
+    stdout.writeln(
+      'ATTENZIONE: ${devices.length} dispositivi = ${devices.length} nuovi '
+      'Start dallo stesso IP, e il limite predefinito del server è '
+      '${NewSessionRateLimiter.maxNewSessions} ogni '
+      '${NewSessionRateLimiter.window.inMinutes} minuti '
+      '(NewSessionRateLimiter): un secondo lancio, o l\'app sulla stessa '
+      'rete, verrebbe rifiutato (rateLimited). Per le prove avvia il server '
+      'con ${NewSessionRateLimiter.limitEnvironmentVariable}=200 (vedi '
+      'server/README.md).\n',
+    );
+  }
   final clients = <_FakeDevice>[];
 
   for (final device in devices) {
@@ -188,9 +201,19 @@ class _FakeDevice {
     String wsBaseUrl,
     DateTime startedAt,
   ) async {
-    final uri = Uri.parse('$wsBaseUrl/ws?sessionId=${seed.id}');
-    final channel = IOWebSocketChannel.connect(uri);
+    // Nessun segreto nell'URL: si manda col primo messaggio (`hello`). Il
+    // server vuole almeno 32 caratteri, qui basta allungare l'id leggibile.
+    final channel = IOWebSocketChannel.connect(
+      Uri.parse('$wsBaseUrl/ws'),
+      pingInterval: const Duration(seconds: 20),
+    );
     await channel.ready;
+    channel.sink.add(
+      jsonEncode({
+        'type': 'hello',
+        'secret': 'simulated-device-${seed.id}'.padRight(40, '0'),
+      }),
+    );
     stdout.writeln('[00:00] ${seed.id} connesso (vede ancora nessuno)');
     return _FakeDevice(seed, channel, startedAt);
   }
@@ -202,8 +225,7 @@ class _FakeDevice {
         'lat': seed.lat,
         'lng': seed.lng,
         'gender': seed.gender,
-        'genderPreference': 'everyone',
-        'selfieBase64': '',
+        'lookingFor': ['male', 'female', 'nonBinary'],
       }),
     );
   }
@@ -220,7 +242,9 @@ class _FakeDevice {
     }
 
     final people = (decoded['people'] as List).cast<Map<String, dynamic>>();
-    final ids = people.map((p) => p['sessionId'] as String).toList()..sort();
+    // Gli id sono pseudonimi per osservatore: diversi da un dispositivo
+    // all'altro anche per la stessa persona, si confrontano solo i conteggi.
+    final ids = people.map((p) => p['personId'] as String).toList()..sort();
     if (ids.length == _lastNearbyIds.length &&
         ids.join(',') == _lastNearbyIds.join(',')) {
       return;
@@ -236,6 +260,7 @@ class _FakeDevice {
 
   Future<void> close() async {
     _resendTimer.cancel();
+    _channel.sink.add(jsonEncode({'type': 'end'}));
     await _subscription.cancel();
     await _channel.sink.close();
   }

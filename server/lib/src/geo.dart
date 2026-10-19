@@ -19,3 +19,16 @@ double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
 }
 
 double _degToRad(double deg) => deg * pi / 180;
+
+/// `true` solo per coordinate vere: numeri finiti, latitudine in
+/// [-90, 90] e longitudine in [-180, 180]. Il JSON in arrivo dal client può
+/// contenere valori che `jsonDecode` trasforma in `Infinity` (es. `1e400`) o
+/// fuori scala: lasciati passare, finirebbero in `.floor()` dell'indice
+/// spaziale, che lancia e bloccava il broadcast per tutti.
+bool isValidCoordinate(double lat, double lng) =>
+    lat.isFinite &&
+    lng.isFinite &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180;

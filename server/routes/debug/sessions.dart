@@ -4,9 +4,11 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 /// `GET /debug/sessions` — solo per test locali: elenca tutte le sessioni
-/// online in memoria, senza i filtri che applica `/nearby` (raggio, genere,
-/// tempo di permanenza). Serve a controllare "chi è arrivato al server",
-/// non cosa vede un client specifico.
+/// in memoria, senza i filtri che il server applica alla lista "nearby" del
+/// WebSocket `/ws` (raggio, genere, tempo di permanenza). Serve a
+/// controllare "chi è arrivato al server" e se è connesso o nel periodo di
+/// grazia, non cosa vede un client specifico. Niente distanze a coppie (con
+/// quelle chiunque avesse il token potrebbe triangolare tutti).
 ///
 /// **Spento di default.** Si accende solo avviando il server con la
 /// variabile d'ambiente `DEBUG_ENDPOINTS_TOKEN`, e risponde solo a chi manda
@@ -17,7 +19,8 @@ import 'package:threemojo_server/src/session_store.dart';
 Response onRequest(RequestContext context) {
   final expectedToken = Platform.environment['DEBUG_ENDPOINTS_TOKEN'] ?? '';
   final providedToken = context.request.headers['x-debug-token'] ?? '';
-  if (expectedToken.isEmpty || !_constantTimeEquals(providedToken, expectedToken)) {
+  if (expectedToken.isEmpty ||
+      !_constantTimeEquals(providedToken, expectedToken)) {
     return Response(statusCode: HttpStatus.notFound);
   }
 

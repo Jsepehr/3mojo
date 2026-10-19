@@ -22,7 +22,16 @@ Future<Response> onRequest(RequestContext context) async {
     return Response.json(statusCode: 400, body: {'error': 'JSON non valido'});
   }
 
-  final token = body['unlockToken'] as String? ?? '';
+  // Un token che non è una stringa (numero, lista…) è una richiesta
+  // sbagliata, non un errore del server: mai un cast che esplode in un 500.
+  final rawToken = body['unlockToken'];
+  if (rawToken != null && rawToken is! String) {
+    return Response.json(
+      statusCode: 400,
+      body: {'error': 'unlockToken non valido'},
+    );
+  }
+  final token = rawToken is String ? rawToken : '';
   return Response.json(
     body: {
       'isUnlocked': token.isNotEmpty && PaywallStore.instance.isUnlocked(token),
