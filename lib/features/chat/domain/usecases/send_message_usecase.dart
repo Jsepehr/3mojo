@@ -21,9 +21,18 @@ class SendMessageParams extends Equatable {
   List<Object?> get props => [conversationId, otherPersonId, text];
 }
 
-/// Azione: manda un messaggio. Valida che non sia vuoto prima di scriverlo.
+/// Azione: manda un messaggio. Regole prima di mandarlo: non vuoto e non
+/// più lungo di [maxTextLength] (`MessageTooLongFailure`) — lo stesso
+/// limite del server, che altrimenti lo rifiuterebbe (`invalidText`) e un
+/// "Riprova" fallirebbe per sempre.
 class SendMessageUseCase implements UseCase<ChatMessage, SendMessageParams> {
   const SendMessageUseCase(this._repository);
+
+  /// Lunghezza massima del testo (dopo il `trim`), in unità UTF-16
+  /// (`String.length`, come conta il server). **Allineata** con
+  /// `RealtimeMessageHandler.maxChatTextLength` in `server/`: cambiarle
+  /// insieme.
+  static const maxTextLength = 1000;
 
   final ChatRepository _repository;
 
@@ -34,6 +43,9 @@ class SendMessageUseCase implements UseCase<ChatMessage, SendMessageParams> {
       return Future.value(
         const Left(ValidationFailure('Il messaggio non può essere vuoto')),
       );
+    }
+    if (text.length > maxTextLength) {
+      return Future.value(const Left(MessageTooLongFailure(maxTextLength)));
     }
 
     return _repository.appendMessage(

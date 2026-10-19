@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/features/nearby/presentation/providers/pro_nearby.dart';
+import '/features/nearby/presentation/widgets/cmp_nearby_error_state.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_waiting_overlay.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -10,14 +10,31 @@ import '../../domain/usecases/get_locked_nearby_people_usecase.dart';
 import '../providers/pro_paywall.dart';
 import 'cmp_paywall_banner.dart';
 
-/// Sostituisce `CmpNearbyList` (feature `nearby`, che non sa nulla del
-/// paywall) quando il paywall è attivo: stessa lista, ma con un terzo delle
-/// persone più lontane visibili gratis e le altre sfocate/bloccate dietro
-/// `CmpPaywallBanner`/`showPaywallConfirmDialog`. La composizione vive qui,
-/// in `paywall/`, non dentro `nearby/`, per non far dipendere `nearby` da
-/// una feature di monetizzazione che potrebbe anche non esistere.
+/// Corpo di "Vicinanze" (la home online): la lista delle persone presenti
+/// ora, spinta dal server, con un terzo delle persone più lontane visibili
+/// gratis e le altre sfocate/bloccate dietro
+/// `CmpPaywallBanner`/`showPaywallConfirmDialog`. Compone i pezzi di
+/// `nearby/` (stato, tile, attesa, errori) qui, in `paywall/`, per non far
+/// dipendere `nearby` da una feature di monetizzazione.
+///
+/// Non conosce `encounters/` né `session/`: con chi c'è già una richiesta,
+/// cosa fa un tap e come si chiude la sessione arrivano da fuori (`UiHome`)
+/// — [requestStateOf], [onRequest], [onEndSession], [onRetakeSelfie]. Una
+/// tile già richiesta ha la foto attenuata, un chip che dice perché, e non
+/// è più cliccabile.
 class CmpPaywalledNearbyList extends StatelessWidget {
-  const CmpPaywalledNearbyList({super.key});
+  const CmpPaywalledNearbyList({
+    super.key,
+    required this.requestStateOf,
+    required this.onRequest,
+    this.onEndSession,
+    this.onRetakeSelfie,
+  });
+
+  final CmpNearbyRequestState Function(String personId) requestStateOf;
+  final void Function(String personId) onRequest;
+  final VoidCallback? onEndSession;
+  final VoidCallback? onRetakeSelfie;
 
   static const _getLockedNearbyPeopleUseCase = GetLockedNearbyPeopleUseCase();
 
@@ -31,12 +48,21 @@ class CmpPaywalledNearbyList extends StatelessWidget {
       return CmpNearbyWaitingOverlay(title: l10n.connecting_to_the_server);
     }
 
-    if (proNearby.errorMessage != null) {
-      return Center(child: Text(proNearby.errorMessage!));
+    final failure = proNearby.failure;
+    if (failure != null) {
+      return CmpNearbyErrorState(
+        failure: failure,
+        isRetrying: proNearby.isRetrying,
+        onRetry: proNearby.retry,
+        onOpenLocationSettings: proNearby.openLocationSettings,
+        onOpenAppSettings: proNearby.openAppSettings,
+        onEndSession: onEndSession,
+        onRetakeSelfie: onRetakeSelfie,
+      );
     }
 
     if (proNearby.people.isEmpty) {
-      return CmpNearbyWaitingOverlay(title: l10n.no_one_within_200_meters_right_now);
+      return CmpNearbyWaitingOverlay(title: l10n.no_one_nearby_right_now);
     }
 
     final lockedPeople = _getLockedNearbyPeopleUseCase(
@@ -50,40 +76,25 @@ class CmpPaywalledNearbyList extends StatelessWidget {
         if (anyLocked) const CmpPaywallBanner(),
         Expanded(
           child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 6),
             itemCount: lockedPeople.length,
             itemBuilder: (context, index) {
               final entry = lockedPeople[index];
               final person = entry.person;
-              final alreadyRequested = proNearby.hasRequested(person.id);
+              final requestState = requestStateOf(person.id);
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Opacity(
-                  opacity: alreadyRequested ? 0.4 : 1.0,
-                  child: InkWell(
-                    onTap: entry.isLocked
-                        ? () => showPaywallConfirmDialog(context)
-                        : alreadyRequested
-                        ? null
-                        : () {
-                            context.read<ProEncounters>().sendRequest(
-                              person.id,
-                            );
-                            context.read<ProNearby>().markRequested(
-                              person.id,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(l10n.request_sent),
-                              ),
-                            );
-                          },
-                    child: CmpNearbyPersonTile(
-                      person: person,
-                      isLocked: entry.isLocked,
-                    ),
-                  ),
-                ),
+              return CmpNearbyPersonTile(
+                person: person,
+                isLocked: entry.isLocked,
+                requestState: requestState,
+                onTap: entry.isLocked
+                    ? () => showPaywallConfirmDialog(context)
+                    : requestState != CmpNearbyRequestState.none
+                    ? null
+                    // L'esito (partita o rifiutata, e perché) arriva da
+                    // `CmpEncounterNoticeListener`: qui nessun
+                    // "Richiesta inviata" prima di saperlo.
+                    : () => onRequest(person.id),
               );
             },
           ),

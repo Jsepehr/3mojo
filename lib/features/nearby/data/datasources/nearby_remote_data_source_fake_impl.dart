@@ -2,24 +2,42 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '/core/unlock/unlock_token_store.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
+import '/features/profile/domain/entities/profile.dart';
 import 'nearby_remote_data_source.dart';
 
 /// Implementazione **finta** (nessuna rete, nessun backend): simula 5
 /// persone la cui presenza cambia a ogni tick — entrano, restano, escono.
-/// Il tempo di permanenza si calcola dal vero orario di arrivo
-/// (`arrivedAt`), non da quanti tick sono passati — coerente con un vero
-/// server, che terrebbe il tempo per conto suo: se qualcuno è "arrivato"
-/// prima che tu iniziassi a guardare, lo vedi già ad alta probabilità al
-/// primo caricamento. Nessuna foto: `photoUrl` resta vuota (placeholder in
-/// UI), niente immagini di rete — la modalità finta funziona anche a modem
-/// staccato.
+/// Segue lo stesso protocollo del server vero:
+/// - il tempo di permanenza si calcola dal vero orario di arrivo
+///   (`arrivedAt`), non da quanti tick sono passati: se qualcuno è
+///   "arrivato" prima che tu iniziassi a guardare, lo vedi già ad alta
+///   probabilità al primo caricamento;
+/// - **nessuna distanza** verso chi chiama: la lista esce già ordinata
+///   dalla persona più vicina, e la distanza resta interna (ordinamento e
+///   paywall);
+/// - il **paywall** è deciso qui (`isLocked`), con la stessa regola del
+///   server — un terzo dei più lontani gratis (minimo 2), gli altri
+///   bloccati e senza foto — a meno che ci sia un token di sblocco (in
+///   modalità finta basta che esista: lo emette il paywall finto);
+/// - gli id sono diversi a ogni sessione, come gli pseudonimi del server.
+///
+/// Nessuna foto (placeholder in UI), niente immagini di rete — la modalità
+/// finta funziona anche a modem staccato.
 class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
+  NearbyRemoteDataSourceFakeImpl({UnlockTokenStore? unlockTokenStore})
+    : _unlockTokenStore = unlockTokenStore ?? UnlockTokenStore.instance;
+
+  final UnlockTokenStore _unlockTokenStore;
   final Random _random = Random();
-  final List<_FakePresence> _people = _seedPeople();
+  List<_FakePresence> _people = const [];
   StreamController<List<NearbyPersonModel>>? _controller;
+  StreamSubscription<String?>? _unlockTokenChanges;
   Timer? _timer;
+  String _idPrefix = '';
+  bool _isUnlocked = false;
 
   static const Duration _tickInterval = Duration(seconds: 3);
   static const int _visibilityThresholdMinutes = 1;
@@ -27,34 +45,49 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   static const int _highChanceThresholdMinutes = 5;
   static const double _leaveProbability = 0.1;
   static const double _returnProbability = 0.25;
+  static const double _freeFraction = 1 / 3;
+  static const int _minFreeCount = 2;
 
   static List<_FakePresence> _seedPeople() {
     final now = DateTime.now();
     return [
       _FakePresence(
-        id: 'fake-1',
+        index: 1,
         distanceMeters: 4,
         arrivedAt: now.subtract(const Duration(minutes: 6)),
+        intent: MeetIntent.chat,
+        languages: const ['it', 'en'],
+        visibleGender: Gender.female,
       ),
       _FakePresence(
-        id: 'fake-2',
+        index: 2,
         distanceMeters: 12.5,
         arrivedAt: now.subtract(const Duration(minutes: 4)),
+        intent: MeetIntent.openToAnything,
+        languages: const ['it'],
       ),
       _FakePresence(
-        id: 'fake-3',
+        index: 3,
         distanceMeters: 19,
         arrivedAt: now.subtract(const Duration(minutes: 2)),
+        intent: MeetIntent.friendship,
+        languages: const ['es', 'en'],
+        visibleGender: Gender.male,
       ),
       _FakePresence(
-        id: 'fake-4',
+        index: 4,
         distanceMeters: 45,
         arrivedAt: now.subtract(const Duration(seconds: 90)),
+        visibleGender: Gender.nonBinary,
       ),
+      // Dentro il raggio di 100 m del server: oltre, il server vero non la
+      // manderebbe mai.
       _FakePresence(
-        id: 'fake-5',
-        distanceMeters: 150,
+        index: 5,
+        distanceMeters: 80,
         arrivedAt: now.subtract(const Duration(minutes: 10)),
+        intent: MeetIntent.meetPeople,
+        languages: const ['fr'],
       ),
     ];
   }
@@ -64,17 +97,42 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     required String sessionId,
     required double latitude,
     required double longitude,
-    required String gender,
-    required String genderPreference,
+    required Profile profile,
+    MeetIntent? intent,
     required Uint8List selfieBytes,
   }) {
+    final prefix = 'fake${sessionId.hashCode.toRadixString(16)}';
+    final existing = _controller;
+    if (existing != null && !existing.isClosed && prefix == _idPrefix) {
+      scheduleMicrotask(_emit);
+      return existing.stream;
+    }
+
+    unawaited(existing?.close());
+    _idPrefix = prefix;
+    _people = _seedPeople();
     final controller = StreamController<List<NearbyPersonModel>>.broadcast();
     _controller = controller;
     _timer?.cancel();
     _timer = Timer.periodic(_tickInterval, (_) => _tick());
+    unawaited(_watchUnlock());
 
     scheduleMicrotask(_emit);
     return controller.stream;
+  }
+
+  Future<void> _watchUnlock() async {
+    await _unlockTokenChanges?.cancel();
+    _unlockTokenChanges = _unlockTokenStore.changes.listen((token) {
+      _isUnlocked = token != null;
+      _emit();
+    });
+    try {
+      _isUnlocked = await _unlockTokenStore.read() != null;
+    } catch (_) {
+      _isUnlocked = false;
+    }
+    _emit();
   }
 
   @override
@@ -86,8 +144,11 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   Future<void> disconnect() async {
     _timer?.cancel();
     _timer = null;
+    await _unlockTokenChanges?.cancel();
+    _unlockTokenChanges = null;
     await _controller?.close();
     _controller = null;
+    _idPrefix = '';
   }
 
   void _tick() {
@@ -110,23 +171,39 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     if (controller == null || controller.isClosed) return;
 
     final now = DateTime.now();
-    final people = _people
-        .where(
-          (person) =>
-              person.isPresent &&
-              now.difference(person.arrivedAt).inMinutes >=
-                  _visibilityThresholdMinutes,
-        )
-        .map(
-          (person) => NearbyPersonModel(
-            id: person.id,
-            photoUrl: '',
-            distanceMeters: person.distanceMeters,
-            meetingChance: _meetingChanceFor(now.difference(person.arrivedAt)),
+    final visible =
+        _people
+            .where(
+              (person) =>
+                  person.isPresent &&
+                  now.difference(person.arrivedAt).inMinutes >=
+                      _visibilityThresholdMinutes,
+            )
+            .toList()
+          ..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+
+    final freeCount = _isUnlocked
+        ? visible.length
+        : min(
+            visible.length,
+            max((visible.length * _freeFraction).floor(), _minFreeCount),
+          );
+    // I più lontani (in fondo alla lista ordinata) sono quelli gratis.
+    final firstFreeIndex = visible.length - freeCount;
+
+    controller.add([
+      for (var i = 0; i < visible.length; i++)
+        NearbyPersonModel(
+          id: '$_idPrefix-${visible[i].index}',
+          meetingChance: _meetingChanceFor(
+            now.difference(visible[i].arrivedAt),
           ),
-        )
-        .toList();
-    controller.add(people);
+          isLocked: i < firstFreeIndex,
+          intent: visible[i].intent,
+          languages: visible[i].languages,
+          visibleGender: visible[i].visibleGender,
+        ),
+    ]);
   }
 
   MeetingChance _meetingChanceFor(Duration dwell) {
@@ -139,13 +216,21 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
 
 class _FakePresence {
   _FakePresence({
-    required this.id,
+    required this.index,
     required this.distanceMeters,
     required this.arrivedAt,
+    this.intent,
+    this.languages = const [],
+    this.visibleGender,
   });
 
-  final String id;
+  final int index;
+
+  /// Solo interna: ordina la lista e decide il paywall, mai esposta.
   final double distanceMeters;
+  final MeetIntent? intent;
+  final List<String> languages;
+  final Gender? visibleGender;
   DateTime arrivedAt;
   bool isPresent = true;
 }

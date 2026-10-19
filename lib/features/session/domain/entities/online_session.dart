@@ -2,43 +2,36 @@ import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 
-/// Il genere dichiarato dall'utente.
-enum Gender { male, female }
+import '/features/profile/domain/entities/profile.dart';
 
-/// Il genere che l'utente vuole vedere in "Vicinanze".
-enum GenderPreference { male, female, everyone }
-
-/// "Chi sei ora": selfie appena scattato + genere + preferenza. Non è un
-/// account — nasce a ogni Start e sparisce a ogni End, nessun dato fisso.
+/// "Chi sei ora": selfie appena scattato + una copia del profilo (letto dal
+/// telefono allo Start) + l'intento scelto per questa sessione. Non è un
+/// account — nasce a ogni Start e sparisce a ogni End; il profilo resta sul
+/// telefono, il server lo vede solo finché si è online.
 /// `sessionId` è generato da zero a ogni Start (mai un id fisso legato al
 /// device): serve solo a farsi riconoscere dal server finché si resta
 /// online, nella connessione persistente `GET /ws`.
 ///
-/// Il selfie vive in due forme: `selfiePath` (un percorso file reale solo
-/// su Android/iOS/desktop, usato dal controllo volto) e `selfieBytes` (il
-/// contenuto vero e proprio, sempre disponibile su ogni piattaforma — è
-/// quello che si mostra in UI e che viene mandato al server, mai `File()`).
+/// Il selfie vive **solo in memoria** (`selfieBytes`): il file scritto dalla
+/// fotocamera viene cancellato appena letto (`SelfieLocalDataSourceImpl`).
+/// Sono questi byte che si mostrano in UI, si controllano (volto) e si
+/// mandano al server.
 class OnlineSession extends Equatable {
   const OnlineSession({
     required this.sessionId,
-    required this.selfiePath,
     required this.selfieBytes,
-    required this.gender,
-    required this.genderPreference,
+    required this.profile,
+    this.intent,
   });
 
   final String sessionId;
-  final String selfiePath;
   final Uint8List selfieBytes;
-  final Gender gender;
-  final GenderPreference genderPreference;
+  final Profile profile;
+
+  /// Cosa si cerca **stasera**: parte da `Profile.defaultIntent` e si cambia
+  /// allo Start; `null` = nessuna icona mostrata agli altri.
+  final MeetIntent? intent;
 
   @override
-  List<Object?> get props => [
-    sessionId,
-    selfiePath,
-    selfieBytes,
-    gender,
-    genderPreference,
-  ];
+  List<Object?> get props => [sessionId, selfieBytes, profile, intent];
 }

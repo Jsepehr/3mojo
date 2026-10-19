@@ -51,7 +51,10 @@ class _CmpLoadingIndicatorState extends State<CmpLoadingIndicator>
                 child: Container(
                   width: dotSize,
                   height: dotSize,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               );
             }),

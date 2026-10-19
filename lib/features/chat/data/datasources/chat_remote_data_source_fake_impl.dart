@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import '../models/chat_message_model.dart';
 import '../models/conversation_model.dart';
 import 'chat_legacy_storage.dart';
-import 'chat_local_data_source.dart';
+import 'chat_remote_data_source.dart';
 
 /// Implementazione **finta** (nessuna rete): cronologia solo in memoria,
 /// come quella reale, ma con un autoreply finto dopo ogni messaggio
 /// mandato, per sentire la chat viva senza un vero interlocutore
 /// dall'altra parte.
-class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
-  ChatLocalDataSourceFakeImpl() {
+class ChatRemoteDataSourceFakeImpl implements ChatRemoteDataSource {
+  ChatRemoteDataSourceFakeImpl() {
     unawaited(purgeLegacyChatStorage());
   }
 
@@ -24,6 +25,7 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
   static const Duration _replyDelay = Duration(seconds: 3);
 
   final Random _random = Random();
+  int _counter = 0;
   final Map<String, ConversationModel> _conversations = {};
   final Map<String, List<ChatMessageModel>> _messages = {};
   final Map<String, StreamController<ChatMessageModel>> _incomingControllers =
@@ -32,14 +34,14 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
   @override
   Future<ConversationModel> getOrCreateConversation({
     required String otherPersonId,
-    required String otherSelfiePath,
+    Uint8List? otherSelfieBytes,
   }) async {
     return _conversations.putIfAbsent(
       otherPersonId,
       () => ConversationModel(
         id: 'conv-$otherPersonId',
         otherPersonId: otherPersonId,
-        otherSelfiePath: otherSelfiePath,
+        otherSelfieBytes: otherSelfieBytes,
       ),
     );
   }
@@ -55,7 +57,7 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
     required String text,
   }) async {
     final message = ChatMessageModel(
-      id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
+      id: 'msg-${DateTime.now().microsecondsSinceEpoch}-${_counter++}',
       isMine: true,
       text: text,
       sentAt: DateTime.now(),
@@ -65,13 +67,21 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
     return message;
   }
 
+  /// Nessuna connessione da ascoltare: le risposte finte nascono da
+  /// [appendMessage].
+  @override
+  void startReceiving(String sessionId) {}
+
   @override
   Stream<ChatMessageModel> watchIncomingMessages({
     required String sessionId,
     required String otherPersonId,
   }) {
     return _incomingControllers
-        .putIfAbsent(otherPersonId, StreamController<ChatMessageModel>.broadcast)
+        .putIfAbsent(
+          otherPersonId,
+          StreamController<ChatMessageModel>.broadcast,
+        )
         .stream;
   }
 
@@ -81,7 +91,7 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
       // una conversazione che non esiste più.
       if (!_conversations.containsKey(otherPersonId)) return;
       final reply = ChatMessageModel(
-        id: 'msg-${DateTime.now().microsecondsSinceEpoch}',
+        id: 'msg-${DateTime.now().microsecondsSinceEpoch}-${_counter++}',
         isMine: false,
         text: _fakeReplies[_random.nextInt(_fakeReplies.length)],
         sentAt: DateTime.now(),
@@ -93,9 +103,26 @@ class ChatLocalDataSourceFakeImpl implements ChatLocalDataSource {
 
   @override
   Future<void> deleteConversation(String otherPersonId) async {
-    _messages.remove('conv-$otherPersonId');
+    _messages.remove('conv-$otherPersonId')?.clear();
     _conversations.remove(otherPersonId);
     unawaited(_incomingControllers.remove(otherPersonId)?.close());
+  }
+
+  @override
+  Stream<String> watchUndeliveredMessageIds({required String sessionId}) =>
+      const Stream.empty();
+
+  @override
+  Future<void> reset() async {
+    for (final list in _messages.values) {
+      list.clear();
+    }
+    _messages.clear();
+    _conversations.clear();
+    for (final controller in _incomingControllers.values) {
+      unawaited(controller.close());
+    }
+    _incomingControllers.clear();
   }
 
   void _storeMessage(String conversationId, ChatMessageModel message) {

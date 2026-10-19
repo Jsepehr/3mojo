@@ -1,35 +1,42 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:fpdart/fpdart.dart';
 
+import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/conversation.dart';
 import '../../domain/repositories/chat_repository.dart';
-import '../datasources/chat_local_data_source.dart';
+import '../datasources/chat_remote_data_source.dart';
 import '../models/chat_message_model.dart';
 
-/// Passacarte verso il datasource locale, traducendo le eccezioni (o gli
-/// errori della connessione condivisa) in `Failure`.
+/// Passacarte verso il datasource, traducendo gli errori della connessione
+/// (`ServerException`) in `ConnectionFailure` e ogni altra eccezione in
+/// `UnexpectedFailure`.
 class ChatRepositoryImpl implements ChatRepository {
-  const ChatRepositoryImpl(this._localDataSource);
+  const ChatRepositoryImpl(this._remoteDataSource);
 
-  final ChatLocalDataSource _localDataSource;
+  final ChatRemoteDataSource _remoteDataSource;
+
+  static Failure _failureFor(Object error) => error is ServerException
+      ? ConnectionFailure(error.message)
+      : UnexpectedFailure(error.toString());
 
   @override
   Future<Either<Failure, Conversation>> getOrCreateConversation({
     required String otherPersonId,
-    required String otherSelfiePath,
+    Uint8List? otherSelfieBytes,
   }) async {
     try {
       return Right(
-        await _localDataSource.getOrCreateConversation(
+        await _remoteDataSource.getOrCreateConversation(
           otherPersonId: otherPersonId,
-          otherSelfiePath: otherSelfiePath,
+          otherSelfieBytes: otherSelfieBytes,
         ),
       );
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(_failureFor(e));
     }
   }
 
@@ -38,9 +45,9 @@ class ChatRepositoryImpl implements ChatRepository {
     String conversationId,
   ) async {
     try {
-      return Right(await _localDataSource.getMessages(conversationId));
+      return Right(await _remoteDataSource.getMessages(conversationId));
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(_failureFor(e));
     }
   }
 
@@ -52,24 +59,50 @@ class ChatRepositoryImpl implements ChatRepository {
   }) async {
     try {
       return Right(
-        await _localDataSource.appendMessage(
+        await _remoteDataSource.appendMessage(
           conversationId: conversationId,
           otherPersonId: otherPersonId,
           text: text,
         ),
       );
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(_failureFor(e));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteConversation(String otherPersonId) async {
     try {
-      await _localDataSource.deleteConversation(otherPersonId);
+      await _remoteDataSource.deleteConversation(otherPersonId);
       return const Right(null);
     } catch (e) {
-      return Left(UnexpectedFailure(e.toString()));
+      return Left(_failureFor(e));
+    }
+  }
+
+  @override
+  Stream<String> watchUndeliveredMessageIds({required String sessionId}) =>
+      _remoteDataSource
+          .watchUndeliveredMessageIds(sessionId: sessionId)
+          .handleError((Object _) {});
+
+  @override
+  Future<Either<Failure, Unit>> clearSessionState() async {
+    try {
+      await _remoteDataSource.reset();
+      return const Right(unit);
+    } catch (e) {
+      return Left(_failureFor(e));
+    }
+  }
+
+  @override
+  Either<Failure, Unit> startReceivingMessages({required String sessionId}) {
+    try {
+      _remoteDataSource.startReceiving(sessionId);
+      return const Right(unit);
+    } catch (e) {
+      return Left(_failureFor(e));
     }
   }
 
@@ -78,13 +111,19 @@ class ChatRepositoryImpl implements ChatRepository {
     required String sessionId,
     required String otherPersonId,
   }) {
-    return _localDataSource
-        .watchIncomingMessages(sessionId: sessionId, otherPersonId: otherPersonId)
+    return _remoteDataSource
+        .watchIncomingMessages(
+          sessionId: sessionId,
+          otherPersonId: otherPersonId,
+        )
         .transform(
-          StreamTransformer<ChatMessageModel, Either<Failure, ChatMessage>>.fromHandlers(
+          StreamTransformer<
+            ChatMessageModel,
+            Either<Failure, ChatMessage>
+          >.fromHandlers(
             handleData: (message, sink) => sink.add(Right(message)),
             handleError: (error, stackTrace, sink) =>
-                sink.add(Left(UnexpectedFailure(error.toString()))),
+                sink.add(Left(_failureFor(error))),
           ),
         );
   }

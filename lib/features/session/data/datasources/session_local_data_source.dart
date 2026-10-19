@@ -5,4 +5,7 @@ abstract class SessionLocalDataSource {
   Future<OnlineSession?> getCurrentSession();
   Future<OnlineSession> startSession(OnlineSession session);
   Future<void> endSession();
+
+  /// La sessione attuale subito, poi a ogni [startSession]/[endSession].
+  Stream<OnlineSession?> watchSession();
 }

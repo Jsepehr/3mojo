@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import '/features/nearby/domain/repositories/location_repository.dart';
 
@@ -14,5 +15,7 @@ class WatchPositionUseCase {
 
   final LocationRepository _repository;
 
-  Stream<Either<Failure, GeoLocation>> call() => _repository.watchPosition();
+  Stream<Either<Failure, GeoLocation>> call({
+    required BackgroundLocationNotice notice,
+  }) => _repository.watchPosition(notice: notice);
 }

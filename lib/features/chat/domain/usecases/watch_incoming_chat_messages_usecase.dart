@@ -34,7 +34,7 @@ class WatchIncomingChatMessagesUseCase {
       return;
     }
     if (sessionId == null) {
-      yield const Left(ValidationFailure('Devi essere online per chattare'));
+      yield const Left(NotOnlineFailure('No active session'));
       return;
     }
 

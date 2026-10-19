@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '/features/profile/domain/entities/profile.dart';
 import '/features/session/data/datasources/session_local_data_source.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/repositories/session_repository.dart';
@@ -25,19 +26,17 @@ class SessionRepositoryImpl implements SessionRepository {
   @override
   Future<Either<Failure, OnlineSession>> startSession({
     required String sessionId,
-    required String selfiePath,
     required Uint8List selfieBytes,
-    required Gender gender,
-    required GenderPreference genderPreference,
+    required Profile profile,
+    MeetIntent? intent,
   }) async {
     try {
       final session = await _localDataSource.startSession(
         OnlineSession(
           sessionId: sessionId,
-          selfiePath: selfiePath,
           selfieBytes: selfieBytes,
-          gender: gender,
-          genderPreference: genderPreference,
+          profile: profile,
+          intent: intent,
         ),
       );
       return Right(session);
@@ -55,4 +54,7 @@ class SessionRepositoryImpl implements SessionRepository {
       return Left(UnexpectedFailure(e.toString()));
     }
   }
+
+  @override
+  Stream<OnlineSession?> watchSession() => _localDataSource.watchSession();
 }

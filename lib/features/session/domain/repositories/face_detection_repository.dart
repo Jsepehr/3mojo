@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
@@ -6,5 +8,5 @@ import '/core/errors/failures.dart';
 /// riconosce **chi** sia (nessuna identità, nessun dato biometrico salvato),
 /// solo che ci sia una faccia e non, per dire, un paesaggio o un logo.
 abstract class FaceDetectionRepository {
-  Future<Either<Failure, bool>> containsFace(String imagePath);
+  Future<Either<Failure, bool>> containsFace(Uint8List imageBytes);
 }

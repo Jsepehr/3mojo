@@ -17,7 +17,9 @@ import '/features/settings/domain/usecases/set_theme_mode_usecase.dart';
 /// tra i datasource reali (richiedono il backend `server/`) e quelli finti
 /// (nessuna rete) — la scelta è fatta una sola volta all'avvio dell'app, per
 /// non dover chiudere/riaprire connessioni realtime a metà sessione: il
-/// drawer avvisa di riavviare l'app dopo averla cambiata.
+/// drawer avvisa di riavviare l'app dopo averla cambiata. La voce esiste
+/// solo dove la modalità finta è disponibile ([isFakeModeAvailable], i
+/// build di debug: vedi `GetFakeModeUseCase`).
 class ProSettings extends ChangeNotifier {
   ProSettings({
     required GetLanguageUseCase getLanguageUseCase,
@@ -56,6 +58,9 @@ class ProSettings extends ChangeNotifier {
       _appThemeMode == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light;
 
   bool get isFakeMode => _fakeMode;
+
+  /// Se mostrare la voce "dati finti" nel menu.
+  bool get isFakeModeAvailable => _setFakeModeUseCase.isAvailable;
 
   Future<void> _load() async {
     final languageResult = await _getLanguageUseCase(const NoParams());

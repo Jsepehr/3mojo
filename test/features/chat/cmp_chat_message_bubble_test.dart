@@ -54,16 +54,10 @@ void main() {
     );
 
     final mineAlign = tester.widget<Align>(
-      find.ancestor(
-        of: find.textContaining('a'),
-        matching: find.byType(Align),
-      ),
+      find.ancestor(of: find.textContaining('a'), matching: find.byType(Align)),
     );
     final theirsAlign = tester.widget<Align>(
-      find.ancestor(
-        of: find.textContaining('b'),
-        matching: find.byType(Align),
-      ),
+      find.ancestor(of: find.textContaining('b'), matching: find.byType(Align)),
     );
 
     expect(mineAlign.alignment, Alignment.centerRight);

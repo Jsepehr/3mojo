@@ -1,4 +1,6 @@
+import 'dart:typed_data';
+
 /// Contratto per verificare, sul dispositivo, se una foto contiene un volto.
 abstract class FaceDetectionLocalDataSource {
-  Future<bool> detectFace(String imagePath);
+  Future<bool> detectFace(Uint8List imageBytes);
 }

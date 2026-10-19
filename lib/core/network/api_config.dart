@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 /// Indirizzo del server (`server/`, dart_frog) usato dai datasource remoti
 /// reali.
 ///
-/// - **Debug/profile**: di default punta all'host della macchina di sviluppo
-///   vista dall'emulatore/simulatore/browser, in chiaro; su un device fisico
-///   va sovrascritto con `--dart-define=API_BASE_URL=http://<ip-lan-del-pc>:8080`.
-/// - **Release**: `API_BASE_URL` è obbligatorio e deve essere `https://`.
+/// - **Debug**: di default punta all'host della macchina di sviluppo vista
+///   dall'emulatore/simulatore/browser, in chiaro; su un device fisico va
+///   sovrascritto con `--dart-define=API_BASE_URL=http://<ip-lan-del-pc>:8080`.
+/// - **Release e profile**: `API_BASE_URL` è obbligatorio e deve essere
+///   `https://` (anche profile: è una build ottimizzata che gira su telefoni
+///   veri, spesso fuori dalla rete di sviluppo).
 ///   Tutto ciò che passa di qui — selfie, posizione precisa, genere,
 ///   preferenza, chat — in chiaro sarebbe leggibile e modificabile da
 ///   chiunque sulla stessa rete (Wi-Fi pubblici compresi), proprio nei luoghi
@@ -17,7 +19,7 @@ class ApiConfig {
   static const String _override = String.fromEnvironment('API_BASE_URL');
 
   static String get baseUrl {
-    if (kReleaseMode) {
+    if (kReleaseMode || kProfileMode) {
       if (!_override.startsWith('https://')) {
         throw StateError(
           'Build di release senza server sicuro: avvia con '
@@ -40,7 +42,7 @@ class ApiConfig {
   }
 
   /// Stesso host di [baseUrl], ma con schema `ws`/`wss` — per la connessione
-  /// persistente di `nearby/` (`GET /ws`), che sostituisce le richieste
-  /// HTTP separate di presenza/vicinanze. `https://` diventa `wss://`.
+  /// persistente condivisa (`GET /ws`, vedi `RealtimeConnection`).
+  /// `https://` diventa `wss://`.
   static String get wsBaseUrl => baseUrl.replaceFirst('http', 'ws');
 }

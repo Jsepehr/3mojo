@@ -1,8 +1,9 @@
 import '../../domain/entities/chat_message.dart';
 
-/// Versione di `ChatMessage` con `fromJson`/`toJson`. La cronologia non
-/// viene più salvata su disco (vive solo in memoria, vedi
-/// `ChatLocalDataSourceImpl`): il JSON resta per il formato dei messaggi.
+/// Versione di `ChatMessage` del layer `data/`. Nessun JSON: la cronologia
+/// vive solo in memoria (vedi `ChatRemoteDataSourceImpl`), mai su disco; i
+/// messaggi in rete hanno il loro formato (`{"type": "chatMessage", ...}`),
+/// letto e scritto direttamente dal datasource.
 class ChatMessageModel extends ChatMessage {
   const ChatMessageModel({
     required super.id,
@@ -10,22 +11,4 @@ class ChatMessageModel extends ChatMessage {
     required super.text,
     required super.sentAt,
   });
-
-  factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
-    return ChatMessageModel(
-      id: json['id'] as String,
-      isMine: json['isMine'] as bool,
-      text: json['text'] as String,
-      sentAt: DateTime.parse(json['sentAt'] as String),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'isMine': isMine,
-      'text': text,
-      'sentAt': sentAt.toIso8601String(),
-    };
-  }
 }

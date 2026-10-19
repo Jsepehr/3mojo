@@ -21,12 +21,17 @@ class WatchEncounterRequestsUseCase {
   final GetCurrentSessionUseCase _getCurrentSessionUseCase;
   final EncounterRepository _repository;
 
-  Stream<Either<Failure, ({List<EncounterRequest> incoming, List<EncounterRequest> outgoing})>>
+  Stream<
+    Either<
+      Failure,
+      ({List<EncounterRequest> incoming, List<EncounterRequest> outgoing})
+    >
+  >
   call() async* {
     final sessionResult = await _getCurrentSessionUseCase(const NoParams());
 
     Failure? failure;
-    var sessionId = sessionResult.match((f) {
+    final sessionId = sessionResult.match((f) {
       failure = f;
       return null;
     }, (session) => session?.sessionId);
@@ -36,9 +41,8 @@ class WatchEncounterRequestsUseCase {
       return;
     }
     if (sessionId == null) {
-      yield const Left(
-        ValidationFailure('Devi essere online per vedere le richieste'),
-      );
+      // Messaggio tecnico, mai mostrato: chi ascolta guarda il tipo.
+      yield const Left(NotOnlineFailure('No active session'));
       return;
     }
 

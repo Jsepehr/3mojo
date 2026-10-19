@@ -3,106 +3,176 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '/features/profile/presentation/pages/ui_profile.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'cmp_language_picker_dialog.dart';
 
-/// Menu laterale dell'app: cambio lingua, informazioni sull'app,
-/// condivisione. Nessuna voce di navigazione qui dentro — è un cassetto di
-/// impostazioni, non una seconda barra di navigazione.
+/// Menu laterale dell'app: il proprio profilo, cambio lingua, tema,
+/// informazioni sull'app, condivisione. Nessuna altra voce di navigazione
+/// qui dentro — è un cassetto di impostazioni, non una seconda barra di
+/// navigazione.
+///
+/// In fondo, separata, la voce per sviluppatori "dati finti": esiste solo
+/// nei build in cui la modalità finta è disponibile
+/// (`ProSettings.isFakeModeAvailable`, i build di debug).
+///
+/// Ogni voce che chiude il drawer e poi apre qualcosa cattura **prima** il
+/// `Navigator` (e i testi): dopo `pop()` il `context` del drawer non è più
+/// montato e non va più usato.
 class CmpAppDrawer extends StatelessWidget {
   const CmpAppDrawer({super.key});
 
-  Future<void> _changeLanguage(BuildContext context) {
-    return showDialog<void>(
-      context: context,
+  void _openProfile(BuildContext context) {
+    Navigator.of(context)
+      ..pop()
+      ..push(MaterialPageRoute(builder: (_) => const UiProfile()));
+  }
+
+  void _changeLanguage(BuildContext context) {
+    final navigator = Navigator.of(context)..pop();
+    showDialog<void>(
+      context: navigator.context,
       builder: (_) => const CmpLanguagePickerDialog(),
     );
   }
 
   Future<void> _showAbout(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
+    final navigator = Navigator.of(context)..pop();
     final packageInfo = await PackageInfo.fromPlatform();
-    if (!context.mounted) return;
+    if (!navigator.mounted) return;
 
     showAboutDialog(
-      context: context,
+      context: navigator.context,
       applicationName: l10n.app_title,
       applicationVersion: packageInfo.version,
       children: [Text(l10n.meet_people_nearby_in_real_time)],
     );
   }
 
-  void _shareApp(BuildContext context, AppLocalizations l10n) {
+  void _shareApp(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    // Posizione del popover (iPad): letta finché il drawer è ancora a
+    // schermo.
     final box = context.findRenderObject() as RenderBox?;
+    final origin = box == null || !box.hasSize
+        ? null
+        : box.localToGlobal(Offset.zero) & box.size;
+    Navigator.of(context).pop();
     SharePlus.instance.share(
       ShareParams(
         text: l10n.check_out_raen_an_app_to_meet_people_nearby_in_real_time,
-        sharePositionOrigin: box == null
-            ? null
-            : box.localToGlobal(Offset.zero) & box.size,
+        sharePositionOrigin: origin,
       ),
     );
   }
 
-  void _toggleFakeMode(BuildContext context, AppLocalizations l10n, bool enabled) {
+  void _toggleFakeMode(BuildContext context, bool enabled) {
+    final l10n = AppLocalizations.of(context)!;
     context.read<ProSettings>().setFakeMode(enabled);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l10n.restart_the_app_to_apply_this_change)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.restart_the_app_to_apply_this_change)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
     final proSettings = context.watch<ProSettings>();
-    final isDarkMode = proSettings.isDarkMode;
-    final isFakeMode = proSettings.isFakeMode;
 
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: Text(l10n.change_language),
-              onTap: () {
-                Navigator.of(context).pop();
-                _changeLanguage(context);
-              },
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(color: theme.colorScheme.primary),
+                  child: Align(
+                    alignment: AlignmentDirectional.bottomStart,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: 40,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          l10n.app_title,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(l10n.my_profile),
+                  onTap: () => _openProfile(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.language),
+                  title: Text(l10n.change_language),
+                  onTap: () => _changeLanguage(context),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.dark_mode_outlined),
+                  title: Text(l10n.dark_mode),
+                  value: proSettings.isDarkMode,
+                  onChanged: (enabled) =>
+                      context.read<ProSettings>().setDarkMode(enabled),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: Text(l10n.about),
+                  onTap: () => _showAbout(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.share),
+                  title: Text(l10n.share_app),
+                  onTap: () => _shareApp(context),
+                ),
+              ],
             ),
-            SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_outlined),
-              title: Text(l10n.dark_mode),
-              value: isDarkMode,
-              onChanged: (enabled) =>
-                  context.read<ProSettings>().setDarkMode(enabled),
+          ),
+          if (proSettings.isFakeModeAvailable)
+            SafeArea(
+              top: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      16,
+                      12,
+                      16,
+                      0,
+                    ),
+                    child: Text(
+                      l10n.developer_options,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.wifi_off_outlined),
+                    title: Text(l10n.fake_data_no_network),
+                    value: proSettings.isFakeMode,
+                    onChanged: (enabled) => _toggleFakeMode(context, enabled),
+                  ),
+                ],
+              ),
             ),
-            SwitchListTile(
-              secondary: const Icon(Icons.wifi_off_outlined),
-              title: Text(l10n.fake_data_no_network),
-              value: isFakeMode,
-              onChanged: (enabled) => _toggleFakeMode(context, l10n, enabled),
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: Text(l10n.about),
-              onTap: () {
-                Navigator.of(context).pop();
-                _showAbout(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share),
-              title: Text(l10n.share_app),
-              onTap: () {
-                Navigator.of(context).pop();
-                _shareApp(context, l10n);
-              },
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -9,14 +11,14 @@ import '../repositories/chat_repository.dart';
 class GetOrCreateConversationParams extends Equatable {
   const GetOrCreateConversationParams({
     required this.otherPersonId,
-    required this.otherSelfiePath,
+    this.otherSelfieBytes,
   });
 
   final String otherPersonId;
-  final String otherSelfiePath;
+  final Uint8List? otherSelfieBytes;
 
   @override
-  List<Object?> get props => [otherPersonId, otherSelfiePath];
+  List<Object?> get props => [otherPersonId, otherSelfieBytes];
 }
 
 /// Azione: apri la conversazione con questa persona (creandola se è la
@@ -32,6 +34,6 @@ class GetOrCreateConversationUseCase
     GetOrCreateConversationParams params,
   ) => _repository.getOrCreateConversation(
     otherPersonId: params.otherPersonId,
-    otherSelfiePath: params.otherSelfiePath,
+    otherSelfieBytes: params.otherSelfieBytes,
   );
 }

@@ -1,27 +1,12 @@
 import '../../domain/entities/conversation.dart';
 
-/// Versione di `Conversation` con `fromJson`/`toJson`, stessa ragione di
-/// `ChatMessageModel`.
+/// Versione di `Conversation` del layer `data/`. Nessun JSON: la
+/// conversazione vive solo in memoria (vedi `ChatRemoteDataSourceImpl`) e
+/// non viaggia mai in rete né su disco.
 class ConversationModel extends Conversation {
   const ConversationModel({
     required super.id,
     required super.otherPersonId,
-    required super.otherSelfiePath,
+    super.otherSelfieBytes,
   });
-
-  factory ConversationModel.fromJson(Map<String, dynamic> json) {
-    return ConversationModel(
-      id: json['id'] as String,
-      otherPersonId: json['otherPersonId'] as String,
-      otherSelfiePath: json['otherSelfiePath'] as String,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'otherPersonId': otherPersonId,
-      'otherSelfiePath': otherSelfiePath,
-    };
-  }
 }

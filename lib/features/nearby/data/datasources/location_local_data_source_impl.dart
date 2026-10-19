@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '/core/errors/exceptions.dart';
+import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import 'location_local_data_source.dart';
 
@@ -13,9 +14,7 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
   Future<GeoLocation> getCurrentLocation() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw const LocationDisabledException(
-        'Il servizio di localizzazione è disattivato',
-      );
+      throw const LocationDisabledException('Location services are disabled');
     }
 
     var permission = await Geolocator.checkPermission();
@@ -25,7 +24,7 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       throw const LocationPermissionDeniedException(
-        'Permesso di localizzazione negato',
+        'Location permission denied',
       );
     }
 
@@ -40,7 +39,9 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
   }
 
   @override
-  Stream<GeoLocation> watchPosition() async* {
+  Stream<GeoLocation> watchPosition({
+    required BackgroundLocationNotice notice,
+  }) async* {
     // Il foreground service (con notifica persistente) è un concetto solo
     // Android — su altre piattaforme resta un normale stream di posizione.
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -55,20 +56,26 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
         ? AndroidSettings(
             intervalDuration: const Duration(seconds: 60),
             distanceFilter: 0,
-            foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: 'Raen è online',
-              notificationText:
-                  'Stai comparendo a chi ti è vicino, anche con l\'app '
-                  'in background.',
-              notificationChannelName: 'Presenza online',
+            foregroundNotificationConfig: ForegroundNotificationConfig(
+              notificationTitle: notice.title,
+              notificationText: notice.body,
+              notificationChannelName: notice.channelName,
               enableWakeLock: true,
             ),
           )
         : const LocationSettings(distanceFilter: 0);
 
     yield* Geolocator.getPositionStream(locationSettings: settings).map(
-      (position) =>
-          GeoLocation(latitude: position.latitude, longitude: position.longitude),
+      (position) => GeoLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      ),
     );
   }
+
+  @override
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+
+  @override
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
 }

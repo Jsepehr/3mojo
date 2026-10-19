@@ -1,8 +1,8 @@
 {
   "@@locale": "en",
-  "app_title": "Raen App",
+  "app_title": "Raen",
   "@app_title": {
-    "description": "The application title shown in the OS task switcher"
+    "description": "Product name (Raen), shown in the OS task switcher and in the About dialog"
   },
   "meet_people_near_you": "Meet people near you",
   "@meet_people_near_you": {
@@ -14,23 +14,23 @@
   },
   "start": "Start",
   "@start": {
-    "description": "Button on the home page that goes online, starting the selfie/gender wizard"
+    "description": "Button on the offline home page that opens the Start flow (selfie, then intent). Keep it as \"Start\" in every language: other strings refer to this button by name"
   },
-  "end": "End",
-  "@end": {
-    "description": "Button on the home page (while online) that ends the session and goes back offline"
+  "end_session": "End",
+  "@end_session": {
+    "description": "Button in the online home app bar that ends the session and goes back offline"
   },
-  "go_online": "Go online",
-  "@go_online": {
-    "description": "Title of the wizard shown after pressing Start: selfie, then gender/preference"
+  "go_online_title": "Go online",
+  "@go_online_title": {
+    "description": "Title of the Start flow page (selfie step, then intent step)"
   },
-  "go_online_2": "Go online",
-  "@go_online_2": {
-    "description": "Final button of the start-session wizard, actually starts the online session"
+  "go_online_button": "Go online",
+  "@go_online_button": {
+    "description": "Final button of the Start flow, on the intent step: actually goes online"
   },
   "take_a_selfie": "Take a selfie",
   "@take_a_selfie": {
-    "description": "Button that opens the camera to take the selfie for this session"
+    "description": "Button that opens the camera to take the selfie for this session (Start flow)"
   },
   "retake": "Retake",
   "@retake": {
@@ -42,39 +42,35 @@
   },
   "i_like_it_continue": "I like it, continue",
   "@i_like_it_continue": {
-    "description": "Button confirming the selfie and moving to the gender/preference step"
+    "description": "Button confirming the selfie and moving to the intent step of the Start flow"
   },
   "you_are": "You are",
   "@you_are": {
-    "description": "Question asking the user's own gender"
-  },
-  "looking_for": "Looking for",
-  "@looking_for": {
-    "description": "Question asking which gender the user wants to see nearby"
+    "description": "Profile question asking the user's own gender"
   },
   "male": "Male",
   "@male": {
-    "description": "Male gender option"
+    "description": "Gender option in the profile, also used as the visible-gender label shown to others"
   },
   "female": "Female",
   "@female": {
-    "description": "Female gender option"
+    "description": "Gender option in the profile, also used as the visible-gender label shown to others"
   },
   "everyone": "Everyone",
   "@everyone": {
-    "description": "Gender preference option meaning no filter"
+    "description": "Who-do-you-want-to-meet option meaning no gender filter"
   },
   "nearby": "Nearby",
   "@nearby": {
-    "description": "Title of the nearby people page and its home button tooltip"
+    "description": "Title of the online home page, which shows the nearby people list"
   },
   "connecting_to_the_server": "Connecting to the server…",
   "@connecting_to_the_server": {
     "description": "Shown while the nearby-people connection to the server is still being established"
   },
-  "no_one_within_200_meters_right_now": "No one within 200 meters right now",
-  "@no_one_within_200_meters_right_now": {
-    "description": "Shown when no nearby people are found within the radius"
+  "no_one_nearby_right_now": "No one within 100 meters right now",
+  "@no_one_nearby_right_now": {
+    "description": "Shown when nobody is visible within the 100-meter radius"
   },
   "low_chance_to_meet": "Low chance to meet",
   "@low_chance_to_meet": {
@@ -90,23 +86,23 @@
   },
   "request_sent": "Request sent",
   "@request_sent": {
-    "description": "Snackbar shown after tapping a nearby person to send an encounter request"
+    "description": "Snackbar shown after tapping a nearby person to send an encounter request; also the chip on a Nearby card you already sent a request to"
   },
-  "we_only_show_people_who_stay_within_200_meters": "We only show people who stay within 200 meters for at least a minute — not everyone just passing by.",
-  "@we_only_show_people_who_stay_within_200_meters": {
-    "description": "Empty-state tip explaining the radius and minimum-presence rule"
+  "we_only_show_people_who_stay_put_within_100_meters": "We only show people within 100 meters who've stayed put for at least a minute — not everyone just passing by.",
+  "@we_only_show_people_who_stay_put_within_100_meters": {
+    "description": "Waiting/empty-state tip: 100-meter radius, and people appear only after staying in one place for at least a minute"
   },
-  "the_longer_someone_stays_close_to_you": "The longer someone stays close to you, the higher their meeting chance: low, medium, high.",
-  "@the_longer_someone_stays_close_to_you": {
-    "description": "Empty-state tip explaining the meeting chance stages"
+  "the_longer_someone_stays_in_one_place": "The longer someone stays in one place, the higher their meeting chance: low, medium, high.",
+  "@the_longer_someone_stays_in_one_place": {
+    "description": "Waiting/empty-state tip: the three meeting chance stages, based on how long the person has stayed in one place"
   },
-  "no_names_no_permanent_profile": "No names, no permanent profile: just today's photo and distance, only while you're online.",
-  "@no_names_no_permanent_profile": {
-    "description": "Empty-state tip explaining there are no accounts or stored profiles"
+  "no_names_no_public_profile": "No names, no public profile: others only see today's selfie, intent and languages — gender only if you choose.",
+  "@no_names_no_public_profile": {
+    "description": "Waiting/empty-state tip: what others can see (this session's selfie, intent, languages, gender only if shown; never who you want to meet). Max 4 short lines"
   },
-  "accept_one_request_and_the_others_cancel_automatically": "Accept one request and the others cancel automatically — one encounter at a time.",
+  "accept_one_request_and_the_others_cancel_automatically": "Accept one request and the others cancel automatically — one match at a time.",
   "@accept_one_request_and_the_others_cancel_automatically": {
-    "description": "Empty-state tip explaining encounter exclusivity"
+    "description": "Waiting/empty-state tip: only one match at a time"
   },
   "the_closest_profiles_are_blurred": "The closest profiles are blurred — unlock to see everyone nearby.",
   "@the_closest_profiles_are_blurred": {
@@ -126,7 +122,7 @@
   },
   "cancel": "Cancel",
   "@cancel": {
-    "description": "Cancel button in the unlock purchase confirmation dialog"
+    "description": "Cancel button in confirmation dialogs (unlock purchase, profile deletion)"
   },
   "pay_eur_1": "Pay €1",
   "@pay_eur_1": {
@@ -138,7 +134,7 @@
   },
   "requests": "Requests",
   "@requests": {
-    "description": "Title of the encounter requests page and its home button tooltip"
+    "description": "Title of the encounter requests page and tooltip of its button in the online home bottom bar"
   },
   "someone_wants_to_meet_you": "Someone wants to meet you",
   "@someone_wants_to_meet_you": {
@@ -176,13 +172,13 @@
   "@declined": {
     "description": "Status label for a declined outgoing encounter request"
   },
-  "cancelled_you_matched_with_someone_else": "Cancelled (you matched with someone else)",
-  "@cancelled_you_matched_with_someone_else": {
-    "description": "Status label for a request auto-cancelled because another match was accepted"
+  "cancelled_you_have_another_match": "Cancelled (you matched with someone else)",
+  "@cancelled_you_have_another_match": {
+    "description": "Status label for an outgoing request auto-cancelled because a match with someone else started"
   },
   "ended": "Ended",
   "@ended": {
-    "description": "Status label for a match that was manually ended"
+    "description": "Status label for an outgoing request whose match was later ended"
   },
   "chat": "Chat",
   "@chat": {
@@ -192,13 +188,13 @@
   "@write_a_message": {
     "description": "Placeholder text for the chat message input field"
   },
-  "end_2": "End",
-  "@end_2": {
+  "end_match": "End",
+  "@end_match": {
     "description": "Button on the active-match page that ends the match, after confirmation"
   },
   "end_this_match": "End this match?",
   "@end_this_match": {
-    "description": "Title of the confirmation dialog shown when leaving the active-match page"
+    "description": "Title of the confirmation dialog shown before ending the active match (End button or back)"
   },
   "youll_lose_contact_with_this_person_for_good": "You'll lose contact with this person for good.",
   "@youll_lose_contact_with_this_person_for_good": {
@@ -275,5 +271,339 @@
   "check_out_raen_an_app_to_meet_people_nearby_in_real_time": "Check out Raen, an app to meet people nearby in real time!",
   "@check_out_raen_an_app_to_meet_people_nearby_in_real_time": {
     "description": "Text shared through the native share sheet when the user taps Share app"
+  },
+  "my_profile": "My profile",
+  "@my_profile": {
+    "description": "Drawer entry and title of the profile page"
+  },
+  "answer_once_it_stays_encrypted_on_this_phone": "Answer once: it stays encrypted on this phone and is only sent while you're online.",
+  "@answer_once_it_stays_encrypted_on_this_phone": {
+    "description": "Intro text at the top of the profile page"
+  },
+  "non_binary": "Non-binary",
+  "@non_binary": {
+    "description": "Gender option"
+  },
+  "prefer_not_to_say": "Prefer not to say",
+  "@prefer_not_to_say": {
+    "description": "Gender option"
+  },
+  "who_do_you_want_to_meet": "Who do you want to meet?",
+  "@who_do_you_want_to_meet": {
+    "description": "Profile question, multiple choice"
+  },
+  "men": "Men",
+  "@men": {
+    "description": "Who-do-you-want-to-meet option"
+  },
+  "women": "Women",
+  "@women": {
+    "description": "Who-do-you-want-to-meet option"
+  },
+  "non_binary_people": "Non-binary people",
+  "@non_binary_people": {
+    "description": "Who-do-you-want-to-meet option"
+  },
+  "never_shown_to_anyone": "Never shown to anyone.",
+  "@never_shown_to_anyone": {
+    "description": "Hint under who-do-you-want-to-meet"
+  },
+  "show_my_gender_to_others": "Show my gender to others",
+  "@show_my_gender_to_others": {
+    "description": "Profile switch, off by default"
+  },
+  "what_are_you_usually_looking_for": "What are you usually looking for?",
+  "@what_are_you_usually_looking_for": {
+    "description": "Profile question about the default intent, optional"
+  },
+  "what_are_you_looking_for_right_now": "What are you looking for right now?",
+  "@what_are_you_looking_for_right_now": {
+    "description": "Title of the intent step of the Start flow"
+  },
+  "optional_shown_to_people_nearby": "Optional — people nearby see it next to your photo.",
+  "@optional_shown_to_people_nearby": {
+    "description": "Hint under the intent question (Start flow and profile): the intent is shown to people nearby next to your photo"
+  },
+  "a_quick_chat": "A quick chat",
+  "@a_quick_chat": {
+    "description": "Intent option"
+  },
+  "friendship": "Friendship",
+  "@friendship": {
+    "description": "Intent option"
+  },
+  "meeting_new_people": "Meeting new people",
+  "@meeting_new_people": {
+    "description": "Intent option"
+  },
+  "open_to_anything": "Open to anything",
+  "@open_to_anything": {
+    "description": "Intent option"
+  },
+  "languages_you_speak_up_to_2": "Languages you speak (up to 2)",
+  "@languages_you_speak_up_to_2": {
+    "description": "Profile question, optional"
+  },
+  "i_confirm_i_am_at_least_18_years_old": "I confirm I'm at least 18 years old",
+  "@i_confirm_i_am_at_least_18_years_old": {
+    "description": "Required age confirmation"
+  },
+  "i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet": "I agree that Raen uses my gender and who I want to meet to show me compatible people. It's sent only while I'm online and never shown — but people who can see me may guess who I'm looking for.",
+  "@i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet": {
+    "description": "Explicit consent for gender + preference (special category data)"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button"
+  },
+  "delete_profile": "Delete profile",
+  "@delete_profile": {
+    "description": "Button on the profile page"
+  },
+  "delete_your_profile": "Delete your profile?",
+  "@delete_your_profile": {
+    "description": "Delete confirmation title"
+  },
+  "this_removes_it_from_this_phone_and_withdraws_your_consent": "This removes it from this phone and withdraws your consent. You'll fill it in again next time.",
+  "@this_removes_it_from_this_phone_and_withdraws_your_consent": {
+    "description": "Delete confirmation body"
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "Destructive confirm button"
+  },
+  "changes_apply_from_your_next_start": "Changes apply from your next Start.",
+  "@changes_apply_from_your_next_start": {
+    "description": "Shown on the profile page while online. Refers to the Start button by name"
+  },
+  "profile_saved": "Profile saved",
+  "@profile_saved": {
+    "description": "Snackbar after saving"
+  },
+  "nearby_error_connection_title": "No connection",
+  "@nearby_error_connection_title": {
+    "description": "Title of the nearby error state when the server can't be reached (phone offline, server down, connection dropped)"
+  },
+  "nearby_error_connection_body": "We can't reach the server. Check your Wi‑Fi or mobile data — we'll keep trying in the meantime.",
+  "@nearby_error_connection_body": {
+    "description": "Explanation under the connection error title; the app retries on its own every few seconds"
+  },
+  "nearby_error_location_disabled_title": "Location is off",
+  "@nearby_error_location_disabled_title": {
+    "description": "Title of the nearby error state when the phone's location service (GPS) is turned off"
+  },
+  "nearby_error_location_disabled_body": "Turn on your phone's location to see who's near you.",
+  "@nearby_error_location_disabled_body": {
+    "description": "Explanation under the location-off title"
+  },
+  "nearby_error_location_permission_title": "We need your location",
+  "@nearby_error_location_permission_title": {
+    "description": "Title of the nearby error state when the location permission was denied"
+  },
+  "nearby_error_location_permission_body": "We only use it while you're online, to show you who's nearby. Allow it in Settings.",
+  "@nearby_error_location_permission_body": {
+    "description": "Explanation under the location-permission title; reassures that location is used only while online"
+  },
+  "nearby_error_generic_title": "Something went wrong",
+  "@nearby_error_generic_title": {
+    "description": "Title of the nearby error state for any other unexpected error"
+  },
+  "nearby_error_generic_body": "We couldn't load who's nearby. Try again in a moment.",
+  "@nearby_error_generic_body": {
+    "description": "Explanation under the generic error title"
+  },
+  "retry": "Try again",
+  "@retry": {
+    "description": "Button that retries loading nearby people right away"
+  },
+  "turn_on_location": "Turn on location",
+  "@turn_on_location": {
+    "description": "Button that opens the system location settings to turn location on"
+  },
+  "open_settings": "Open settings",
+  "@open_settings": {
+    "description": "Button that opens this app's page in the system settings to grant the location permission"
+  },
+  "request_not_sent_offline": "Request not sent: you're offline. Try again in a moment.",
+  "@request_not_sent_offline": {
+    "description": "Snackbar after tapping a nearby person: the encounter request could not leave because the phone is offline or reconnecting"
+  },
+  "request_rejected_not_nearby": "Request not sent: this person isn't nearby anymore.",
+  "@request_rejected_not_nearby": {
+    "description": "Snackbar: the server refused the encounter request because that person is no longer nearby or online"
+  },
+  "request_rejected_already_requested": "There's already a request between you and this person.",
+  "@request_rejected_already_requested": {
+    "description": "Snackbar: there is already a request (sent or received, in any state) between the user and that person in this session; only one per person"
+  },
+  "request_rejected_in_match": "Request not sent: one of you is already in an encounter.",
+  "@request_rejected_in_match": {
+    "description": "Snackbar: the server refused the encounter request because one of the two is already in an active encounter"
+  },
+  "request_rejected_too_many": "Too many requests are waiting for a reply. Try again later.",
+  "@request_rejected_too_many": {
+    "description": "Snackbar: the server refused the encounter request because there are too many pending requests"
+  },
+  "request_not_sent_generic": "Request not sent. Try again in a moment.",
+  "@request_not_sent_generic": {
+    "description": "Snackbar: the encounter request was not sent for any other reason"
+  },
+  "response_rejected_in_match": "You can't accept: one of you is already in an encounter.",
+  "@response_rejected_in_match": {
+    "description": "Snackbar after accepting an incoming request: the server refused because one of the two is already in an active encounter"
+  },
+  "action_not_sent_offline": "You're offline: nothing was sent. Try again in a moment.",
+  "@action_not_sent_offline": {
+    "description": "Snackbar: an action (answering a request, ending an encounter) could not leave because the phone is offline"
+  },
+  "action_failed_generic": "Something went wrong. Try again.",
+  "@action_failed_generic": {
+    "description": "Generic error for an action that failed for an unexpected reason"
+  },
+  "message_not_sent": "Not sent · Tap to retry",
+  "@message_not_sent": {
+    "description": "Label under a chat bubble whose message was not sent or not delivered; tapping the bubble sends it again"
+  },
+  "match_ended_partner_left": "The other person left: the encounter is over.",
+  "@match_ended_partner_left": {
+    "description": "Snackbar when the encounter page closes because the other person ended the encounter or went offline"
+  },
+  "connection_reconnecting": "Connection lost, reconnecting…",
+  "@connection_reconnecting": {
+    "description": "Discreet strip above the nearby list and the chat while the connection to the server is down and the app is reconnecting by itself"
+  },
+  "session_restarted": "The connection was down for too long: your session started over. Requests and chat have been reset.",
+  "@session_restarted": {
+    "description": "Snackbar when, after a long disconnection, the server no longer had the session: it started over and requests/chat were reset"
+  },
+  "purchase_failed": "The unlock didn't go through. Try again.",
+  "@purchase_failed": {
+    "description": "Snackbar when the paid unlock did not go through"
+  },
+  "selfie_error_missing": "Take a selfie to go online.",
+  "@selfie_error_missing": {
+    "description": "Shown in the Start flow when trying to go online without a selfie"
+  },
+  "selfie_error_no_face": "We can't find a face in this photo. Retake it looking at the camera.",
+  "@selfie_error_no_face": {
+    "description": "Shown in the Start flow when the on-device check finds no face in the selfie"
+  },
+  "selfie_error_check_failed": "We couldn't check the photo. Try again.",
+  "@selfie_error_check_failed": {
+    "description": "Shown in the Start flow when the on-device face check could not run (technical error)"
+  },
+  "selfie_error_camera": "The camera didn't work. Try again.",
+  "@selfie_error_camera": {
+    "description": "Shown in the Start flow when the camera could not be opened or the photo could not be read/flipped"
+  },
+  "start_error_profile_missing": "Complete your profile before going online.",
+  "@start_error_profile_missing": {
+    "description": "Shown in the Start flow when the profile has not been filled in yet"
+  },
+  "profile_error_adult_required": "Raen is for adults only: confirm you're at least 18.",
+  "@profile_error_adult_required": {
+    "description": "Profile page error: the 18+ confirmation is missing"
+  },
+  "profile_error_looking_for_required": "Choose who you want to meet.",
+  "@profile_error_looking_for_required": {
+    "description": "Profile page error: 'who do you want to meet' is empty"
+  },
+  "profile_error_too_many_languages": "{max, plural, =1{You can choose at most 1 language.} other{You can choose at most {max} languages.}}",
+  "@profile_error_too_many_languages": {
+    "description": "Profile page error: more spoken languages selected than allowed. {max} is the maximum number of languages",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "profile_error_unsupported_language": "This language isn't available.",
+  "@profile_error_unsupported_language": {
+    "description": "Profile page error: a selected language is not among the supported ones"
+  },
+  "profile_error_consent_required": "We need your consent to use your gender and who you want to meet.",
+  "@profile_error_consent_required": {
+    "description": "Profile page error: explicit consent to use gender and 'who you want to meet' (sensitive data) is missing"
+  },
+  "profile_error_storage": "Something went wrong with the profile saved on this phone. Try again.",
+  "@profile_error_storage": {
+    "description": "Error when the profile encrypted on the phone can't be read, saved or deleted"
+  },
+  "selfie_rejected_by_server_title": "Selfie not accepted",
+  "@selfie_rejected_by_server_title": {
+    "description": "Title on the online home when the server rejected the selfie sent at Start"
+  },
+  "selfie_rejected_by_server_body": "The server didn't accept your selfie, so people nearby can't see you. End the session and take a new one.",
+  "@selfie_rejected_by_server_body": {
+    "description": "Body on the online home when the server rejected the selfie sent at Start"
+  },
+  "too_many_starts_title": "Too many Starts",
+  "@too_many_starts_title": {
+    "description": "Title on the online home when the server refuses new sessions from this network for a while (rate limit). 'Start' is the name of the button"
+  },
+  "too_many_starts_body": "Too many sessions were started from this network in a short time. We'll keep trying on our own in a moment, or you can end the session and try again later.",
+  "@too_many_starts_body": {
+    "description": "Body on the online home when the server refuses new sessions from this network for a while (rate limit)"
+  },
+  "end_and_retake_selfie": "End and retake selfie",
+  "@end_and_retake_selfie": {
+    "description": "Button when the server rejected the selfie: ends the session and reopens the Start flow"
+  },
+  "background_location_notification_title": "Raen is online",
+  "@background_location_notification_title": {
+    "description": "Android persistent notification title while online with the app in the background"
+  },
+  "background_location_notification_body": "People near you can see you, even with the app in the background.",
+  "@background_location_notification_body": {
+    "description": "Android persistent notification text while online with the app in the background"
+  },
+  "background_location_notification_channel": "Online presence",
+  "@background_location_notification_channel": {
+    "description": "Name of the Android notification channel for the online-presence notification (shown in system notification settings)"
+  },
+  "deleting_the_profile_ends_your_session": "You're online: we'll end your session first, so the server immediately stops using your gender and who you want to meet.",
+  "@deleting_the_profile_ends_your_session": {
+    "description": "Extra paragraph in the delete-profile confirmation when the user is online"
+  },
+  "developer_options": "Developer",
+  "@developer_options": {
+    "description": "Small header above the developer-only options at the bottom of the side menu (debug builds only)"
+  },
+  "wants_to_meet_you": "Wants to meet you",
+  "@wants_to_meet_you": {
+    "description": "Chip on a Nearby card: this person sent you an encounter request that is waiting for your answer in Requests"
+  },
+  "requests_empty_hint": "Tap someone in Nearby to send a request. The ones you receive show up here too.",
+  "@requests_empty_hint": {
+    "description": "Body of the empty state on the Requests page, under the title you_havent_sent_any_requests_yet"
+  },
+  "its_a_match_title": "It's a match!",
+  "@its_a_match_title": {
+    "description": "Title above the two photos when the chat of a new encounter has no messages yet"
+  },
+  "its_a_match_icebreaker": "You're both nearby. Break the ice: say hi and suggest where to meet.",
+  "@its_a_match_icebreaker": {
+    "description": "Hint under its_a_match_title in the empty chat of a new encounter; informal tone"
+  },
+  "chat_message_too_long": "Message too long: at most {max} characters. Shorten it and send it again.",
+  "@chat_message_too_long": {
+    "description": "Snackbar in the encounter chat: the message is longer than the server accepts (emoji count as more than one character); the text goes back into the field",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "request_not_confirmed": "The request was never confirmed: the connection may have dropped. Try again.",
+  "@request_not_confirmed": {
+    "description": "Snackbar: an encounter request left the phone but the server never confirmed nor refused it within a few seconds; the person can be requested again"
+  },
+  "selfie_not_usable_title": "Selfie not usable",
+  "@selfie_not_usable_title": {
+    "description": "Title on the online home when the selfie could not be prepared on the phone for upload (resize/strip metadata failed or still too large)"
+  },
+  "selfie_not_usable_body": "We couldn't prepare your selfie to send it, so people nearby can't see you. End the session and take a new one.",
+  "@selfie_not_usable_body": {
+    "description": "Body on the online home when the selfie could not be prepared on the phone for upload"
   }
 }

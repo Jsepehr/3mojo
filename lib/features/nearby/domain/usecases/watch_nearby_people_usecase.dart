@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
+import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/domain/repositories/nearby_repository.dart';
@@ -36,30 +37,42 @@ class WatchNearbyPeopleUseCase {
   final WatchPositionUseCase _watchPositionUseCase;
   final NearbyRepository _nearbyRepository;
 
-  Stream<Either<Failure, List<NearbyPerson>>> call() async* {
-    Failure? firstFailure;
-    OnlineSession? session;
-    GeoLocation? location;
-
-    final sessionResult = await _getCurrentSessionUseCase(const NoParams());
-    sessionResult.match((f) => firstFailure = f, (s) => session = s);
-
-    if (firstFailure != null) {
-      yield Left(firstFailure!);
-      return;
+  /// [backgroundNotice]: i testi tradotti della notifica Android che
+  /// accompagna la posizione seguita in background (obbligatori: il data
+  /// layer non ha testi di riserva).
+  Stream<Either<Failure, List<NearbyPerson>>> call({
+    required BackgroundLocationNotice backgroundNotice,
+  }) async* {
+    final OnlineSession session;
+    switch (await _getCurrentSessionUseCase(const NoParams())) {
+      case Left(:final value):
+        yield Left(value);
+        return;
+      case Right(value: null):
+        // Messaggio tecnico, mai mostrato così com'è: la UI sceglie i testi
+        // dal tipo di `Failure` (vedi `CmpNearbyErrorState`).
+        yield const Left(NotOnlineFailure('No active session'));
+        return;
+      case Right(:final value?):
+        session = value;
     }
-    if (session == null) {
-      yield const Left(
-        ValidationFailure('Devi essere online per vedere le persone vicine'),
-      );
-      return;
+
+    final GeoLocation location;
+    switch (await _getCurrentLocationUseCase(const NoParams())) {
+      case Left(:final value):
+        yield Left(value);
+        return;
+      case Right(:final value):
+        location = value;
     }
 
-    final locationResult = await _getCurrentLocationUseCase(const NoParams());
-    locationResult.match((f) => firstFailure = f, (l) => location = l);
-
-    if (firstFailure != null) {
-      yield Left(firstFailure!);
+    // Il GPS può metterci secondi: nel frattempo può esserci stato un End
+    // (o un nuovo Start). Collegarsi ora con la sessione letta prima la
+    // renderebbe di nuovo visibile agli altri dopo End — una presenza
+    // "fantasma". Si ricontrolla dopo l'attesa, e da qui alla connessione
+    // non ci sono altre attese.
+    if (!await _isStillCurrent(session)) {
+      yield const Left(NotOnlineFailure('Session ended while locating'));
       return;
     }
 
@@ -70,20 +83,29 @@ class WatchNearbyPeopleUseCase {
     // `finally` gira comunque). Su Android questo stream è anche ciò che
     // tiene vivo il processo in background (foreground service, vedi
     // `LocationLocalDataSourceImpl.watchPosition`).
-    final positionSubscription = _watchPositionUseCase().listen((result) {
-      result.match((_) {}, _nearbyRepository.updatePosition);
-    });
+    final positionSubscription = _watchPositionUseCase(notice: backgroundNotice)
+        .listen((result) {
+          result.match((_) {}, _nearbyRepository.updatePosition);
+        });
 
     try {
       yield* _nearbyRepository.watchNearbyPeople(
-        location!,
-        sessionId: session!.sessionId,
-        gender: session!.gender.name,
-        genderPreference: session!.genderPreference.name,
-        selfieBytes: session!.selfieBytes,
+        location,
+        sessionId: session.sessionId,
+        profile: session.profile,
+        intent: session.intent,
+        selfieBytes: session.selfieBytes,
       );
     } finally {
       await positionSubscription.cancel();
     }
+  }
+
+  Future<bool> _isStillCurrent(OnlineSession session) async {
+    final result = await _getCurrentSessionUseCase(const NoParams());
+    return result.match(
+      (_) => false,
+      (current) => current?.sessionId == session.sessionId,
+    );
   }
 }

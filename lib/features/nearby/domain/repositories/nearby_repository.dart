@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '/features/profile/domain/entities/profile.dart';
 import '../entities/geo_location.dart';
 import '../entities/nearby_person.dart';
 
@@ -15,8 +16,8 @@ abstract class NearbyRepository {
   Stream<Either<Failure, List<NearbyPerson>>> watchNearbyPeople(
     GeoLocation location, {
     required String sessionId,
-    required String gender,
-    required String genderPreference,
+    required Profile profile,
+    MeetIntent? intent,
     required Uint8List selfieBytes,
   });
 
@@ -24,5 +25,7 @@ abstract class NearbyRepository {
   /// [watchNearbyPeople].
   void updatePosition(GeoLocation location);
 
-  Future<Either<Failure, Unit>> stopBeingVisible(String sessionId);
+  /// Chiude la connessione della sessione in corso: il server toglie
+  /// subito la presenza dalla vista di tutti.
+  Future<Either<Failure, Unit>> stopBeingVisible();
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/core/widgets/cmp_status_message.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../providers/pro_encounters.dart';
@@ -8,7 +9,8 @@ import '../widgets/cmp_incoming_request_tile.dart';
 import '../widgets/cmp_outgoing_request_tile.dart';
 
 /// Pagina "Richieste" (Like): sezione richieste in arrivo da confermare,
-/// sezione richieste mandate con il loro stato.
+/// sezione richieste mandate con il loro stato. Senza nessuna delle due,
+/// un `CmpStatusMessage` neutro spiega da dove arrivano.
 class UiEncounters extends StatelessWidget {
   const UiEncounters({super.key});
 
@@ -21,6 +23,17 @@ class UiEncounters extends StatelessWidget {
         .where((r) => r.status == EncounterRequestStatus.pending)
         .toList();
     final outgoing = proEncounters.outgoingRequests;
+
+    if (pendingIncoming.isEmpty && outgoing.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.requests)),
+        body: CmpStatusMessage(
+          icon: Icons.favorite_border,
+          title: l10n.you_havent_sent_any_requests_yet,
+          message: l10n.requests_empty_hint,
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.requests)),
@@ -42,12 +55,15 @@ class UiEncounters extends StatelessWidget {
               ),
           ],
           _SectionHeader(title: l10n.your_requests),
+          // Con richieste in arrivo sopra basta una riga discreta.
           if (outgoing.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: Text(
                 l10n.you_havent_sent_any_requests_yet,
-                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             )
           else

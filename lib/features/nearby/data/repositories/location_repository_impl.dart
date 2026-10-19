@@ -5,6 +5,7 @@ import 'package:fpdart/fpdart.dart';
 import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
 import '/features/nearby/data/datasources/location_local_data_source.dart';
+import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import '/features/nearby/domain/repositories/location_repository.dart';
 
@@ -29,13 +30,41 @@ class LocationRepositoryImpl implements LocationRepository {
   }
 
   @override
-  Stream<Either<Failure, GeoLocation>> watchPosition() {
-    return _localDataSource.watchPosition().transform(
-      StreamTransformer<GeoLocation, Either<Failure, GeoLocation>>.fromHandlers(
-        handleData: (location, sink) => sink.add(Right(location)),
-        handleError: (error, stackTrace, sink) =>
-            sink.add(Left(UnexpectedFailure(error.toString()))),
-      ),
-    );
+  Stream<Either<Failure, GeoLocation>> watchPosition({
+    required BackgroundLocationNotice notice,
+  }) {
+    return _localDataSource
+        .watchPosition(notice: notice)
+        .transform(
+          StreamTransformer<
+            GeoLocation,
+            Either<Failure, GeoLocation>
+          >.fromHandlers(
+            handleData: (location, sink) => sink.add(Right(location)),
+            handleError: (error, stackTrace, sink) =>
+                sink.add(Left(UnexpectedFailure(error.toString()))),
+          ),
+        );
+  }
+
+  @override
+  Future<Either<Failure, Unit>> openLocationSettings() =>
+      _openSettings(_localDataSource.openLocationSettings);
+
+  @override
+  Future<Either<Failure, Unit>> openAppSettings() =>
+      _openSettings(_localDataSource.openAppSettings);
+
+  Future<Either<Failure, Unit>> _openSettings(
+    Future<bool> Function() open,
+  ) async {
+    try {
+      final opened = await open();
+      return opened
+          ? const Right(unit)
+          : const Left(UnexpectedFailure('Could not open the settings'));
+    } catch (e) {
+      return Left(UnexpectedFailure(e.toString()));
+    }
   }
 }

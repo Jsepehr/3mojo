@@ -1,13 +1,60 @@
+import 'package:equatable/equatable.dart';
+import 'package:fpdart/fpdart.dart';
+
+import '/core/errors/failures.dart';
+import '../entities/encounter_request.dart';
 import '../repositories/encounter_repository.dart';
+import 'has_requested_person_usecase.dart';
+
+class SendEncounterRequestParams extends Equatable {
+  const SendEncounterRequestParams({
+    required this.otherPersonId,
+    required this.knownRequests,
+    this.awaitingPersonIds = const {},
+  });
+
+  final String otherPersonId;
+
+  /// Le richieste (in entrata e in uscita) dell'ultimo snapshot del server.
+  final List<EncounterRequest> knownRequests;
+
+  /// Persone a cui una richiesta è appena partita e che lo snapshot non
+  /// mostra ancora.
+  final Set<String> awaitingPersonIds;
+
+  @override
+  List<Object?> get props => [otherPersonId, knownRequests, awaitingPersonIds];
+}
 
 /// Azione: manda una richiesta d'interesse a una persona vista in
-/// "Vicinanze" — fire-and-forget, l'esito (creata, arrivata all'altro)
-/// arriva col prossimo snapshot di `WatchEncounterRequestsUseCase`.
+/// "Vicinanze". Regola di business: **una sola richiesta a testa** per
+/// sessione (`HasRequestedPersonUseCase`) — se c'è già, non parte nemmeno
+/// (`AlreadyRequestedFailure`). `Right` = è partita verso il server;
+/// `Left(ConnectionFailure)` = non è partita (offline, in riconnessione).
+/// Il server può ancora rifiutarla (persona non più vicina, troppe
+/// richieste…): quello arriva da `WatchEncounterRejectionsUseCase`, l'esito
+/// positivo col prossimo snapshot.
 class SendEncounterRequestUseCase {
-  const SendEncounterRequestUseCase(this._repository);
+  const SendEncounterRequestUseCase(
+    this._repository, {
+    HasRequestedPersonUseCase hasRequestedPersonUseCase =
+        const HasRequestedPersonUseCase(),
+  }) : _hasRequestedPersonUseCase = hasRequestedPersonUseCase;
 
   final EncounterRepository _repository;
+  final HasRequestedPersonUseCase _hasRequestedPersonUseCase;
 
-  void call(String otherPersonId) =>
-      _repository.sendRequest(otherPersonId: otherPersonId);
+  Either<Failure, Unit> call(SendEncounterRequestParams params) {
+    final alreadyRequested = _hasRequestedPersonUseCase(
+      params.otherPersonId,
+      requests: params.knownRequests,
+      awaitingPersonIds: params.awaitingPersonIds,
+    );
+    if (alreadyRequested) {
+      return const Left(
+        AlreadyRequestedFailure('A request with this person already exists'),
+      );
+    }
+    return _repository.sendRequest(otherPersonId: params.otherPersonId);
+  }
 }

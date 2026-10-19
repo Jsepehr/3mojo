@@ -1,30 +1,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '/core/theme/raen_colors.dart';
+import '/core/widgets/cmp_busy_filled_button.dart';
+import '/core/widgets/cmp_inline_error.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
-import '/features/session/domain/entities/online_session.dart';
+import '/features/profile/domain/entities/profile.dart';
+import '/features/profile/presentation/providers/pro_profile.dart';
+import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
+import '/features/session/presentation/session_failure_texts.dart';
 import '/l10n/generated/app_localizations.dart';
-
-/// Decodifica/ribalta/codifica un JPEG: eseguito su un isolate separato
-/// tramite [compute] (per questo è una funzione top-level, non un metodo),
-/// così il ribaltamento manuale non blocca il frame in corso.
-Uint8List _flipImageBytes(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) return bytes;
-  return Uint8List.fromList(img.encodeJpg(img.flipHorizontal(decoded)));
-}
 
 /// Wizard aperto da "Start": prima il selfie (scatta e confermi — un
 /// controllo sul dispositivo verifica al volo che ci sia un volto,
-/// altrimenti blocca il passo), poi genere/preferenza. Alla fine avvia la
-/// sessione e torna alla home.
+/// altrimenti blocca il passo), poi cosa si cerca adesso (facoltativo,
+/// precompilato dal profilo). Genere e "chi cerchi" non si chiedono più qui:
+/// vengono dal profilo salvato sul telefono. Alla fine avvia la sessione e
+/// torna alla home.
+///
+/// Il selfie vive solo qui, in memoria ([_selfieBytes]): scatto e
+/// ribaltamento passano da `ProSession` (use case), nessun file resta su
+/// disco e nessuna manipolazione d'immagine sta in questa pagina.
 class UiStartSession extends StatefulWidget {
   const UiStartSession({super.key});
 
@@ -34,56 +35,64 @@ class UiStartSession extends StatefulWidget {
 
 class _UiStartSessionState extends State<UiStartSession> {
   int _step = 0;
-  String? _selfiePath;
   Uint8List? _selfieBytes;
-  Gender? _gender;
-  GenderPreference? _genderPreference;
+  // Cosa si cerca in questa sessione: parte dall'intento predefinito del
+  // profilo, si cambia qui con un tap.
+  late MeetIntent? _intent = context.read<ProProfile>().profile?.defaultIntent;
   bool _isCheckingFace = false;
   bool _isFlipping = false;
+  bool _isStarting = false;
 
-  Future<void> _takeSelfie() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      preferredCameraDevice: CameraDevice.front,
-    );
-    if (picked == null) return;
+  /// Finché l'errore di un tentativo precedente non è stato azzerato (dopo
+  /// il primo frame: non si può notificare durante il build), non lo si
+  /// mostra nemmeno per un istante.
+  bool _staleErrorCleared = false;
 
-    final bytes = await picked.readAsBytes();
-    setState(() {
-      _selfiePath = picked.path;
-      _selfieBytes = bytes;
+  bool get _isBusy => _isFlipping || _isCheckingFace;
+
+  static const double _selfieSize = 220;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ProSession>().clearError();
+      setState(() => _staleErrorCleared = true);
     });
   }
 
+  /// Ogni nuovo scatto (anche "Rifai") azzera l'errore di quello prima.
+  Future<void> _takeSelfie() async {
+    final bytes = await context.read<ProSession>().takeSelfie();
+    if (!mounted || bytes == null) return;
+
+    setState(() => _selfieBytes = bytes);
+  }
+
   /// La fotocamera frontale, su molti dispositivi Android, salva lo scatto
-  /// come immagine speculare (mirror-image) invece che come si vede nella
-  /// realtà: l'utente decide se serve la correzione col bottone sopra il
-  /// selfie, che ribalta l'immagine orizzontalmente. Tutto in memoria (mai
-  /// un file temporaneo): funziona identico su ogni piattaforma, web incluso.
-  /// Gira su un isolate separato (compute) perché decode/encode JPEG è
-  /// abbastanza pesante da bloccare il frame se girasse sulla UI.
+  /// come immagine speculare: l'utente decide se serve la correzione col
+  /// bottone sopra il selfie. Tutto in memoria (`FlipSelfieUseCase`).
   Future<void> _flipSelfie() async {
     final bytes = _selfieBytes;
     if (bytes == null) return;
 
     setState(() => _isFlipping = true);
-    final flipped = await compute(_flipImageBytes, bytes);
+    final flipped = await context.read<ProSession>().flipSelfie(bytes);
     if (!mounted) return;
 
     setState(() {
-      _selfieBytes = flipped;
+      if (flipped != null) _selfieBytes = flipped;
       _isFlipping = false;
     });
   }
 
   Future<void> _confirmSelfie() async {
-    final selfiePath = _selfiePath;
-    if (selfiePath == null) return;
+    final bytes = _selfieBytes;
+    if (bytes == null) return;
 
     setState(() => _isCheckingFace = true);
-    final hasFace = await context.read<ProSession>().checkSelfieHasFace(
-      selfiePath,
-    );
+    final hasFace = await context.read<ProSession>().checkSelfieHasFace(bytes);
     if (!mounted) return;
 
     setState(() {
@@ -92,41 +101,83 @@ class _UiStartSessionState extends State<UiStartSession> {
     });
   }
 
-  void _submit() {
-    final selfiePath = _selfiePath;
+  /// Si chiude solo a sessione già avviata: chiudendo subito, durante la
+  /// transizione si vedeva per un attimo la home ancora offline (e un
+  /// eventuale errore finiva su una pagina già chiusa). Così, quando la
+  /// pagina scorre via, sotto c'è già la home online.
+  Future<void> _submit() async {
     final selfieBytes = _selfieBytes;
-    final gender = _gender;
-    final genderPreference = _genderPreference;
-    if (selfiePath == null ||
-        selfieBytes == null ||
-        gender == null ||
-        genderPreference == null) {
-      return;
-    }
+    if (selfieBytes == null) return;
 
-    context.read<ProSession>().start(
-      StartSessionParams(
-        selfiePath: selfiePath,
-        selfieBytes: selfieBytes,
-        gender: gender,
-        genderPreference: genderPreference,
-      ),
+    final proSession = context.read<ProSession>();
+    setState(() => _isStarting = true);
+    await proSession.start(
+      StartSessionParams(selfieBytes: selfieBytes, intent: _intent),
     );
-    Navigator.of(context).pop();
+    if (!mounted) return;
+
+    if (proSession.isOnline) {
+      HapticFeedback.mediumImpact();
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _isStarting = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final errorMessage = context.watch<ProSession>().errorMessage;
+    final currentFailure = context.watch<ProSession>().failure;
+    final failure = _staleErrorCleared ? currentFailure : null;
+    final errorMessage = failure == null
+        ? null
+        : SessionFailureTexts.of(l10n, failure);
+
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.go_online)),
+      appBar: AppBar(title: Text(l10n.go_online_title)),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        child: _step == 0
-            ? _buildSelfieStep(l10n, errorMessage)
-            : _buildGenderStep(l10n, errorMessage),
+        // Dal selfie all'intento: il passo nuovo entra da destra sfumando.
+        // Con le animazioni ridotte di sistema il cambio è immediato.
+        child: AnimatedSwitcher(
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 280),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          // Una closure nuova a ogni build (non il tear-off, che sarebbe
+          // uguale): così AnimatedSwitcher ricostruisce anche la
+          // transizione del passo che esce, con la direzione giusta.
+          transitionBuilder: (child, animation) =>
+              _stepTransition(child, animation),
+          layoutBuilder: (current, previous) =>
+              Stack(fit: StackFit.expand, children: [...previous, ?current]),
+          child: KeyedSubtree(
+            key: ValueKey(_step),
+            child: _step == 0
+                ? _buildSelfieStep(l10n, errorMessage)
+                : _buildIntentStep(l10n, errorMessage),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Il passo che entra arriva da destra, quello che esce scivola a
+  /// sinistra (la sua animazione gira all'indietro, da 1 a 0): sempre in
+  /// avanti, sfumando.
+  Widget _stepTransition(Widget child, Animation<double> animation) {
+    final isIncoming = child.key == ValueKey(_step);
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween(
+          begin: Offset(isIncoming ? 0.08 : -0.08, 0),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
       ),
     );
   }
@@ -140,12 +191,12 @@ class _UiStartSessionState extends State<UiStartSession> {
             clipBehavior: Clip.none,
             children: [
               GestureDetector(
-                onTap: _takeSelfie,
+                onTap: _isBusy ? null : _takeSelfie,
                 child: CmpPhoto(
                   image: _selfieBytes == null
                       ? null
                       : MemoryImage(_selfieBytes!),
-                  size: 220,
+                  size: _selfieSize,
                   placeholderIcon: Icons.camera_alt,
                 ),
               ),
@@ -155,7 +206,7 @@ class _UiStartSessionState extends State<UiStartSession> {
                     decoration: BoxDecoration(
                       color: RaenColors.of(context).photoScrim,
                       borderRadius: BorderRadius.circular(
-                        CmpPhoto.cornerRadius,
+                        CmpPhoto.radiusFor(_selfieSize),
                       ),
                     ),
                     child: Center(
@@ -169,19 +220,10 @@ class _UiStartSessionState extends State<UiStartSession> {
                 Positioned(
                   top: -8,
                   right: -8,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: _isFlipping ? null : _flipSelfie,
-                      tooltip: l10n.flip_photo,
-                      icon: Icon(
-                        Icons.flip,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    ),
+                  child: IconButton.filled(
+                    onPressed: _isFlipping ? null : _flipSelfie,
+                    tooltip: l10n.flip_photo,
+                    icon: const Icon(Icons.flip),
                   ),
                 ),
             ],
@@ -190,104 +232,68 @@ class _UiStartSessionState extends State<UiStartSession> {
         const SizedBox(height: 16),
         Center(
           child: TextButton(
-            onPressed: _takeSelfie,
+            onPressed: _isBusy ? null : _takeSelfie,
             child: Text(
-              _selfiePath == null
-                  ? l10n.take_a_selfie
-                  : l10n.retake,
+              _selfieBytes == null ? l10n.take_a_selfie : l10n.retake,
             ),
           ),
         ),
         if (errorMessage != null) ...[
           const SizedBox(height: 16),
-          Text(
-            errorMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
+          CmpInlineError(message: errorMessage),
         ],
         const Spacer(),
-        FilledButton(
-          onPressed: _selfiePath == null || _isCheckingFace
+        CmpBusyFilledButton(
+          label: l10n.i_like_it_continue,
+          isBusy: _isCheckingFace,
+          onPressed: _selfieBytes == null || _isFlipping
               ? null
               : _confirmSelfie,
-          child: _isCheckingFace
-              ? CmpLoadingIndicator(
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                )
-              : Text(l10n.i_like_it_continue),
         ),
       ],
     );
   }
 
-  Widget _buildGenderStep(AppLocalizations l10n, String? errorMessage) {
+  Widget _buildIntentStep(AppLocalizations l10n, String? errorMessage) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          l10n.you_are,
-          style: Theme.of(context).textTheme.titleMedium,
+          l10n.what_are_you_looking_for_right_now,
+          style: theme.textTheme.titleMedium,
         ),
-        const SizedBox(height: 8),
-        SegmentedButton<Gender>(
-          segments: [
-            ButtonSegment(
-              value: Gender.male,
-              label: Text(l10n.male),
-            ),
-            ButtonSegment(
-              value: Gender.female,
-              label: Text(l10n.female),
-            ),
-          ],
-          selected: _gender == null ? {} : {_gender!},
-          emptySelectionAllowed: true,
-          onSelectionChanged: (selection) => setState(
-            () => _gender = selection.isEmpty ? null : selection.first,
-          ),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 4),
         Text(
-          l10n.looking_for,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        SegmentedButton<GenderPreference>(
-          segments: [
-            ButtonSegment(
-              value: GenderPreference.male,
-              label: Text(l10n.male),
-            ),
-            ButtonSegment(
-              value: GenderPreference.female,
-              label: Text(l10n.female),
-            ),
-            ButtonSegment(
-              value: GenderPreference.everyone,
-              label: Text(l10n.everyone),
-            ),
-          ],
-          selected: _genderPreference == null ? {} : {_genderPreference!},
-          emptySelectionAllowed: true,
-          onSelectionChanged: (selection) => setState(
-            () =>
-                _genderPreference = selection.isEmpty ? null : selection.first,
+          l10n.optional_shown_to_people_nearby,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final intent in MeetIntent.values)
+              CmpIntentChip(
+                intent: intent,
+                selected: _intent == intent,
+                // Un secondo tap deseleziona: l'intento è facoltativo.
+                onSelected: (selected) =>
+                    setState(() => _intent = selected ? intent : null),
+              ),
+          ],
         ),
         if (errorMessage != null) ...[
           const SizedBox(height: 16),
-          Text(
-            errorMessage,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
+          CmpInlineError(message: errorMessage),
         ],
         const Spacer(),
-        FilledButton(
+        CmpBusyFilledButton(
+          label: l10n.go_online_button,
+          isBusy: _isStarting,
           onPressed: _submit,
-          child: Text(l10n.go_online_2),
         ),
       ],
     );

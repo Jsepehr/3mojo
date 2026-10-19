@@ -3,12 +3,14 @@ import 'dart:typed_data';
 
 import 'package:fpdart/fpdart.dart';
 
+import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
 import '/features/nearby/data/datasources/nearby_remote_data_source.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/domain/repositories/nearby_repository.dart';
+import '/features/profile/domain/entities/profile.dart';
 
 /// Apre la connessione persistente verso il backend reale e traduce ciò che
 /// arriva. Non rifiltra più per raggio lato client: da quando esistono le
@@ -26,16 +28,16 @@ class NearbyRepositoryImpl implements NearbyRepository {
   Stream<Either<Failure, List<NearbyPerson>>> watchNearbyPeople(
     GeoLocation location, {
     required String sessionId,
-    required String gender,
-    required String genderPreference,
+    required Profile profile,
+    MeetIntent? intent,
     required Uint8List selfieBytes,
   }) {
     final upstream = _remoteDataSource.connect(
       sessionId: sessionId,
       latitude: location.latitude,
       longitude: location.longitude,
-      gender: gender,
-      genderPreference: genderPreference,
+      profile: profile,
+      intent: intent,
       selfieBytes: selfieBytes,
     );
 
@@ -45,8 +47,15 @@ class NearbyRepositoryImpl implements NearbyRepository {
         Either<Failure, List<NearbyPerson>>
       >.fromHandlers(
         handleData: (people, sink) => sink.add(Right(people)),
-        handleError: (error, stackTrace, sink) =>
-            sink.add(Left(UnexpectedFailure(error.toString()))),
+        handleError: (error, stackTrace, sink) => sink.add(
+          Left(switch (error) {
+            ServerException(:final message) => ConnectionFailure(message),
+            SelfieRejectedException() => const SelfieRejectedByServerFailure(),
+            SelfiePreparationException() => const SelfieNotUsableFailure(),
+            RateLimitedException() => const TooManyStartsFailure(),
+            _ => UnexpectedFailure(error.toString()),
+          }),
+        ),
       ),
     );
   }
@@ -60,7 +69,7 @@ class NearbyRepositoryImpl implements NearbyRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> stopBeingVisible(String sessionId) async {
+  Future<Either<Failure, Unit>> stopBeingVisible() async {
     try {
       await _remoteDataSource.disconnect();
       return const Right(unit);

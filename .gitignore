@@ -54,3 +54,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Claude Code agents (locali, non versionati)
+.claude/

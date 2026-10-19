@@ -1,14 +1,16 @@
-import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 
-/// Le foto delle altre persone (selfie ricevuti dal server, o passati tra
-/// feature come `EncounterRequest.otherSelfiePath`) arrivano come data URI
-/// (`data:image/jpeg;base64,...`), mai come percorso file: niente
-/// `dart:io`/`File`, così funziona identico anche sul web. Ritorna `null`
-/// se non c'è nessuna foto.
-ImageProvider? imageProviderForPhoto(String photoDataUri) {
-  if (photoDataUri.isEmpty) return null;
-  final base64Part = photoDataUri.split(',').last;
-  return MemoryImage(base64Decode(base64Part));
+/// Le foto delle altre persone (selfie ricevuti dal server) arrivano già
+/// decodificate in byte dal layer `data/` (vedi `PhotoBytesCache`): niente
+/// `dart:io`/`File`, così funziona identico anche sul web, e niente
+/// decodifica base64 a ogni `build`. Ritorna `null` se non c'è nessuna foto.
+///
+/// Gli stessi byte (la stessa istanza, garantita da `PhotoBytesCache`)
+/// danno una `MemoryImage` uguale: la cache delle immagini di Flutter non
+/// ridecodifica il JPEG a ogni nuova lista dal server.
+ImageProvider? imageProviderForPhoto(Uint8List? photoBytes) {
+  if (photoBytes == null || photoBytes.isEmpty) return null;
+  return MemoryImage(photoBytes);
 }

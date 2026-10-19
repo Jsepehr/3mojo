@@ -1,33 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '/core/theme/app_theme.dart';
+import '/core/widgets/cmp_end_button.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
+import '/core/widgets/cmp_radar_background.dart';
+import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
+import '/features/nearby/domain/entities/background_location_notice.dart';
+import '/features/nearby/presentation/providers/pro_nearby.dart';
+import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
 import '/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart';
+import '/features/profile/presentation/pages/ui_profile.dart';
+import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/session/presentation/providers/pro_session.dart';
-import '/features/session/presentation/widgets/cmp_radar_background.dart';
+import '/features/session/presentation/widgets/cmp_connection_banner.dart';
 import '/features/settings/presentation/widgets/cmp_app_drawer.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'ui_start_session.dart';
 
 /// Pagina iniziale dell'app: un'unica pagina che cambia aspetto in base a
-/// `ProSession.isOnline`, non due pagine separate.
+/// `ProSession.isOnline`, non due pagine separate. Al primo avvio, finché
+/// il profilo non è compilato (e non si è online), mostra `UiProfile` al
+/// suo posto — niente gate separato davanti all'app.
+///
+/// È anche il punto in cui si compongono le feature della home (lista
+/// vicinanze col paywall, richieste d'incontro, sessione): le passa tra
+/// loro come callback, così nessuna deve importare le altre.
 class UiHome extends StatelessWidget {
   const UiHome({super.key});
 
   @override
   Widget build(BuildContext context) {
     final proSession = context.watch<ProSession>();
+    final proProfile = context.watch<ProProfile>();
 
-    if (proSession.isLoading) {
-      return const Scaffold(body: Center(child: CmpLoadingIndicator()));
+    if (proSession.isLoading || proProfile.isLoading) {
+      // Nel tema hero, come la home offline che quasi sempre segue: niente
+      // lampo bianco prima del blu.
+      return Theme(
+        data: AppTheme.hero(Theme.of(context)),
+        child: const Scaffold(body: Center(child: CmpLoadingIndicator())),
+      );
+    }
+
+    if (!proSession.isOnline && !proProfile.hasProfile) {
+      return const UiProfile(isOnboarding: true);
     }
 
     return proSession.isOnline ? const _OnlineHome() : const _OfflineHome();
   }
+}
+
+/// Apre il wizard di Start. Prima passa a `ProNearby` i testi tradotti
+/// della notifica Android che accompagnerà la posizione in background
+/// durante la sessione (il datasource GPS non ha un `BuildContext`).
+void _openStartSession(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  context.read<ProNearby>().setBackgroundLocationNotice(
+    BackgroundLocationNotice(
+      title: l10n.background_location_notification_title,
+      body: l10n.background_location_notification_body,
+      channelName: l10n.background_location_notification_channel,
+    ),
+  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const UiStartSession()));
 }
 
 /// Stato offline: claim + bottone Start, sfondo radar decorativo. Usa il
@@ -35,6 +77,11 @@ class UiHome extends StatelessWidget {
 /// Start come pillola bianca — l'unica schermata immersiva dell'app.
 class _OfflineHome extends StatelessWidget {
   const _OfflineHome();
+
+  /// Il radar è centrato un po' più in alto del centro dello schermo (circa
+  /// 1 cm: ~63 px logici, a 160 px per pollice), per lasciare più aria al
+  /// testo e al bottone Start in basso.
+  static const _radarLift = 63.0;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +100,13 @@ class _OfflineHome extends StatelessWidget {
           drawer: Theme(data: appTheme, child: const CmpAppDrawer()),
           body: Stack(
             children: [
-              const Positioned.fill(child: CmpRadarBackground()),
+              const Positioned(
+                left: 0,
+                right: 0,
+                top: -_radarLift,
+                bottom: _radarLift,
+                child: CmpRadarBackground(),
+              ),
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -74,11 +127,7 @@ class _OfflineHome extends StatelessWidget {
                       ),
                       const SizedBox(height: 32),
                       FilledButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const UiStartSession(),
-                          ),
-                        ),
+                        onPressed: () => _openStartSession(context),
                         child: Text(l10n.start),
                       ),
                       const SizedBox(height: 24),
@@ -101,28 +150,86 @@ class _OfflineHome extends StatelessWidget {
 class _OnlineHome extends StatelessWidget {
   const _OnlineHome();
 
+  /// End (dall'AppBar o dall'avviso d'errore): una vibrazione decisa
+  /// conferma il gesto, il resto lo fa `ProSession`.
+  void _endSession(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    context.read<ProSession>().end();
+  }
+
+  /// Il server non ha accettato il selfie: si va offline e si riapre subito
+  /// lo Start, per scattarne un altro.
+  Future<void> _endAndRetakeSelfie(BuildContext context) async {
+    final proSession = context.read<ProSession>();
+    final navigator = Navigator.of(context);
+    HapticFeedback.mediumImpact();
+    await proSession.end();
+    if (proSession.isOnline || !navigator.mounted) return;
+    _openStartSession(navigator.context);
+  }
+
+  /// Per il chip della tile: "vuole conoscerti" se è lei ad aspettare una
+  /// tua risposta, altrimenti (richiesta tua, o che sta partendo)
+  /// "richiesta inviata". Se ce n'è una lo decide `hasRequested`, la stessa
+  /// regola dello use case.
+  static CmpNearbyRequestState _requestStateOf(
+    ProEncounters proEncounters,
+    String personId,
+  ) {
+    if (!proEncounters.hasRequested(personId)) {
+      return CmpNearbyRequestState.none;
+    }
+    final awaitsYourAnswer = proEncounters.incomingRequests.any(
+      (request) =>
+          request.otherPersonId == personId &&
+          request.status == EncounterRequestStatus.pending,
+    );
+    return awaitsYourAnswer
+        ? CmpNearbyRequestState.received
+        : CmpNearbyRequestState.sent;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final session = context.watch<ProSession>().session!;
-    final pendingCount = context.watch<ProEncounters>().pendingIncomingCount;
+    final proSession = context.watch<ProSession>();
+    final session = proSession.session!;
+    final proEncounters = context.watch<ProEncounters>();
+    final pendingCount = proEncounters.pendingIncomingCount;
 
     return Scaffold(
       drawer: const CmpAppDrawer(),
       appBar: AppBar(
         title: Text(l10n.nearby),
         actions: [
-          TextButton.icon(
-            onPressed: () => context.read<ProSession>().end(),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            icon: const Icon(Icons.stop_circle_outlined),
-            label: Text(l10n.end),
+          // Puntini e niente tap mentre End è in corso: niente doppio tap.
+          CmpEndButton(
+            label: l10n.end_session,
+            isBusy: proSession.isEnding,
+            onPressed: () => _endSession(context),
           ),
         ],
       ),
-      body: const CmpPaywalledNearbyList(),
+      body: Column(
+        children: [
+          const CmpConnectionBanner(),
+          Expanded(
+            child: CmpPaywalledNearbyList(
+              requestStateOf: (personId) =>
+                  _requestStateOf(proEncounters, personId),
+              // L'esito (partita o rifiutata, e perché) arriva da
+              // `CmpEncounterNoticeListener`: qui nessun "Richiesta
+              // inviata" prima di saperlo.
+              onRequest: (personId) {
+                HapticFeedback.lightImpact();
+                context.read<ProEncounters>().sendRequest(personId);
+              },
+              onEndSession: () => _endSession(context),
+              onRetakeSelfie: () => _endAndRetakeSelfie(context),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomAppBar(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

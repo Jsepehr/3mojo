@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'raen_colors.dart';
 
 /// Temi Material 3 per tutta l'app, chiaro e scuro — l'app segue il tema
-/// scelto in Impostazioni (di default quello di sistema).
+/// scelto nel menu (chiaro o scuro; di default quello chiaro — non segue
+/// il tema di sistema, vedi `SettingsLocalDataSourceImpl.getThemeMode`).
 ///
 /// Colori presi dall'icona: blu del segnaposto `#0236B3` come primario,
 /// rosso del cuore come accento raro (in `RaenColors`, non nel
@@ -25,8 +26,8 @@ class AppTheme {
     onSecondary: Color(0xFFFFFFFF),
     secondaryContainer: Color(0xFFE1E6F4),
     onSecondaryContainer: Color(0xFF10162B),
-    // Terziario = blu profondo, non il rosso: il gradiente primario→terziario
-    // (attesa in "Vicinanze") resta tutto nel blu del brand.
+    // Terziario = blu profondo, non il rosso: se un componente lo usa resta
+    // tutto nel blu del brand (il rosso del cuore vive in RaenColors).
     tertiary: Color(0xFF001F70),
     onTertiary: Color(0xFFFFFFFF),
     tertiaryContainer: Color(0xFFDDE4FF),

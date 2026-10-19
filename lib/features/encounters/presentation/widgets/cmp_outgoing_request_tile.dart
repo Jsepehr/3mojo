@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
 import '/core/widgets/cmp_photo.dart';
+import '/core/widgets/cmp_status_chip.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 
-/// Riga di una richiesta mandata da te, con il suo stato testuale.
+/// Riga di una richiesta mandata da te, con il suo stato come chip: in
+/// attesa (orologio, neutro), accettata (cuore pieno, rosso-cuore: la buona
+/// notizia), rifiutata/annullata/finita (croce, solo bordo — uno stato
+/// chiuso che non deve attirare l'occhio).
 class CmpOutgoingRequestTile extends StatelessWidget {
   const CmpOutgoingRequestTile({super.key, required this.request});
 
@@ -14,26 +19,55 @@ class CmpOutgoingRequestTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final photo = imageProviderForPhoto(request.otherSelfiePath);
+    final photo = imageProviderForPhoto(request.otherSelfieBytes);
 
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CmpPhoto(image: photo, size: 56),
-      title: Text(_statusLabel(l10n, request.status)),
+      title: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: _statusChip(context, l10n, request.status),
+      ),
     );
   }
 
-  String _statusLabel(AppLocalizations l10n, EncounterRequestStatus status) {
+  Widget _statusChip(
+    BuildContext context,
+    AppLocalizations l10n,
+    EncounterRequestStatus status,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final raen = RaenColors.of(context);
+
+    CmpStatusChip closed(String label) => CmpStatusChip(
+      label: label,
+      icon: Icons.close,
+      foreground: colorScheme.onSurfaceVariant,
+      outlined: true,
+    );
+
     switch (status) {
       case EncounterRequestStatus.pending:
-        return l10n.waiting_for_a_reply;
+        return CmpStatusChip(
+          label: l10n.waiting_for_a_reply,
+          icon: Icons.schedule,
+          background: colorScheme.secondaryContainer,
+          foreground: colorScheme.onSecondaryContainer,
+        );
       case EncounterRequestStatus.accepted:
-        return l10n.accepted;
+        return CmpStatusChip(
+          label: l10n.accepted,
+          icon: Icons.favorite,
+          iconColor: raen.heart,
+          background: raen.heartContainer,
+          foreground: raen.onHeartContainer,
+        );
       case EncounterRequestStatus.declined:
-        return l10n.declined;
+        return closed(l10n.declined);
       case EncounterRequestStatus.cancelled:
-        return l10n.cancelled_you_matched_with_someone_else;
+        return closed(l10n.cancelled_you_have_another_match);
       case EncounterRequestStatus.ended:
-        return l10n.ended;
+        return closed(l10n.ended);
     }
   }
 }

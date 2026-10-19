@@ -7,8 +7,8 @@ import 'package:flutter/scheduler.dart';
 import '/core/theme/raen_colors.dart';
 
 /// Sfondo decorativo "radar", solo effetto visivo: usato sia offline
-/// (schermata Start, tema hero) che online (attesa in "Vicinanze", sotto la
-/// card colorata).
+/// (schermata Start, tema hero) che online (attesa in "Vicinanze", sotto il
+/// velo ovale col testo).
 ///
 /// Tre livelli, tutti nei colori del tema:
 /// - una griglia di anelli fissi appena accennati e un fascio che ruota
