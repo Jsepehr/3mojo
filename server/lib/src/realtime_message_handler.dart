@@ -1,4 +1,5 @@
 import 'package:threemojo_server/src/connection_hub.dart';
+import 'package:threemojo_server/src/encounter_proposal.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
@@ -230,6 +231,8 @@ class RealtimeMessageHandler {
       _encounters.sendRequest(
         fromSessionId: sessionId,
         toSessionId: toSessionId,
+        // Mancante (client vecchi) o sconosciuta → quella di ripiego.
+        proposal: EncounterProposal.parse(message['proposal']),
       );
     } on EncounterRejected catch (rejection) {
       _reject(sessionId, action, rejection.reason.name, extra);

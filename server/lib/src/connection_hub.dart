@@ -357,6 +357,10 @@ class ConnectionHub {
           targetId: otherId,
         ),
         'status': r.status.name,
+        // Cosa ha proposto chi ha chiesto: lo vedono entrambi i lati, anche
+        // a richiesta finita (è una scelta dell'app, non un dato del
+        // profilo).
+        'proposal': r.proposal,
       };
       if (terminalEncounterStatuses.contains(r.status)) {
         selfiesSent.remove(r.id);

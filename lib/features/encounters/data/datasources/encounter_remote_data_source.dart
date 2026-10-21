@@ -1,3 +1,4 @@
+import '../../domain/entities/encounter_proposal.dart';
 import '../models/encounter_rejection_model.dart';
 import '../models/encounter_request_model.dart';
 
@@ -27,8 +28,12 @@ abstract class EncounterRemoteDataSource {
   /// (li racconta già [watchRequests]).
   Stream<EncounterRejectionModel> watchRejections(String sessionId);
 
+  /// Manda la richiesta con la [proposal] scelta (solo il codice).
   /// Lancia `ServerException` se non è partita.
-  void sendRequest({required String otherPersonId});
+  void sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  });
 
   /// Lancia `ServerException` se non è partita.
   void respondToRequest({required String requestId, required bool accepted});

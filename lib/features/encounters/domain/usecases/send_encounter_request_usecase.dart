@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '../entities/encounter_proposal.dart';
 import '../entities/encounter_request.dart';
 import '../repositories/encounter_repository.dart';
 import 'has_requested_person_usecase.dart';
@@ -10,10 +11,14 @@ class SendEncounterRequestParams extends Equatable {
   const SendEncounterRequestParams({
     required this.otherPersonId,
     required this.knownRequests,
+    this.proposal = EncounterProposal.fallback,
     this.awaitingPersonIds = const {},
   });
 
   final String otherPersonId;
+
+  /// Cosa si propone (lista chiusa, scelta nella tendina).
+  final EncounterProposal proposal;
 
   /// Le richieste (in entrata e in uscita) dell'ultimo snapshot del server.
   final List<EncounterRequest> knownRequests;
@@ -23,7 +28,12 @@ class SendEncounterRequestParams extends Equatable {
   final Set<String> awaitingPersonIds;
 
   @override
-  List<Object?> get props => [otherPersonId, knownRequests, awaitingPersonIds];
+  List<Object?> get props => [
+    otherPersonId,
+    proposal,
+    knownRequests,
+    awaitingPersonIds,
+  ];
 }
 
 /// Azione: manda una richiesta d'interesse a una persona vista in
@@ -55,6 +65,9 @@ class SendEncounterRequestUseCase {
         AlreadyRequestedFailure('A request with this person already exists'),
       );
     }
-    return _repository.sendRequest(otherPersonId: params.otherPersonId);
+    return _repository.sendRequest(
+      otherPersonId: params.otherPersonId,
+      proposal: params.proposal,
+    );
   }
 }

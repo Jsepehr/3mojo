@@ -7,6 +7,7 @@ import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/chat/domain/entities/chat_message.dart';
 import 'package:threemojo_app/features/chat/domain/entities/conversation.dart';
 import 'package:threemojo_app/features/chat/domain/repositories/chat_repository.dart';
+import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_rejection.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_request.dart';
 import 'package:threemojo_app/features/encounters/domain/repositories/encounter_repository.dart';
@@ -130,6 +131,7 @@ class FakeEncounterRepository implements EncounterRepository {
   Either<Failure, Unit> respondResult = const Right(unit);
   Either<Failure, Unit> endMatchResult = const Right(unit);
   final sentTo = <String>[];
+  final sentProposals = <EncounterProposal>[];
   final responses = <(String, bool)>[];
   final endedMatches = <String>[];
   int watchCalls = 0;
@@ -154,8 +156,12 @@ class FakeEncounterRepository implements EncounterRepository {
       _rejections.stream;
 
   @override
-  Either<Failure, Unit> sendRequest({required String otherPersonId}) {
+  Either<Failure, Unit> sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  }) {
     sentTo.add(otherPersonId);
+    sentProposals.add(proposal);
     return sendResult;
   }
 

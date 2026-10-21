@@ -13,11 +13,13 @@ import '/core/widgets/cmp_photo.dart';
 import '/features/chat/domain/usecases/send_message_usecase.dart';
 import '/features/chat/presentation/providers/pro_chat.dart';
 import '/features/chat/presentation/widgets/cmp_chat_message_bubble.dart';
+import '/features/encounters/domain/entities/encounter_proposal.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_connection_banner.dart';
 import '/l10n/generated/app_localizations.dart';
+import '../encounter_proposal_labels.dart';
 
 /// Altezza del pannello emoji (stile WhatsApp: sostituisce la tastiera,
 /// non si sovrappone).
@@ -31,8 +33,9 @@ const _emojiPickerHeight = 256.0;
 /// chiuderla.
 ///
 /// Finché non c'è ancora nessun messaggio, al posto della chat vuota c'è
-/// un'intestazione "È un incontro" con le due foto e un suggerimento per
-/// rompere il ghiaccio.
+/// un'intestazione "È un incontro" con le due foto, la proposta della
+/// richiesta ("🥤 Bere qualcosa insieme") e un suggerimento per rompere il
+/// ghiaccio adatto a quella proposta.
 class UiActiveMatch extends StatefulWidget {
   const UiActiveMatch({super.key, required this.request});
 
@@ -230,7 +233,11 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
                       // le chat di WhatsApp.
                       color: colorScheme.surfaceContainerLow,
                       child: proChat.messages.isEmpty
-                          ? _MatchIntro(ownPhoto: ownPhoto, otherPhoto: photo)
+                          ? _MatchIntro(
+                              ownPhoto: ownPhoto,
+                              otherPhoto: photo,
+                              proposal: widget.request.proposal,
+                            )
                           : ListView.builder(
                               reverse: true,
                               padding: const EdgeInsets.all(16),
@@ -379,13 +386,19 @@ class _MatchPhoto extends StatelessWidget {
 }
 
 /// Intestazione della chat ancora vuota: le due foto affiancate col cuore
-/// nel disco bianco in mezzo (come nell'icona), "È un incontro" e un
-/// suggerimento per il primo messaggio. Sparisce al primo messaggio.
+/// nel disco bianco in mezzo (come nell'icona), "È un incontro", cosa era
+/// stato proposto e un suggerimento per il primo messaggio adatto a quella
+/// proposta. Sparisce al primo messaggio.
 class _MatchIntro extends StatelessWidget {
-  const _MatchIntro({required this.ownPhoto, required this.otherPhoto});
+  const _MatchIntro({
+    required this.ownPhoto,
+    required this.otherPhoto,
+    required this.proposal,
+  });
 
   final ImageProvider? ownPhoto;
   final ImageProvider? otherPhoto;
+  final EncounterProposal proposal;
 
   @override
   Widget build(BuildContext context) {
@@ -413,8 +426,28 @@ class _MatchIntro extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ExcludeSemantics(
+                    child: Text(
+                      EncounterProposalLabels.emoji(proposal),
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      EncounterProposalLabels.matchSubtitle(l10n, proposal),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Text(
-                l10n.its_a_match_icebreaker,
+                EncounterProposalLabels.icebreaker(l10n, proposal),
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

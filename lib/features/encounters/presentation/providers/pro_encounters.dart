@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '/features/profile/domain/entities/profile.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/watch_server_session_restarts_usecase.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
+import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_rejection.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../../domain/entities/match_end.dart';
@@ -15,6 +17,8 @@ import '../../domain/usecases/end_match_usecase.dart';
 import '../../domain/usecases/find_active_match_usecase.dart';
 import '../../domain/usecases/find_lost_encounter_requests_usecase.dart';
 import '../../domain/usecases/has_requested_person_usecase.dart';
+import '../../domain/usecases/preselect_encounter_proposal_usecase.dart';
+import '../../domain/usecases/proposal_for_intent_usecase.dart';
 import '../../domain/usecases/respond_to_encounter_request_usecase.dart';
 import '../../domain/usecases/send_encounter_request_usecase.dart';
 import '../../domain/usecases/watch_encounter_rejections_usecase.dart';
@@ -45,6 +49,11 @@ import '../encounter_notice.dart';
 /// cancellazione della sua chat (`DetectEndedMatchUseCase`), "quando una
 /// richiesta è persa" (`FindLostEncounterRequestsUseCase`). Il provider
 /// tiene lo stato e le traduce in [EncounterNotice].
+///
+/// Tiene anche l'**ultima proposta scelta** in questa sessione (solo in
+/// memoria, dimenticata a End come il resto): con l'intento di sessione è
+/// ciò da cui `PreselectEncounterProposalUseCase` decide la proposta già
+/// scelta nella tendina ([preselectedProposal]).
 class ProEncounters extends ChangeNotifier {
   ProEncounters({
     required WatchSessionUseCase watchSessionUseCase,
@@ -62,6 +71,10 @@ class ProEncounters extends ChangeNotifier {
         const FindActiveMatchUseCase(),
     FindLostEncounterRequestsUseCase findLostEncounterRequestsUseCase =
         const FindLostEncounterRequestsUseCase(),
+    PreselectEncounterProposalUseCase preselectEncounterProposalUseCase =
+        const PreselectEncounterProposalUseCase(),
+    ProposalForIntentUseCase proposalForIntentUseCase =
+        const ProposalForIntentUseCase(),
     DateTime Function()? now,
   }) : _watchEncounterRequestsUseCase = watchEncounterRequestsUseCase,
        _watchEncounterRejectionsUseCase = watchEncounterRejectionsUseCase,
@@ -72,6 +85,8 @@ class ProEncounters extends ChangeNotifier {
        _hasRequestedPersonUseCase = hasRequestedPersonUseCase,
        _findActiveMatchUseCase = findActiveMatchUseCase,
        _findLostEncounterRequestsUseCase = findLostEncounterRequestsUseCase,
+       _preselectEncounterProposalUseCase = preselectEncounterProposalUseCase,
+       _proposalForIntentUseCase = proposalForIntentUseCase,
        _now = now ?? DateTime.now {
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
     _restartSubscription = watchServerSessionRestartsUseCase().listen(
@@ -88,6 +103,8 @@ class ProEncounters extends ChangeNotifier {
   final HasRequestedPersonUseCase _hasRequestedPersonUseCase;
   final FindActiveMatchUseCase _findActiveMatchUseCase;
   final FindLostEncounterRequestsUseCase _findLostEncounterRequestsUseCase;
+  final PreselectEncounterProposalUseCase _preselectEncounterProposalUseCase;
+  final ProposalForIntentUseCase _proposalForIntentUseCase;
   final DateTime Function() _now;
   Timer? _lostRequestsTimer;
 
@@ -99,6 +116,12 @@ class ProEncounters extends ChangeNotifier {
       StreamController.broadcast();
 
   String? _sessionId;
+
+  /// L'intento della sessione in corso e l'ultima proposta mandata in
+  /// questa sessione: solo in memoria, azzerati a ogni Start/End.
+  MeetIntent? _ownIntent;
+  EncounterProposal? _lastProposal;
+
   List<EncounterRequest> _incomingRequests = [];
   List<EncounterRequest> _outgoingRequests = [];
 
@@ -140,10 +163,27 @@ class ProEncounters extends ChangeNotifier {
     awaitingPersonIds: _awaitingPersonIds,
   );
 
-  void sendRequest(String otherPersonId) {
+  /// La proposta già scelta (e in cima) aprendo la tendina: l'ultima
+  /// mandata in questa sessione, altrimenti quella del tuo intento.
+  EncounterProposal get preselectedProposal =>
+      _preselectEncounterProposalUseCase(
+        lastChosen: _lastProposal,
+        ownIntent: _ownIntent,
+      );
+
+  /// La proposta "in linea con ciò che cerca" chi mostra [intent] in
+  /// "Vicinanze" (il suo intento pubblico), o `null` se non ne mostra uno.
+  EncounterProposal? proposalMatchingIntent(MeetIntent? intent) =>
+      intent == null ? null : _proposalForIntentUseCase(intent);
+
+  void sendRequest(
+    String otherPersonId, {
+    EncounterProposal proposal = EncounterProposal.fallback,
+  }) {
     final result = _sendEncounterRequestUseCase(
       SendEncounterRequestParams(
         otherPersonId: otherPersonId,
+        proposal: proposal,
         knownRequests: [..._incomingRequests, ..._outgoingRequests],
         awaitingPersonIds: _awaitingPersonIds,
       ),
@@ -153,6 +193,7 @@ class ProEncounters extends ChangeNotifier {
         ActionNotSentNotice(EncounterAction.sendRequest, failure),
       ),
       (_) {
+        _lastProposal = proposal;
         _awaitingSentAt[otherPersonId] = _now();
         _scheduleLostRequestsCheck();
       },
@@ -235,6 +276,9 @@ class ProEncounters extends ChangeNotifier {
     _rejectionsSubscription = null;
     _clearState();
     _sessionId = sessionId;
+    // Sessione nuova (o nessuna): la proposta di quella prima non vale più.
+    _ownIntent = session?.intent;
+    _lastProposal = null;
     if (sessionId != null) _subscribe();
     notifyListeners();
   }

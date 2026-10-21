@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:threemojo_server/src/encounter_proposal.dart';
+
 /// Ciclo di vita di una richiesta — stessi stadi del client Flutter
 /// (`EncounterRequestStatus` in
 /// `lib/features/encounters/domain/entities/encounter_request.dart`).
@@ -56,12 +58,17 @@ class EncounterRequest {
     required this.id,
     required this.fromSessionId,
     required this.toSessionId,
+    this.proposal = EncounterProposal.fallback,
     this.status = EncounterRequestStatus.pending,
   });
 
   final String id;
   final String fromSessionId;
   final String toSessionId;
+
+  /// Cosa propone chi chiede (un codice di [EncounterProposal]), fissato
+  /// all'invio: mostrato a entrambi i lati finché la richiesta esiste.
+  final String proposal;
   EncounterRequestStatus status;
 
   bool involves(String sessionId) =>
@@ -106,9 +113,13 @@ class EncounterStore {
   /// Quelle che dipendono da chi è vicino a chi (online, in lista, paywall)
   /// le controlla chi chiama (`RealtimeMessageHandler`), che conosce
   /// `SessionStore`.
+  ///
+  /// [proposal] passa da [EncounterProposal.parse]: un codice fuori dalla
+  /// lista chiusa diventa quello di ripiego, mai un valore arbitrario.
   EncounterRequest sendRequest({
     required String fromSessionId,
     required String toSessionId,
+    String proposal = EncounterProposal.fallback,
   }) {
     if (fromSessionId == toSessionId) {
       throw EncounterRejected(EncounterRejectionReason.self);
@@ -144,6 +155,7 @@ class EncounterStore {
       id: id,
       fromSessionId: fromSessionId,
       toSessionId: toSessionId,
+      proposal: EncounterProposal.parse(proposal),
     );
     _requests[request.id] = request;
     return request;

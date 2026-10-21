@@ -4,6 +4,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
+import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_rejection.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../../domain/repositories/encounter_repository.dart';
@@ -50,10 +51,15 @@ class EncounterRepositoryImpl implements EncounterRepository {
       _remoteDataSource.watchRejections(sessionId).handleError((Object _) {});
 
   @override
-  Either<Failure, Unit> sendRequest({required String otherPersonId}) =>
-      _attempt(
-        () => _remoteDataSource.sendRequest(otherPersonId: otherPersonId),
-      );
+  Either<Failure, Unit> sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  }) => _attempt(
+    () => _remoteDataSource.sendRequest(
+      otherPersonId: otherPersonId,
+      proposal: proposal,
+    ),
+  );
 
   @override
   Either<Failure, Unit> respondToRequest({

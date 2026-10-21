@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '/core/errors/exceptions.dart';
 import '/core/network/realtime_connection.dart';
 import '/core/utils/photo_bytes_cache.dart';
+import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../models/encounter_rejection_model.dart';
 import '../models/encounter_request_model.dart';
@@ -98,8 +99,15 @@ class EncounterRemoteDataSourceImpl implements EncounterRemoteDataSource {
   }
 
   @override
-  void sendRequest({required String otherPersonId}) =>
-      _send({'type': 'sendEncounterRequest', 'toPersonId': otherPersonId});
+  void sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  }) => _send({
+    'type': 'sendEncounterRequest',
+    'toPersonId': otherPersonId,
+    // Solo il codice stabile: la frase la traduce chi la riceve.
+    'proposal': proposal.name,
+  });
 
   @override
   void respondToRequest({required String requestId, required bool accepted}) =>

@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
+import '../entities/encounter_proposal.dart';
 import '../entities/encounter_rejection.dart';
 import '../entities/encounter_request.dart';
 
@@ -28,7 +29,12 @@ abstract class EncounterRepository {
   /// problemi di connessione arrivano già da [watchRequests].
   Stream<EncounterRejection> watchRejections(String sessionId);
 
-  Either<Failure, Unit> sendRequest({required String otherPersonId});
+  /// [proposal] è cosa si propone (lista chiusa): sul filo va solo il
+  /// codice.
+  Either<Failure, Unit> sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  });
 
   Either<Failure, Unit> respondToRequest({
     required String requestId,

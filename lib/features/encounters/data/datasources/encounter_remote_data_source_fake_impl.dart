@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import '/features/profile/domain/entities/profile.dart';
+import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_rejection.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../models/encounter_rejection_model.dart';
@@ -14,6 +15,8 @@ import 'encounter_remote_data_source.dart';
 /// quelle in uscita — applicando da sola le stesse regole del server vero:
 /// "un solo incontro alla volta" quando è "l'altro" ad accettare, niente
 /// seconda richiesta alla stessa persona, niente richieste a match in corso.
+/// Le richieste in uscita conservano la proposta scelta; quelle finte in
+/// entrata ne hanno una a caso dalla lista chiusa.
 ///
 /// Lo stato è **per sessione**, come sul server: con una sessione nuova (un
 /// `watchRequests` con un altro id) o con [reset] (End) si azzera tutto —
@@ -102,7 +105,10 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
   }
 
   @override
-  void sendRequest({required String otherPersonId}) {
+  void sendRequest({
+    required String otherPersonId,
+    required EncounterProposal proposal,
+  }) {
     final alreadyAsked = [
       ..._incoming,
       ..._outgoing,
@@ -122,6 +128,7 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
       id: 'out-${DateTime.now().microsecondsSinceEpoch}',
       otherPersonId: otherPersonId,
       status: EncounterRequestStatus.pending,
+      proposal: proposal,
     );
     _outgoing.add(request);
     _emit();
@@ -199,6 +206,8 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
         id: 'in-$_fakeIncomingCounter-${DateTime.now().microsecondsSinceEpoch}',
         otherPersonId: 'fake-person-$_fakeIncomingCounter',
         status: EncounterRequestStatus.pending,
+        proposal: EncounterProposal
+            .values[_random.nextInt(EncounterProposal.values.length)],
         otherIntent:
             MeetIntent.values[_fakeIncomingCounter % MeetIntent.values.length],
         otherLanguages: _fakeIncomingCounter.isEven

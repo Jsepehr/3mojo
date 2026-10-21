@@ -10,7 +10,9 @@ import '/core/widgets/cmp_radar_background.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
+import '/features/encounters/presentation/widgets/cmp_proposal_sheet.dart';
 import '/features/nearby/domain/entities/background_location_notice.dart';
+import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/presentation/providers/pro_nearby.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
 import '/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart';
@@ -168,6 +170,28 @@ class _OnlineHome extends StatelessWidget {
     _openStartSession(navigator.context);
   }
 
+  /// Tocco su una persona: si apre la tendina "Cosa vuoi proporre?" e
+  /// toccare una proposta manda la richiesta (2 tap in tutto). La
+  /// preselezione e il segno "in linea con ciò che cerca" (dal suo intento
+  /// pubblico) li decidono gli use case dietro `ProEncounters`. L'esito
+  /// (partita o rifiutata, e perché) arriva da `CmpEncounterNoticeListener`:
+  /// qui nessun "Richiesta inviata" prima di saperlo.
+  Future<void> _chooseProposalAndRequest(
+    BuildContext context,
+    NearbyPerson person,
+  ) async {
+    final proEncounters = context.read<ProEncounters>();
+    final proposal = await showProposalSheet(
+      context,
+      photoBytes: person.photoBytes,
+      preselected: proEncounters.preselectedProposal,
+      matchingTheirIntent: proEncounters.proposalMatchingIntent(person.intent),
+    );
+    if (proposal == null) return;
+    HapticFeedback.lightImpact();
+    proEncounters.sendRequest(person.id, proposal: proposal);
+  }
+
   /// Per il chip della tile: "vuole conoscerti" se è lei ad aspettare una
   /// tua risposta, altrimenti (richiesta tua, o che sta partendo)
   /// "richiesta inviata". Se ce n'è una lo decide `hasRequested`, la stessa
@@ -217,13 +241,7 @@ class _OnlineHome extends StatelessWidget {
             child: CmpPaywalledNearbyList(
               requestStateOf: (personId) =>
                   _requestStateOf(proEncounters, personId),
-              // L'esito (partita o rifiutata, e perché) arriva da
-              // `CmpEncounterNoticeListener`: qui nessun "Richiesta
-              // inviata" prima di saperlo.
-              onRequest: (personId) {
-                HapticFeedback.lightImpact();
-                context.read<ProEncounters>().sendRequest(personId);
-              },
+              onRequest: (person) => _chooseProposalAndRequest(context, person),
               onEndSession: () => _endSession(context),
               onRetakeSelfie: () => _endAndRetakeSelfie(context),
             ),

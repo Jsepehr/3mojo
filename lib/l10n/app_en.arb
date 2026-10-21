@@ -148,17 +148,13 @@
   "@you_havent_sent_any_requests_yet": {
     "description": "Shown when there are no outgoing encounter requests"
   },
-  "this_person_wants_to_meet_you": "This person wants to meet you",
-  "@this_person_wants_to_meet_you": {
-    "description": "Message shown on an incoming encounter request card"
-  },
   "yes": "Yes",
   "@yes": {
     "description": "Button to accept an incoming encounter request"
   },
-  "no": "No",
-  "@no": {
-    "description": "Button to decline an incoming encounter request"
+  "no_thanks": "No, thanks",
+  "@no_thanks": {
+    "description": "Button to decline an incoming encounter request: kind, not harsh"
   },
   "waiting_for_a_reply": "Waiting for a reply",
   "@waiting_for_a_reply": {
@@ -168,9 +164,9 @@
   "@accepted": {
     "description": "Status label for an accepted outgoing encounter request"
   },
-  "declined": "Declined",
+  "declined": "Not this time",
   "@declined": {
-    "description": "Status label for a declined outgoing encounter request"
+    "description": "Status label for an outgoing encounter request the other person declined: gentle, not a verdict"
   },
   "cancelled_you_have_another_match": "Cancelled (you matched with someone else)",
   "@cancelled_you_have_another_match": {
@@ -581,9 +577,25 @@
   "@its_a_match_title": {
     "description": "Title above the two photos when the chat of a new encounter has no messages yet"
   },
-  "its_a_match_icebreaker": "You're both nearby. Break the ice: say hi and suggest where to meet.",
-  "@its_a_match_icebreaker": {
-    "description": "Hint under its_a_match_title in the empty chat of a new encounter; informal tone"
+  "match_icebreaker_say_hi": "You're both nearby. Start with a hello and say where you are.",
+  "@match_icebreaker_say_hi": {
+    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
+  },
+  "match_icebreaker_chat": "You're both nearby. Suggest a quiet spot for a quick chat.",
+  "@match_icebreaker_chat": {
+    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
+  },
+  "match_icebreaker_friendship": "You're both nearby. Share something about yourself and suggest where to meet.",
+  "@match_icebreaker_friendship": {
+    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
+  },
+  "match_icebreaker_get_to_know": "You're both nearby. Break the ice: say hi and suggest where to meet.",
+  "@match_icebreaker_get_to_know": {
+    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
+  },
+  "match_icebreaker_drink": "You're both nearby. Suggest where to grab something to drink.",
+  "@match_icebreaker_drink": {
+    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
   },
   "chat_message_too_long": "Message too long: at most {max} characters. Shorten it and send it again.",
   "@chat_message_too_long": {
@@ -605,5 +617,81 @@
   "selfie_not_usable_body": "We couldn't prepare your selfie to send it, so people nearby can't see you. End the session and take a new one.",
   "@selfie_not_usable_body": {
     "description": "Body on the online home when the selfie could not be prepared on the phone for upload"
+  },
+  "proposal_sheet_title": "What would you like to suggest?",
+  "@proposal_sheet_title": {
+    "description": "Title of the bottom sheet opened by tapping a person in Nearby: choose what to suggest with the encounter request. Informal \"you\""
+  },
+  "proposal_label_say_hi": "Say hi",
+  "@proposal_label_say_hi": {
+    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
+  },
+  "proposal_label_chat": "A quick chat",
+  "@proposal_label_chat": {
+    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
+  },
+  "proposal_label_friendship": "Make friends",
+  "@proposal_label_friendship": {
+    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
+  },
+  "proposal_label_get_to_know": "Get to know you",
+  "@proposal_label_get_to_know": {
+    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
+  },
+  "proposal_label_drink": "Grab something to drink",
+  "@proposal_label_drink": {
+    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
+  },
+  "proposal_received_say_hi": "Wants to say hi",
+  "@proposal_received_say_hi": {
+    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  },
+  "proposal_received_chat": "Would like a quick chat with you",
+  "@proposal_received_chat": {
+    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  },
+  "proposal_received_friendship": "Would like to make friends with you",
+  "@proposal_received_friendship": {
+    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  },
+  "proposal_received_get_to_know": "Wants to get to know you",
+  "@proposal_received_get_to_know": {
+    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  },
+  "proposal_received_drink": "Would like to grab something to drink together",
+  "@proposal_received_drink": {
+    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  },
+  "match_proposal_say_hi": "Saying hi",
+  "@match_proposal_say_hi": {
+    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  },
+  "match_proposal_chat": "A quick chat",
+  "@match_proposal_chat": {
+    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  },
+  "match_proposal_friendship": "Making friends",
+  "@match_proposal_friendship": {
+    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  },
+  "match_proposal_get_to_know": "Getting to know each other",
+  "@match_proposal_get_to_know": {
+    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  },
+  "match_proposal_drink": "Grabbing something to drink together",
+  "@match_proposal_drink": {
+    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  },
+  "proposal_matches_their_intent": "Matches what they're looking for",
+  "@proposal_matches_their_intent": {
+    "description": "Small mark on the proposal that fits the intent the other person shows publicly in Nearby (never their gender or who they look for). Neutral about their gender where possible"
+  },
+  "proposal_sheet_footer": "They'll see your photo and this line",
+  "@proposal_sheet_footer": {
+    "description": "Footer of the proposal sheet: what the other person will receive. Neutral about their gender"
+  },
+  "proposal_send_hint": "Send the request",
+  "@proposal_send_hint": {
+    "description": "Screen reader hint on each proposal in the sheet: tapping it sends the encounter request right away"
   }
 }

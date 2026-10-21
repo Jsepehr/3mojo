@@ -7,6 +7,7 @@ import 'package:threemojo_app/features/encounters/data/datasources/encounter_rem
 import 'package:threemojo_app/features/encounters/data/datasources/encounter_remote_data_source_fake_impl.dart';
 import 'package:threemojo_app/features/encounters/data/datasources/encounter_remote_data_source_impl.dart';
 import 'package:threemojo_app/features/encounters/data/repositories/encounter_repository_impl.dart';
+import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
 
 import '../../support/fake_realtime_socket.dart';
 
@@ -30,7 +31,10 @@ void main() {
       repository.watchRequests(_secret).listen((_) {});
       await pumpEvents();
 
-      final result = repository.sendRequest(otherPersonId: 'p');
+      final result = repository.sendRequest(
+        otherPersonId: 'p',
+        proposal: EncounterProposal.sayHi,
+      );
 
       expect(result.getLeft().toNullable(), isA<ConnectionFailure>());
     });
@@ -41,10 +45,17 @@ void main() {
       server.last.welcome();
       await pumpEvents();
 
-      expect(repository.sendRequest(otherPersonId: 'p').isRight(), isTrue);
+      expect(
+        repository
+            .sendRequest(otherPersonId: 'p', proposal: EncounterProposal.drink)
+            .isRight(),
+        isTrue,
+      );
+      // Sul filo solo il codice stabile della proposta, mai una frase.
       expect(server.last.sent.last, {
         'type': 'sendEncounterRequest',
         'toPersonId': 'p',
+        'proposal': 'drink',
       });
     });
 
@@ -67,6 +78,50 @@ void main() {
       await pumpEvents();
 
       expect(snapshots.single.incoming.map((r) => r.id), ['r1']);
+    });
+
+    test('both sides of the snapshot carry the proposal; an unknown code '
+        'becomes getToKnow instead of failing the snapshot', () async {
+      final snapshots = <EncounterSnapshotModel>[];
+      EncounterRemoteDataSourceImpl(
+        connection: server.connection,
+      ).watchRequests(_secret).listen(snapshots.add);
+      await pumpEvents();
+      server.last
+        ..welcome()
+        ..serverSends({
+          'type': 'encounters',
+          'incoming': [
+            {
+              'id': 'r1',
+              'otherPersonId': 'p',
+              'status': 'pending',
+              'proposal': 'drink',
+            },
+            {
+              'id': 'r2',
+              'otherPersonId': 'q',
+              'status': 'pending',
+              'proposal': 'somethingNew',
+            },
+          ],
+          'outgoing': [
+            {
+              'id': 'r3',
+              'otherPersonId': 's',
+              'status': 'declined',
+              'proposal': 'sayHi',
+            },
+          ],
+        });
+      await pumpEvents();
+
+      final snapshot = snapshots.single;
+      expect(snapshot.incoming.map((r) => r.proposal), [
+        EncounterProposal.drink,
+        EncounterProposal.getToKnow,
+      ]);
+      expect(snapshot.outgoing.single.proposal, EncounterProposal.sayHi);
     });
   });
 
@@ -150,7 +205,10 @@ void main() {
       fake
           .watchRequests('session-1')
           .listen((_) {}, onDone: () => firstDone = true);
-      fake.sendRequest(otherPersonId: 'p');
+      fake.sendRequest(
+        otherPersonId: 'p',
+        proposal: EncounterProposal.fallback,
+      );
 
       final snapshots = <EncounterSnapshotModel>[];
       fake.watchRequests('session-2').listen(snapshots.add);
@@ -175,13 +233,25 @@ void main() {
         fake.watchRequests('s').listen(snapshots.add);
 
         fake
-          ..sendRequest(otherPersonId: 'p')
-          ..sendRequest(otherPersonId: 'p');
+          ..sendRequest(otherPersonId: 'p', proposal: EncounterProposal.chat)
+          ..sendRequest(otherPersonId: 'p', proposal: EncounterProposal.chat);
         await pumpEvents();
 
         expect(snapshots.last.outgoing, hasLength(1));
         await fake.reset();
       },
     );
+
+    test('an outgoing request keeps the chosen proposal', () async {
+      final fake = EncounterRemoteDataSourceFakeImpl();
+      final snapshots = <EncounterSnapshotModel>[];
+      fake
+        ..watchRequests('s').listen(snapshots.add)
+        ..sendRequest(otherPersonId: 'p', proposal: EncounterProposal.drink);
+      await pumpEvents();
+
+      expect(snapshots.last.outgoing.single.proposal, EncounterProposal.drink);
+      await fake.reset();
+    });
   });
 }

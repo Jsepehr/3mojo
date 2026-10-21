@@ -605,4 +605,56 @@ void main() {
       expect(b.last('chatMessage'), isNull);
     });
   });
+
+  group('proposal', () {
+    test('travels with the request and shows up in both sides\' '
+        'snapshots, even once the request is finished', () async {
+      final (a, b) = await twoNeighbours();
+      a.send({
+        'type': 'sendEncounterRequest',
+        'toPersonId': a.nearbyIdAt(0),
+        'proposal': 'drink',
+      });
+      await _settle();
+
+      expect(a.encounters('outgoing').single['proposal'], 'drink');
+      final incoming = b.encounters('incoming').single;
+      expect(incoming['proposal'], 'drink');
+
+      b.send({
+        'type': 'respondToEncounterRequest',
+        'requestId': incoming['id'],
+        'accepted': false,
+      });
+      await _settle();
+
+      final declined = a.encounters('outgoing').single;
+      expect(declined['status'], 'declined');
+      expect(declined['proposal'], 'drink');
+      expect(b.encounters('incoming').single['proposal'], 'drink');
+    });
+
+    test('a missing proposal (older clients) is getToKnow', () async {
+      final (a, b) = await twoNeighbours();
+      a.send({'type': 'sendEncounterRequest', 'toPersonId': a.nearbyIdAt(0)});
+      await _settle();
+
+      expect(a.encounters('outgoing').single['proposal'], 'getToKnow');
+      expect(b.encounters('incoming').single['proposal'], 'getToKnow');
+    });
+
+    test('an unknown proposal or free text never reaches the other person: '
+        'it becomes getToKnow', () async {
+      final (a, b) = await twoNeighbours();
+      a.send({
+        'type': 'sendEncounterRequest',
+        'toPersonId': a.nearbyIdAt(0),
+        'proposal': 'Wants to dance <3',
+      });
+      await _settle();
+
+      expect(b.encounters('incoming').single['proposal'], 'getToKnow');
+      expect(jsonEncode(b.messages), isNot(contains('dance')));
+    });
+  });
 }

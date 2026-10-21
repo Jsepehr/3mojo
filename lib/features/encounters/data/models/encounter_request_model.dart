@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '/core/utils/photo_bytes_cache.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_request.dart';
 
 /// Versione di `EncounterRequest` che sa leggersi dal JSON spinto dal
@@ -9,12 +10,16 @@ import '../../domain/entities/encounter_request.dart';
 /// `otherPersonId` (lo pseudonimo dell'altra persona, valido solo per
 /// questo telefono) e, solo per richieste in attesa o accettate,
 /// `otherSelfieBase64` (decodificato qui una volta sola, vedi
-/// `PhotoBytesCache`) e il profilo visibile.
+/// `PhotoBytesCache`) e il profilo visibile. `proposal` (cosa ha proposto
+/// chi ha chiesto) c'è sempre; un codice mancante o sconosciuto (server più
+/// nuovo dell'app) diventa `EncounterProposal.fallback` — non fa saltare la
+/// richiesta.
 class EncounterRequestModel extends EncounterRequest {
   const EncounterRequestModel({
     required super.id,
     required super.otherPersonId,
     required super.status,
+    super.proposal,
     super.otherSelfieBytes,
     super.otherIntent,
     super.otherLanguages,
@@ -39,6 +44,9 @@ class EncounterRequestModel extends EncounterRequest {
       id: id,
       otherPersonId: otherPersonId,
       status: status,
+      proposal:
+          _enumOrNull(EncounterProposal.values, json['proposal']) ??
+          EncounterProposal.fallback,
       otherSelfieBytes: (photos ?? PhotoBytesCache(maxEntries: 0)).decode(
         json['otherSelfieBase64'],
       ),
@@ -74,6 +82,7 @@ class EncounterRequestModel extends EncounterRequest {
         otherPersonId: otherPersonId,
         otherSelfieBytes: bytes,
         status: status,
+        proposal: proposal,
         otherIntent: otherIntent,
         otherLanguages: otherLanguages,
         otherVisibleGender: otherVisibleGender,
@@ -86,6 +95,7 @@ class EncounterRequestModel extends EncounterRequest {
         otherPersonId: otherPersonId,
         otherSelfieBytes: otherSelfieBytes,
         status: status,
+        proposal: proposal,
         otherIntent: otherIntent,
         otherLanguages: otherLanguages,
         otherVisibleGender: otherVisibleGender,

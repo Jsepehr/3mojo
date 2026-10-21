@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
 import '/features/profile/domain/entities/profile.dart';
+import 'encounter_proposal.dart';
 
 /// Ciclo di vita di una richiesta: in attesa, accettata (= match),
 /// rifiutata, annullata (perché ne hai accettata un'altra), o terminata
@@ -19,6 +20,7 @@ class EncounterRequest extends Equatable {
     required this.id,
     required this.otherPersonId,
     required this.status,
+    this.proposal = EncounterProposal.fallback,
     this.otherSelfieBytes,
     this.otherIntent,
     this.otherLanguages = const [],
@@ -34,6 +36,11 @@ class EncounterRequest extends Equatable {
   final Uint8List? otherSelfieBytes;
   final EncounterRequestStatus status;
 
+  /// Cosa ha proposto chi ha chiesto (tu, per una richiesta in uscita;
+  /// l'altra persona, per una in entrata): la stessa per entrambi i lati,
+  /// fissata all'invio.
+  final EncounterProposal proposal;
+
   /// Ciò che l'altra persona mostra dal proprio profilo (come in
   /// "Vicinanze"): cosa cerca, lingue, genere solo se l'ha reso visibile.
   /// Mai chi cerca. Vuoti se la persona non è più online o se la richiesta
@@ -48,6 +55,7 @@ class EncounterRequest extends Equatable {
     otherPersonId,
     otherSelfieBytes,
     status,
+    proposal,
     otherIntent,
     otherLanguages,
     otherVisibleGender,

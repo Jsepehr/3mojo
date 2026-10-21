@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/presentation/providers/pro_nearby.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_error_state.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
@@ -32,7 +33,11 @@ class CmpPaywalledNearbyList extends StatelessWidget {
   });
 
   final CmpNearbyRequestState Function(String personId) requestStateOf;
-  final void Function(String personId) onRequest;
+
+  /// Tocco su una persona libera e non ancora richiesta: riceve la persona
+  /// intera (foto, intento pubblico), per chi apre la tendina della
+  /// proposta.
+  final void Function(NearbyPerson person) onRequest;
   final VoidCallback? onEndSession;
   final VoidCallback? onRetakeSelfie;
 
@@ -91,10 +96,10 @@ class CmpPaywalledNearbyList extends StatelessWidget {
                     ? () => showPaywallConfirmDialog(context)
                     : requestState != CmpNearbyRequestState.none
                     ? null
-                    // L'esito (partita o rifiutata, e perché) arriva da
-                    // `CmpEncounterNoticeListener`: qui nessun
-                    // "Richiesta inviata" prima di saperlo.
-                    : () => onRequest(person.id),
+                    // Cosa proporre e l'invio li decide chi compone
+                    // (`UiHome`, tendina della proposta); l'esito arriva da
+                    // `CmpEncounterNoticeListener`.
+                    : () => onRequest(person),
               );
             },
           ),

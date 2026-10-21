@@ -1,13 +1,55 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:threemojo_app/core/utils/photo_bytes_cache.dart';
 import 'package:threemojo_app/features/encounters/data/models/encounter_request_model.dart';
+import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_request.dart';
 import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
 
 void main() {
+  group('proposal', () {
+    Map<String, dynamic> json(Object? proposal) => {
+      'id': 'req-1',
+      'otherPersonId': 'p',
+      'status': 'pending',
+      'proposal': ?proposal,
+    };
+
+    test('reads a known code', () {
+      expect(
+        EncounterRequestModel.fromJson(json('drink')).proposal,
+        EncounterProposal.drink,
+      );
+    });
+
+    test('an unknown code (newer server) or a missing one is getToKnow, '
+        'without skipping the request', () {
+      final unknown = EncounterRequestModel.tryFromJson(json('dance'));
+      final missing = EncounterRequestModel.tryFromJson(json(null));
+      final notAString = EncounterRequestModel.tryFromJson(json(7));
+
+      expect(unknown?.proposal, EncounterProposal.getToKnow);
+      expect(missing?.proposal, EncounterProposal.getToKnow);
+      expect(notAString?.proposal, EncounterProposal.getToKnow);
+    });
+
+    test('withStatus and withOtherSelfie keep it', () {
+      final request = EncounterRequestModel.fromJson(json('sayHi'));
+
+      expect(
+        request.withStatus(EncounterRequestStatus.declined).proposal,
+        EncounterProposal.sayHi,
+      );
+      expect(
+        request.withOtherSelfie(Uint8List.fromList([1])).proposal,
+        EncounterProposal.sayHi,
+      );
+    });
+  });
+
   test('reads what the other person shows on their profile', () {
     final request = EncounterRequestModel.fromJson({
       'id': 'req-1',

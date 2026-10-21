@@ -198,6 +198,26 @@ void main() {
       expect(affected.map((r) => r.id), isNot(contains(alreadyDeclined.id)));
     });
 
+    test('sendRequest keeps the proposal, and turns an unknown or missing '
+        'one into getToKnow', () {
+      final drink = store.sendRequest(
+        fromSessionId: 'a',
+        toSessionId: 'b',
+        proposal: 'drink',
+      );
+      final unknown = store.sendRequest(
+        fromSessionId: 'a',
+        toSessionId: 'c',
+        proposal: 'dance',
+      );
+      final missing = store.sendRequest(fromSessionId: 'a', toSessionId: 'd');
+
+      expect(drink.proposal, 'drink');
+      expect(store.incomingFor('b').single.proposal, 'drink');
+      expect(unknown.proposal, 'getToKnow');
+      expect(missing.proposal, 'getToKnow');
+    });
+
     group('sendRequest refuses', () {
       EncounterRejectionReason reasonOf(void Function() action) {
         try {

@@ -6,11 +6,13 @@ import '/core/widgets/cmp_photo.dart';
 import '/core/widgets/cmp_status_chip.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
+import '../encounter_proposal_labels.dart';
 
-/// Riga di una richiesta mandata da te, con il suo stato come chip: in
+/// Riga di una richiesta mandata da te: cosa hai proposto (emoji +
+/// etichetta breve, "🥤 Bere qualcosa") e il suo stato come chip: in
 /// attesa (orologio, neutro), accettata (cuore pieno, rosso-cuore: la buona
-/// notizia), rifiutata/annullata/finita (croce, solo bordo — uno stato
-/// chiuso che non deve attirare l'occhio).
+/// notizia), "non questa volta"/annullata/finita (croce, solo bordo — uno
+/// stato chiuso che non deve attirare l'occhio).
 class CmpOutgoingRequestTile extends StatelessWidget {
   const CmpOutgoingRequestTile({super.key, required this.request});
 
@@ -24,9 +26,26 @@ class CmpOutgoingRequestTile extends StatelessWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CmpPhoto(image: photo, size: 56),
-      title: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: _statusChip(context, l10n, request.status),
+      title: Row(
+        children: [
+          ExcludeSemantics(
+            child: Text(EncounterProposalLabels.emoji(request.proposal)),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              EncounterProposalLabels.label(l10n, request.proposal),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: _statusChip(context, l10n, request.status),
+        ),
       ),
     );
   }

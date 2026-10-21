@@ -23,7 +23,11 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   ogni `welcome` e poi a ogni aggiornamento di posizione. Profilo e
 ///   selfie (JPEG, ≤ ~230 KB) contano solo alla nascita della sessione:
 ///   dopo si possono omettere. `unlockToken` solo se si è pagato;
-/// - `{"type": "sendEncounterRequest", "toPersonId": ...}`;
+/// - `{"type": "sendEncounterRequest", "toPersonId": ..., "proposal": ...}`
+///   — `proposal` è cosa si propone, un codice della lista chiusa
+///   `EncounterProposal` (`sayHi`, `chat`, `friendship`, `getToKnow`,
+///   `drink`): mancante (client vecchi) o sconosciuto vale `getToKnow`. Mai
+///   testo libero: la frase la traduce il client di chi riceve;
 /// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
 /// - `{"type": "endMatch", "requestId": ...}`;
 /// - `{"type": "chatMessage", "toPersonId": ..., "text": ...,
@@ -44,10 +48,12 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   dalla persona più vicina, **senza distanze**; `locked` = dietro il
 ///   paywall (niente selfie);
 /// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}`, ogni
-///   richiesta `{"id", "otherPersonId", "status", "otherSelfieBase64"?,
-///   "otherIntent"?, "otherLanguages"?, "otherGender"?}` (selfie e profilo
-///   solo per `pending`/`accepted`; il selfie solo la prima volta per
-///   richiesta su ogni socket, poi il client riusa quello già ricevuto);
+///   richiesta `{"id", "otherPersonId", "status", "proposal",
+///   "otherSelfieBase64"?, "otherIntent"?, "otherLanguages"?,
+///   "otherGender"?}` (`proposal` sempre, per entrambi i lati e in ogni
+///   stato: cosa ha proposto chi ha chiesto; selfie e profilo solo per
+///   `pending`/`accepted`; il selfie solo la prima volta per richiesta su
+///   ogni socket, poi il client riusa quello già ricevuto);
 /// - `{"type": "pong"}` — risposta a ogni `ping`;
 /// - `{"type": "chatMessage", "fromPersonId": ..., "text": ..., "sentAt": ...}`;
 /// - `{"type": "rejected", "action": ..., "reason": ..., ...}` — un'azione
