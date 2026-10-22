@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'raen_colors.dart';
 
@@ -15,6 +14,13 @@ import 'raen_colors.dart';
 /// Ogni coppia testo/sfondo rispetta WCAG AA (≥ 4.5:1, ≥ 3:1 per bordi e icone).
 class AppTheme {
   const AppTheme._();
+
+  /// Manrope, **incluso nell'app** (`fonts:` in `pubspec.yaml`, file in
+  /// `assets/fonts/manrope/`, licenza OFL registrata da
+  /// `registerAppLicenses`): nessun download a runtime, quindi nessuna
+  /// richiesta a Google Fonts con l'IP di chi usa l'app. Le lingue che
+  /// Manrope non copre (arabo) ricadono sul font di sistema.
+  static const fontFamily = 'Manrope';
 
   static const _lightScheme = ColorScheme(
     brightness: Brightness.light,
@@ -126,11 +132,13 @@ class AppTheme {
     );
   }
 
-  /// Manrope ovunque; titoli ExtraBold e un filo più stretti, etichette dei
-  /// bottoni in grassetto — gerarchia data dal peso, come il segno pieno
-  /// dell'icona.
+  /// Manrope ovunque ([fontFamily]); titoli ExtraBold e un filo più
+  /// stretti, etichette dei bottoni in grassetto — gerarchia data dal peso,
+  /// come il segno pieno dell'icona. Base: la tipografia Material 3 di
+  /// `ThemeData.light()` (dimensioni e pesi), con la sola famiglia cambiata.
   static TextTheme _textTheme(ColorScheme colorScheme) {
-    final base = GoogleFonts.manropeTextTheme().apply(
+    final base = ThemeData.light().textTheme.apply(
+      fontFamily: fontFamily,
       bodyColor: colorScheme.onSurface,
       displayColor: colorScheme.onSurface,
     );
@@ -165,6 +173,8 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      // Anche `primaryTextTheme` e gli stili di ripiego dei widget.
+      fontFamily: fontFamily,
       textTheme: textTheme,
       scaffoldBackgroundColor: colorScheme.surface,
       extensions: [raen],

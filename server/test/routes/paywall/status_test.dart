@@ -45,16 +45,22 @@ void main() {
         final response = await _post(body);
 
         expect(response.statusCode, HttpStatus.ok);
-        expect(await response.json(), {'isUnlocked': false});
+        expect(await response.json(), {
+          'isUnlocked': false,
+          'remainingSeconds': 0,
+        });
       }
     });
 
-    test('a token issued by the server is unlocked', () async {
+    test('a token issued by the server is unlocked, with the time left on '
+        'the server clock', () async {
       final token = PaywallStore.instance.issueUnlockToken();
 
       final response = await _post({'unlockToken': token});
 
-      expect(await response.json(), {'isUnlocked': true});
+      final body = await response.json() as Map<String, dynamic>;
+      expect(body['isUnlocked'], isTrue);
+      expect(body['remainingSeconds'], inInclusiveRange(7199, 7200));
     });
 
     test('a body that is not a JSON object is a 400', () async {

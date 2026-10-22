@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'core/licenses/app_licenses.dart';
 import 'core/usecases/usecase.dart';
 import 'features/profile/data/datasources/profile_local_data_source_impl.dart';
 import 'features/profile/data/repositories/profile_repository_impl.dart';
@@ -11,6 +12,9 @@ import 'features/settings/domain/usecases/get_fake_mode_usecase.dart';
 
 /// Punto di ingresso. Prima di costruire l'albero dei provider:
 ///
+/// 0. registra le licenze che la pagina delle licenze non trova da sola
+///    (font Manrope incluso nell'app, librerie native Android:
+///    `registerAppLicenses`) — i testi si leggono solo se la pagina si apre;
 /// 1. al primo avvio dopo un'installazione cancella ciò che l'archivio
 ///    cifrato ha conservato da un'installazione precedente (su iOS il
 ///    Keychain sopravvive alla disinstallazione) — prima che qualcuno legga
@@ -23,6 +27,7 @@ import 'features/settings/domain/usecases/get_fake_mode_usecase.dart';
 ///    l'app perché diventi effettiva.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerAppLicenses();
 
   await WipeDataFromPreviousInstallUseCase(
     ProfileRepositoryImpl(ProfileLocalDataSourceImpl()),

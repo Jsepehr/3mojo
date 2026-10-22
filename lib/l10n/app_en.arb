@@ -902,5 +902,113 @@
   "ok": "OK",
   "@ok": {
     "description": "Generic button closing an informational dialog"
+  },
+  "about_legalese": "© {year} Raen",
+  "@about_legalese": {
+    "description": "Copyright line in the About dialog. {year} is the current year (e.g. 2026); keep the product name Raen",
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock_chip_label": "Unlocked · {timeLeft} left",
+  "@unlock_chip_label": {
+    "description": "Small chip on the online home while the paid 2-hour unlock is active. {timeLeft} is a short duration such as \"1 h 42 min\", \"25 min\" or \"less than a minute\" (unlock_time_*). Updated once a minute, never a countdown in seconds",
+    "placeholders": {
+      "timeLeft": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock_time_hours_minutes": "{hours} h {minutes} min",
+  "@unlock_time_hours_minutes": {
+    "description": "Short duration in the unlock chip: hours and minutes left, abbreviated (e.g. \"1 h 42 min\")",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "unlock_time_hours": "{hours} h",
+  "@unlock_time_hours": {
+    "description": "Short duration in the unlock chip: whole hours left, abbreviated (e.g. \"1 h\")",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "unlock_time_minutes": "{minutes} min",
+  "@unlock_time_minutes": {
+    "description": "Short duration in the unlock chip: minutes left, abbreviated (e.g. \"25 min\")",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "unlock_time_less_than_a_minute": "less than a minute",
+  "@unlock_time_less_than_a_minute": {
+    "description": "Duration in the unlock chip during the very last minute of the unlock (also read by screen readers)"
+  },
+  "unlock_spoken_hours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@unlock_spoken_hours": {
+    "description": "Hours left, written out in full for screen readers (e.g. \"1 hour\", \"2 hours\")",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unlock_spoken_minutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@unlock_spoken_minutes": {
+    "description": "Minutes left, written out in full for screen readers (e.g. \"1 minute\", \"42 minutes\")",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unlock_spoken_hours_and_minutes": "{hours} and {minutes}",
+  "@unlock_spoken_hours_and_minutes": {
+    "description": "Joins unlock_spoken_hours and unlock_spoken_minutes for screen readers (e.g. \"1 hour and 42 minutes\")",
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock_chip_semantics": "Unlocked, {timeLeft} left",
+  "@unlock_chip_semantics": {
+    "description": "What screen readers announce for the unlock chip (at most once a minute). {timeLeft} is written out in full (e.g. \"1 hour and 42 minutes\")",
+    "placeholders": {
+      "timeLeft": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock_details_until": "Unlocked until {time}",
+  "@unlock_details_until": {
+    "description": "Title of the small sheet opened by tapping the unlock chip. {time} is the clock time the unlock ends, formatted for the locale (e.g. \"23:15\" or \"11:15 PM\")",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "unlock_details_time_runs": "Time keeps running even if you go offline or close the app.",
+  "@unlock_details_time_runs": {
+    "description": "Line in the unlock details sheet: the 2 hours keep counting even when offline or with the app closed"
+  },
+  "unlock_expired": "Unlock expired",
+  "@unlock_expired": {
+    "description": "Snackbar shown once when the paid unlock has ended: the chip disappears and the unlock banner comes back"
   }
 }

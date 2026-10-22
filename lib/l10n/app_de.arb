@@ -221,5 +221,18 @@
   "start_error_terms_required": "Um online zu gehen, musst du die Nutzungsbedingungen akzeptieren.",
   "session_closed_after_reports_title": "Sitzung beendet",
   "session_closed_after_reports_body": "Deine Sitzung wurde nach Meldungen mehrerer Personen beendet. Neue Sitzungen aus diesem Netzwerk sind eine Zeit lang ausgesetzt. Bitte halte dich an die Nutzungsbedingungen von Raen.",
-  "ok": "OK"
+  "ok": "OK",
+  "about_legalese": "© {year} Raen",
+  "unlock_chip_label": "Freigeschaltet · noch {timeLeft}",
+  "unlock_time_hours_minutes": "{hours} Std. {minutes} Min.",
+  "unlock_time_hours": "{hours} Std.",
+  "unlock_time_minutes": "{minutes} Min.",
+  "unlock_time_less_than_a_minute": "weniger als eine Minute",
+  "unlock_spoken_hours": "{count, plural, =1{1 Stunde} other{{count} Stunden}}",
+  "unlock_spoken_minutes": "{count, plural, =1{1 Minute} other{{count} Minuten}}",
+  "unlock_spoken_hours_and_minutes": "{hours} und {minutes}",
+  "unlock_chip_semantics": "Freigeschaltet, noch {timeLeft}",
+  "unlock_details_until": "Freigeschaltet bis {time}",
+  "unlock_details_time_runs": "Die Zeit läuft weiter, auch wenn du offline gehst oder die App schließt.",
+  "unlock_expired": "Freischaltung abgelaufen"
 }

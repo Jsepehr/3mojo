@@ -221,5 +221,18 @@
   "start_error_terms_required": "للاتصال يجب أن توافق على شروط الاستخدام.",
   "session_closed_after_reports_title": "أُغلقت الجلسة",
   "session_closed_after_reports_body": "أُغلقت جلستك بعد بلاغات من عدة أشخاص. الجلسات الجديدة من هذه الشبكة متوقفة لبعض الوقت. يُرجى احترام شروط استخدام Raen.",
-  "ok": "حسنًا"
+  "ok": "حسنًا",
+  "about_legalese": "© {year} Raen",
+  "unlock_chip_label": "مفتوح · يتبقى {timeLeft}",
+  "unlock_time_hours_minutes": "{hours} س {minutes} د",
+  "unlock_time_hours": "{hours} س",
+  "unlock_time_minutes": "{minutes} د",
+  "unlock_time_less_than_a_minute": "أقل من دقيقة",
+  "unlock_spoken_hours": "{count, plural, =1{ساعة واحدة} =2{ساعتان} few{{count} ساعات} other{{count} ساعة}}",
+  "unlock_spoken_minutes": "{count, plural, =1{دقيقة واحدة} =2{دقيقتان} few{{count} دقائق} other{{count} دقيقة}}",
+  "unlock_spoken_hours_and_minutes": "{hours} و{minutes}",
+  "unlock_chip_semantics": "مفتوح، يتبقى {timeLeft}",
+  "unlock_details_until": "مفتوح حتى {time}",
+  "unlock_details_time_runs": "يستمر الوقت حتى لو خرجت أو أغلقت التطبيق.",
+  "unlock_expired": "انتهت مدة الفتح"
 }

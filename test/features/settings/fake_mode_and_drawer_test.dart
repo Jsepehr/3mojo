@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/core/usecases/usecase.dart';
+import 'package:threemojo_app/features/safety/presentation/pages/ui_terms_of_use.dart';
 import 'package:threemojo_app/features/settings/domain/entities/app_language.dart';
 import 'package:threemojo_app/features/settings/domain/entities/app_theme_mode.dart';
 import 'package:threemojo_app/features/settings/domain/repositories/settings_repository.dart';
@@ -162,6 +164,56 @@ void main() {
       expect(find.byType(CmpAppDrawer), findsNothing);
       expect(find.byType(CmpLanguagePickerDialog), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('"About" has the copyright of this year, terms of use, '
+        'safety and the licenses button', (tester) async {
+      PackageInfo.setMockInitialValues(
+        appName: 'Raen',
+        packageName: 'com.threemojo.app',
+        version: '1.0.0',
+        buildNumber: '1',
+        buildSignature: '',
+      );
+      final l10n = await pumpDrawer(
+        tester,
+        _proSettings(repository, available: false),
+      );
+
+      await tester.tap(find.text(l10n.about));
+      await tester.pumpAndSettle();
+
+      final dialog = find.byType(AboutDialog);
+      expect(dialog, findsOneWidget);
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.text('© ${DateTime.now().year} Raen'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.text(l10n.safety_and_reports),
+        ),
+        findsOneWidget,
+      );
+      final materialL10n = await DefaultMaterialLocalizations.delegate.load(
+        const Locale('en'),
+      );
+      expect(find.text(materialL10n.viewLicensesButtonLabel), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(of: dialog, matching: find.text(l10n.terms_of_use)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(UiTermsOfUse), findsOneWidget);
+
+      // Indietro: il dialog è ancora lì.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(AboutDialog), findsOneWidget);
     });
   });
 }

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '/features/profile/presentation/pages/ui_profile.dart';
 import '/features/safety/presentation/pages/ui_safety.dart';
+import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'cmp_language_picker_dialog.dart';
@@ -45,6 +46,10 @@ class CmpAppDrawer extends StatelessWidget {
     );
   }
 
+  /// "Informazioni": versione, copyright (anno corrente), i link a termini
+  /// d'uso e sicurezza, e il bottone "Licenze" di Flutter (pacchetti Dart più
+  /// ciò che aggiunge `registerAppLicenses`: font e librerie native). Termini
+  /// e sicurezza si aprono **sopra** il dialog: tornando indietro si ritrova.
   Future<void> _showAbout(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final navigator = Navigator.of(context)..pop();
@@ -55,7 +60,21 @@ class CmpAppDrawer extends StatelessWidget {
       context: navigator.context,
       applicationName: l10n.app_title,
       applicationVersion: packageInfo.version,
-      children: [Text(l10n.meet_people_nearby_in_real_time)],
+      applicationLegalese: l10n.about_legalese('${DateTime.now().year}'),
+      children: [
+        Text(l10n.meet_people_nearby_in_real_time),
+        const SizedBox(height: 8),
+        _AboutLink(
+          icon: Icons.description_outlined,
+          label: l10n.terms_of_use,
+          page: const UiTermsOfUse(),
+        ),
+        _AboutLink(
+          icon: Icons.shield_outlined,
+          label: l10n.safety_and_reports,
+          page: const UiSafety(),
+        ),
+      ],
     );
   }
 
@@ -189,4 +208,27 @@ class CmpAppDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Una voce del dialog "Informazioni" che apre una pagina sopra il dialog.
+class _AboutLink extends StatelessWidget {
+  const _AboutLink({
+    required this.icon,
+    required this.label,
+    required this.page,
+  });
+
+  final IconData icon;
+  final String label;
+  final Widget page;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(icon),
+    title: Text(label),
+    onTap: () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page)),
+  );
 }

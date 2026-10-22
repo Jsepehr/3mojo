@@ -59,6 +59,7 @@ import 'features/paywall/domain/repositories/paywall_repository.dart';
 import 'features/paywall/domain/usecases/get_unlock_status_usecase.dart';
 import 'features/paywall/domain/usecases/purchase_unlock_usecase.dart';
 import 'features/paywall/presentation/providers/pro_paywall.dart';
+import 'features/paywall/presentation/widgets/cmp_unlock_expired_listener.dart';
 import 'features/profile/data/datasources/profile_local_data_source.dart';
 import 'features/profile/data/datasources/profile_local_data_source_impl.dart';
 import 'features/profile/data/repositories/profile_repository_impl.dart';
@@ -439,12 +440,15 @@ class App extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           // Sopra ogni pagina: gli avvisi una tantum (connessione,
-          // richieste) e la pagina del match, che si apre e si chiude da
-          // sola seguendo `ProEncounters.activeMatch`.
+          // richieste, sicurezza, sblocco scaduto) e la pagina del match,
+          // che si apre e si chiude da sola seguendo
+          // `ProEncounters.activeMatch`.
           home: const CmpConnectionNoticeListener(
             child: CmpEncounterNoticeListener(
               child: CmpSafetyNoticeListener(
-                child: CmpMatchGate(child: UiHome()),
+                child: CmpUnlockExpiredListener(
+                  child: CmpMatchGate(child: UiHome()),
+                ),
               ),
             ),
           ),

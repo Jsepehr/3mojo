@@ -10,6 +10,7 @@ import '/l10n/generated/app_localizations.dart';
 import '../../domain/usecases/get_locked_nearby_people_usecase.dart';
 import '../providers/pro_paywall.dart';
 import 'cmp_paywall_banner.dart';
+import 'cmp_unlock_chip.dart';
 
 /// Corpo di "Vicinanze" (la home online): la lista delle persone presenti
 /// ora, spinta dal server, con un terzo delle persone più lontane visibili
@@ -17,6 +18,10 @@ import 'cmp_paywall_banner.dart';
 /// `CmpPaywallBanner`/`showPaywallConfirmDialog`. Compone i pezzi di
 /// `nearby/` (stato, tile, attesa, errori) qui, in `paywall/`, per non far
 /// dipendere `nearby` da una feature di monetizzazione.
+///
+/// Con lo sblocco attivo, in cima c'è `CmpUnlockChip` (quanto resta) al
+/// posto del banner, in ogni stato della lista: anche quando non c'è
+/// nessuno vicino si vede che il tempo scorre.
 ///
 /// Non conosce `encounters/` né `session/`: con chi c'è già una richiesta,
 /// cosa fa un tap e come si chiude la sessione arrivano da fuori (`UiHome`)
@@ -49,7 +54,16 @@ class CmpPaywalledNearbyList extends StatelessWidget {
   static const _getLockedNearbyPeopleUseCase = GetLockedNearbyPeopleUseCase();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Column(
+    children: [
+      // Sempre nell'albero (vuoto se lo sblocco non è attivo): così il suo
+      // comparire o sparire non ricrea la lista sotto (scroll, animazioni).
+      const CmpUnlockChip(),
+      Expanded(child: _content(context)),
+    ],
+  );
+
+  Widget _content(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final proNearby = context.watch<ProNearby>();
     final proPaywall = context.watch<ProPaywall>();
@@ -83,6 +97,8 @@ class CmpPaywalledNearbyList extends StatelessWidget {
 
     return Column(
       children: [
+        // Con lo sblocco attivo nessuno è bloccato: al posto del banner c'è
+        // il chip (sopra, in `build`).
         if (anyLocked) const CmpPaywallBanner(),
         Expanded(
           child: ListView.builder(

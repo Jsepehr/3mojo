@@ -17,27 +17,32 @@ class PaywallRepositoryImpl implements PaywallRepository {
   final PaywallRemoteDataSource _remoteDataSource;
 
   @override
-  Future<Either<Failure, bool>> isUnlocked() async {
+  Future<Either<Failure, Duration>> getUnlockTimeRemaining() async {
     try {
       final token = await _localDataSource.readUnlockToken();
-      if (token == null) return const Right(false);
+      if (token == null) return const Right(Duration.zero);
 
-      final unlocked = await _remoteDataSource.getStatus(token);
+      final remaining = await _remoteDataSource.getRemaining(token);
       // Il server dice che non vale più (scaduto, o server riavviato): il
-      // token non serve a nulla, meglio non tenerlo.
-      if (!unlocked) await _localDataSource.clearUnlockToken();
-      return Right(unlocked);
+      // token non serve a nulla, meglio non tenerlo. Toglierlo avvisa anche
+      // `nearby/`, che rimanda la presenza senza: il server ricalcola subito
+      // chi è bloccato.
+      if (remaining <= Duration.zero) {
+        await _localDataSource.clearUnlockToken();
+        return const Right(Duration.zero);
+      }
+      return Right(remaining);
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }
   }
 
   @override
-  Future<Either<Failure, Unit>> purchaseUnlock() async {
+  Future<Either<Failure, Duration>> purchaseUnlock() async {
     try {
       final grant = await _remoteDataSource.purchase();
-      await _localDataSource.saveUnlockToken(grant.token, grant.validFor);
-      return const Right(unit);
+      await _localDataSource.saveUnlockToken(grant.token, grant.remaining);
+      return Right(grant.remaining);
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }

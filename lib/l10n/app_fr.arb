@@ -221,5 +221,18 @@
   "start_error_terms_required": "Pour passer en ligne, tu dois accepter les conditions d'utilisation.",
   "session_closed_after_reports_title": "Session fermée",
   "session_closed_after_reports_body": "Ta session a été fermée après les signalements de plusieurs personnes. Les nouvelles sessions depuis ce réseau sont suspendues un moment. Respecte les conditions d'utilisation de Raen.",
-  "ok": "OK"
+  "ok": "OK",
+  "about_legalese": "© {year} Raen",
+  "unlock_chip_label": "Débloqué · encore {timeLeft}",
+  "unlock_time_hours_minutes": "{hours} h {minutes} min",
+  "unlock_time_hours": "{hours} h",
+  "unlock_time_minutes": "{minutes} min",
+  "unlock_time_less_than_a_minute": "moins d’une minute",
+  "unlock_spoken_hours": "{count, plural, =1{1 heure} other{{count} heures}}",
+  "unlock_spoken_minutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "unlock_spoken_hours_and_minutes": "{hours} et {minutes}",
+  "unlock_chip_semantics": "Débloqué, encore {timeLeft}",
+  "unlock_details_until": "Débloqué jusqu’à {time}",
+  "unlock_details_time_runs": "Le temps continue de s’écouler même si tu te déconnectes ou fermes l’app.",
+  "unlock_expired": "Le déblocage a expiré"
 }

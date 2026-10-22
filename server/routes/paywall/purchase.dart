@@ -6,7 +6,10 @@ import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/rate_limiters.dart';
 
 /// `POST /paywall/purchase` — registra un nuovo sblocco con l'ora **del
-/// server** e risponde `{"unlockToken": "...", "expiresInSeconds": 7200}`.
+/// server** e risponde `{"unlockToken": "...", "expiresInSeconds": 7200,
+/// "remainingSeconds": 7200}` — `remainingSeconds` (il tempo residuo
+/// sull'orologio del server, lo stesso campo di `/paywall/status`) è quello
+/// che il client usa; `expiresInSeconds` resta per i client già usciti.
 /// Il client manda poi quel token (mai un identificativo del dispositivo)
 /// per chiedere lo stato e insieme alla presenza.
 ///
@@ -34,11 +37,13 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  final token = PaywallStore.instance.issueUnlockToken();
+  final store = PaywallStore.instance;
+  final token = store.issueUnlockToken();
   return Response.json(
     body: {
       'unlockToken': token,
       'expiresInSeconds': PaywallStore.unlockDuration.inSeconds,
+      'remainingSeconds': store.remainingSecondsFor(token),
     },
   );
 }

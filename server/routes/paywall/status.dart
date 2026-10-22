@@ -3,7 +3,9 @@ import 'package:threemojo_server/src/paywall_store.dart';
 
 /// `POST /paywall/status` — `{"unlockToken": "..."}`: lo sblocco è ancora
 /// valido (entro le 2 ore da `PaywallStore.unlockDuration`), calcolato con
-/// l'ora del server?
+/// l'ora del server? Risponde `{"isUnlocked": bool, "remainingSeconds": int}`
+/// — il tempo residuo sull'orologio del server (`0` se non vale), su cui il
+/// client riallinea la scadenza che mostra a ogni controllo.
 ///
 /// POST e non GET apposta: il token viaggia nel corpo, non nell'URL — gli
 /// URL finiscono per default nei log di proxy e provider.
@@ -32,9 +34,15 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
   final token = rawToken is String ? rawToken : '';
+  final remainingSeconds = token.isEmpty
+      ? 0
+      : PaywallStore.instance.remainingSecondsFor(token);
   return Response.json(
     body: {
-      'isUnlocked': token.isNotEmpty && PaywallStore.instance.isUnlocked(token),
+      // Sull'ultimo secondo `remainingSeconds` è già 0: "sbloccato" segue lo
+      // stesso numero, così le due cose non si contraddicono mai.
+      'isUnlocked': remainingSeconds > 0,
+      'remainingSeconds': remainingSeconds,
     },
   );
 }

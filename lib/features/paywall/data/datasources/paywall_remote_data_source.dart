@@ -1,6 +1,6 @@
-/// Uno sblocco appena comprato: il token emesso dal server e per quanto
-/// vale (deciso dal server, non dal client).
-typedef UnlockGrant = ({String token, Duration validFor});
+/// Uno sblocco appena comprato: il token emesso dal server e quanto resta
+/// (deciso dal server, non dal client).
+typedef UnlockGrant = ({String token, Duration remaining});
 
 /// Contratto verso il backend `server/`: registra/controlla lo sblocco a
 /// pagamento con l'ora **del server**, non quella del client — un client
@@ -12,7 +12,8 @@ abstract class PaywallRemoteDataSource {
   /// che lo rappresenta.
   Future<UnlockGrant> purchase();
 
-  /// `POST /paywall/status` — lo sblocco rappresentato da [unlockToken] è
-  /// ancora valido?
-  Future<bool> getStatus(String unlockToken);
+  /// `POST /paywall/status` — quanto resta dello sblocco rappresentato da
+  /// [unlockToken], sull'orologio del server (`Duration.zero` se non vale
+  /// più).
+  Future<Duration> getRemaining(String unlockToken);
 }

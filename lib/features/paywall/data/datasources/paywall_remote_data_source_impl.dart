@@ -27,15 +27,19 @@ class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
       throw ServerException('Errore nello sblocco (${response.statusCode})');
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (
-      token: body['unlockToken'] as String,
-      validFor: Duration(seconds: body['expiresInSeconds'] as int),
-    );
+    final body = _decodeObject(response.body);
+    final token = body['unlockToken'];
+    // `remainingSeconds` è il residuo sull'orologio del server;
+    // `expiresInSeconds` è lo stesso numero da server più vecchi.
+    final seconds = body['remainingSeconds'] ?? body['expiresInSeconds'];
+    if (token is! String || token.isEmpty || seconds is! int) {
+      throw const ServerException('Risposta di sblocco non valida');
+    }
+    return (token: token, remaining: Duration(seconds: seconds));
   }
 
   @override
-  Future<bool> getStatus(String unlockToken) async {
+  Future<Duration> getRemaining(String unlockToken) async {
     final http.Response response;
     try {
       response = await _client.post(
@@ -52,7 +56,28 @@ class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
       );
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return body['isUnlocked'] as bool;
+    final body = _decodeObject(response.body);
+    final seconds = body['remainingSeconds'];
+    if (seconds is int) {
+      return Duration(seconds: seconds < 0 ? 0 : seconds);
+    }
+    // Server senza `remainingSeconds`: "bloccato" si può ancora credere, uno
+    // "sbloccato" senza sapere fino a quando no — meglio un controllo fallito
+    // (non cambia nulla, si riprova) che una scadenza inventata.
+    if (body['isUnlocked'] == false) return Duration.zero;
+    throw const ServerException('Stato dello sblocco senza remainingSeconds');
+  }
+
+  Map<String, dynamic> _decodeObject(String raw) {
+    final Object? body;
+    try {
+      body = jsonDecode(raw);
+    } on FormatException catch (e) {
+      throw ServerException('Risposta non valida: $e');
+    }
+    if (body is! Map<String, dynamic>) {
+      throw const ServerException('Risposta non valida');
+    }
+    return body;
   }
 }

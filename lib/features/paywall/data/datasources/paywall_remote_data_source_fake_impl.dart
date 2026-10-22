@@ -16,14 +16,15 @@ class PaywallRemoteDataSourceFakeImpl implements PaywallRemoteDataSource {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     final token = const Uuid().v4();
     _unlockedAtByToken[token] = DateTime.now();
-    return (token: token, validFor: _unlockDuration);
+    return (token: token, remaining: _unlockDuration);
   }
 
   @override
-  Future<bool> getStatus(String unlockToken) async {
+  Future<Duration> getRemaining(String unlockToken) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     final unlockedAt = _unlockedAtByToken[unlockToken];
-    if (unlockedAt == null) return false;
-    return DateTime.now().difference(unlockedAt) < _unlockDuration;
+    if (unlockedAt == null) return Duration.zero;
+    final remaining = _unlockDuration - DateTime.now().difference(unlockedAt);
+    return remaining > Duration.zero ? remaining : Duration.zero;
   }
 }

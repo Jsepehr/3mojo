@@ -221,5 +221,18 @@
   "start_error_terms_required": "Per andare online devi accettare i termini d'uso.",
   "session_closed_after_reports_title": "Sessione chiusa",
   "session_closed_after_reports_body": "La tua sessione è stata chiusa dopo le segnalazioni di più persone. Le nuove sessioni da questa rete sono sospese per un po'. Rispetta i termini d'uso di Raen.",
-  "ok": "OK"
+  "ok": "OK",
+  "about_legalese": "© {year} Raen",
+  "unlock_chip_label": "Sbloccato · ancora {timeLeft}",
+  "unlock_time_hours_minutes": "{hours} h {minutes} min",
+  "unlock_time_hours": "{hours} h",
+  "unlock_time_minutes": "{minutes} min",
+  "unlock_time_less_than_a_minute": "meno di un minuto",
+  "unlock_spoken_hours": "{count, plural, =1{1 ora} other{{count} ore}}",
+  "unlock_spoken_minutes": "{count, plural, =1{1 minuto} other{{count} minuti}}",
+  "unlock_spoken_hours_and_minutes": "{hours} e {minutes}",
+  "unlock_chip_semantics": "Sbloccato, ancora {timeLeft}",
+  "unlock_details_until": "Sbloccato fino alle {time}",
+  "unlock_details_time_runs": "Il tempo scorre anche se esci o chiudi l'app.",
+  "unlock_expired": "Sblocco scaduto"
 }

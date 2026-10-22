@@ -43,15 +43,28 @@ class PaywallStore {
   }
 
   /// Il token rappresenta uno sblocco ancora valido (entro le 2 ore)?
-  bool isUnlocked(String token) {
+  bool isUnlocked(String token) => remainingFor(token) != null;
+
+  /// Quanto resta dello sblocco rappresentato da [token], sull'orologio del
+  /// server, o `null` se non vale (sconosciuto o scaduto). È ciò che il
+  /// client usa per mostrare il tempo residuo: lo somma al **proprio** "ora"
+  /// al momento della risposta, così un orologio del telefono sbagliato di
+  /// qualche ora non sposta la scadenza (e non decide nulla: il paywall lo
+  /// applica sempre e solo il server).
+  Duration? remainingFor(String token) {
     final unlockedAt = _unlockedAtByToken[token];
-    if (unlockedAt == null) return false;
+    if (unlockedAt == null) return null;
     if (_isExpired(unlockedAt)) {
       _unlockedAtByToken.remove(token);
-      return false;
+      return null;
     }
-    return true;
+    return unlockDuration - _now().difference(unlockedAt);
   }
+
+  /// [remainingFor] in secondi interi per le risposte HTTP, arrotondato per
+  /// **difetto** (meglio dire un secondo in meno che uno in più); `0` se non
+  /// vale.
+  int remainingSecondsFor(String token) => remainingFor(token)?.inSeconds ?? 0;
 
   bool _isExpired(DateTime unlockedAt) =>
       _now().difference(unlockedAt) >= unlockDuration;

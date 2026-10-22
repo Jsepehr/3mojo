@@ -33,6 +33,14 @@ Route: `GET /` (controllo di salute), `GET /ws` (WebSocket), `POST
 default), `GET /admin/reports`, `GET /admin/reports/<id>/selfie`, `DELETE
 /admin/reports/<id>` (spenti di default, vedi sotto).
 
+`POST /paywall/purchase` risponde `{"unlockToken", "expiresInSeconds",
+"remainingSeconds"}`; `POST /paywall/status` (`{"unlockToken"}` nel corpo)
+risponde `{"isUnlocked", "remainingSeconds"}`. `remainingSeconds` è il tempo
+**residuo** dello sblocco sull'orologio del server (`PaywallStore.remainingFor`,
+per difetto, `0` se non vale): il client ne ricava la scadenza come "sua ora
+alla risposta + residuo" e la riallinea a ogni status, così l'orologio del
+telefono non conta. `expiresInSeconds` resta per i client già usciti.
+
 ## Variabili d'ambiente
 
 | Variabile | Effetto |
