@@ -53,6 +53,12 @@ enum RealtimeStatus {
 /// un `ping` e, se dal server non arriva nulla entro [probeTimeout] (il
 /// server risponde `pong`), abbandona il socket e si riconnette subito —
 /// invece di aspettare che il sistema operativo se ne accorga da sé.
+///
+/// **Sessione chiusa dal server** (`{"type": "sessionClosed"}`, dopo le
+/// segnalazioni di più persone): la sessione lato server non esiste più e
+/// riconnettersi sarebbe un nuovo Start (rifiutato per un po' da quella
+/// rete). Si avvisa chi ascolta [sessionClosures] e non si riprova più:
+/// tocca a chi ascolta chiudere la sessione locale (End).
 class RealtimeConnection {
   RealtimeConnection({
     RealtimeSocketFactory? socketFactory,
@@ -87,6 +93,11 @@ class RealtimeConnection {
   final StreamController<RealtimeStatus> _statusChanges =
       StreamController.broadcast();
   final StreamController<bool> _readyEvents = StreamController.broadcast();
+  final StreamController<void> _sessionClosures = StreamController.broadcast();
+
+  /// Il server ha chiuso la sessione attuale (`sessionClosed`): da qui in
+  /// poi non si riconnette più.
+  bool _closedByServer = false;
 
   String? _sessionId;
   StreamController<Map<String, dynamic>>? _messages;
@@ -119,6 +130,11 @@ class RealtimeConnection {
   /// iniziale (la presenza col selfie, vedi `NearbyRemoteDataSourceImpl`).
   Stream<bool> get onReady => _readyEvents.stream;
 
+  /// Un evento quando il server chiude la sessione per conto suo
+  /// (`sessionClosed`, motivo `reports`): niente più riconnessioni, la
+  /// sessione locale va chiusa (vedi `WatchSessionClosedByServerUseCase`).
+  Stream<void> get sessionClosures => _sessionClosures.stream;
+
   /// Apre (o riusa) la connessione per [sessionId] e ritorna lo stream
   /// broadcast dei messaggi JSON in arrivo, condiviso da tutti. Chiamabile
   /// da più feature: con la stessa sessione ritorna lo stesso stream (e, se
@@ -128,7 +144,7 @@ class RealtimeConnection {
   Stream<Map<String, dynamic>> connect(String sessionId) {
     final current = _messages;
     if (_sessionId == sessionId && current != null && !current.isClosed) {
-      if (_socket == null) {
+      if (_socket == null && !_closedByServer) {
         _reconnectTimer?.cancel();
         _openSocket();
       }
@@ -138,6 +154,7 @@ class RealtimeConnection {
     if (_sessionId != null) unawaited(_closeCurrent());
 
     final messages = StreamController<Map<String, dynamic>>.broadcast();
+    _closedByServer = false;
     _sessionId = sessionId;
     _messages = messages;
     _backoff.reset();
@@ -216,6 +233,12 @@ class RealtimeConnection {
       _startPing();
       _readyEvents.add(decoded['resumed'] == true);
     }
+    if (decoded['type'] == 'sessionClosed') {
+      _closedByServer = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _sessionClosures.add(null);
+    }
     if (!messages.isClosed) messages.add(decoded);
   }
 
@@ -236,6 +259,16 @@ class RealtimeConnection {
     // Chiuso da `disconnect()` o sostituito da un'altra sessione: niente da
     // riprovare.
     if (_sessionId == null || !identical(_messages, messages)) return;
+
+    // La sessione l'ha chiusa il server: riprovare sarebbe un nuovo Start.
+    // Niente grazia da onorare con un `end` d'addio, niente errore "sei
+    // offline": chi ascolta `sessionClosures` chiude la sessione locale.
+    if (_closedByServer) {
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _setStatus(RealtimeStatus.offline);
+      return;
+    }
 
     if (wasReady) {
       _serverGraceTimer?.cancel();
@@ -260,6 +293,7 @@ class RealtimeConnection {
   void checkAlive() {
     final messages = _messages;
     if (_sessionId == null || messages == null || messages.isClosed) return;
+    if (_closedByServer) return;
 
     final socket = _socket;
     if (socket == null) {
@@ -362,6 +396,7 @@ class RealtimeConnection {
     _socket = null;
     _socketSubscription = null;
     _ready = false;
+    _closedByServer = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _stopPing();

@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '/features/profile/presentation/pages/ui_profile.dart';
+import '/features/safety/presentation/pages/ui_safety.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'cmp_language_picker_dialog.dart';
 
 /// Menu laterale dell'app: il proprio profilo, cambio lingua, tema,
-/// informazioni sull'app, condivisione. Nessuna altra voce di navigazione
+/// "Sicurezza e segnalazioni" (come bloccare/segnalare, termini d'uso e il
+/// contatto pubblicato), informazioni sull'app, condivisione. Nessuna altra voce di navigazione
 /// qui dentro — è un cassetto di impostazioni, non una seconda barra di
 /// navigazione.
 ///
@@ -27,6 +29,12 @@ class CmpAppDrawer extends StatelessWidget {
     Navigator.of(context)
       ..pop()
       ..push(MaterialPageRoute(builder: (_) => const UiProfile()));
+  }
+
+  void _openSafety(BuildContext context) {
+    Navigator.of(context)
+      ..pop()
+      ..push(MaterialPageRoute(builder: (_) => const UiSafety()));
   }
 
   void _changeLanguage(BuildContext context) {
@@ -128,6 +136,11 @@ class CmpAppDrawer extends StatelessWidget {
                   value: proSettings.isDarkMode,
                   onChanged: (enabled) =>
                       context.read<ProSettings>().setDarkMode(enabled),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.shield_outlined),
+                  title: Text(l10n.safety_and_reports),
+                  onTap: () => _openSafety(context),
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),

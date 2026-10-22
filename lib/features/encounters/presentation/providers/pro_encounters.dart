@@ -5,6 +5,8 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/safety/domain/usecases/hide_blocked_people_usecase.dart';
+import '/features/safety/domain/usecases/watch_blocked_people_usecase.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/watch_server_session_restarts_usecase.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
@@ -50,6 +52,14 @@ import '../encounter_notice.dart';
 /// richiesta è persa" (`FindLostEncounterRequestsUseCase`). Il provider
 /// tiene lo stato e le traduce in [EncounterNotice].
 ///
+/// **Bloccati** (`WatchBlockedPeopleUseCase`, da `safety/`): le richieste
+/// con chi hai bloccato o segnalato in questa sessione spariscono subito
+/// dalle liste ([incomingRequests], [outgoingRequests], via
+/// `HideBlockedPeopleUseCase`), e se era il tuo match la pagina si chiude
+/// e la sua chat se ne va (`DetectEndedMatchUseCase`,
+/// `MatchEndReason.blocked`), senza l'avviso "l'altra persona è uscita".
+/// Il server fa lo stesso dall'altra parte, poco dopo.
+///
 /// Tiene anche l'**ultima proposta scelta** in questa sessione (solo in
 /// memoria, dimenticata a End come il resto): con l'intento di sessione è
 /// ciò da cui `PreselectEncounterProposalUseCase` decide la proposta già
@@ -75,6 +85,9 @@ class ProEncounters extends ChangeNotifier {
         const PreselectEncounterProposalUseCase(),
     ProposalForIntentUseCase proposalForIntentUseCase =
         const ProposalForIntentUseCase(),
+    WatchBlockedPeopleUseCase? watchBlockedPeopleUseCase,
+    HideBlockedPeopleUseCase hideBlockedPeopleUseCase =
+        const HideBlockedPeopleUseCase(),
     DateTime Function()? now,
   }) : _watchEncounterRequestsUseCase = watchEncounterRequestsUseCase,
        _watchEncounterRejectionsUseCase = watchEncounterRejectionsUseCase,
@@ -87,10 +100,14 @@ class ProEncounters extends ChangeNotifier {
        _findLostEncounterRequestsUseCase = findLostEncounterRequestsUseCase,
        _preselectEncounterProposalUseCase = preselectEncounterProposalUseCase,
        _proposalForIntentUseCase = proposalForIntentUseCase,
+       _hideBlockedPeopleUseCase = hideBlockedPeopleUseCase,
        _now = now ?? DateTime.now {
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
     _restartSubscription = watchServerSessionRestartsUseCase().listen(
       (_) => _onServerSessionRestarted(),
+    );
+    _blockedSubscription = watchBlockedPeopleUseCase?.call().listen(
+      _onBlockedChanged,
     );
   }
 
@@ -105,7 +122,12 @@ class ProEncounters extends ChangeNotifier {
   final FindLostEncounterRequestsUseCase _findLostEncounterRequestsUseCase;
   final PreselectEncounterProposalUseCase _preselectEncounterProposalUseCase;
   final ProposalForIntentUseCase _proposalForIntentUseCase;
+  final HideBlockedPeopleUseCase _hideBlockedPeopleUseCase;
   final DateTime Function() _now;
+  StreamSubscription<Set<String>>? _blockedSubscription;
+
+  /// Chi hai bloccato o segnalato in questa sessione.
+  Set<String> _blockedPersonIds = const {};
   Timer? _lostRequestsTimer;
 
   late final StreamSubscription<OnlineSession?> _sessionSubscription;
@@ -122,8 +144,12 @@ class ProEncounters extends ChangeNotifier {
   MeetIntent? _ownIntent;
   EncounterProposal? _lastProposal;
 
+  /// Le richieste come le manda il server; quelle mostrate ([_visibleIncoming],
+  /// [_visibleOutgoing]) sono senza i bloccati.
   List<EncounterRequest> _incomingRequests = [];
   List<EncounterRequest> _outgoingRequests = [];
+  List<EncounterRequest> _visibleIncoming = const [];
+  List<EncounterRequest> _visibleOutgoing = const [];
 
   /// Persone a cui una richiesta è partita (con l'ora di partenza) ma che
   /// lo snapshot non mostra ancora: la loro tile è già "richiesta" (niente
@@ -140,19 +166,30 @@ class ProEncounters extends ChangeNotifier {
   /// snapshot che li mostra finiti, non è "l'altra persona è uscita".
   final Set<String> _endingIds = {};
 
-  List<EncounterRequest> get incomingRequests => _incomingRequests;
-  List<EncounterRequest> get outgoingRequests => _outgoingRequests;
+  List<EncounterRequest> get incomingRequests => _visibleIncoming;
+  List<EncounterRequest> get outgoingRequests => _visibleOutgoing;
+
+  void _refreshVisibleRequests() {
+    List<EncounterRequest> hide(List<EncounterRequest> requests) =>
+        _hideBlockedPeopleUseCase(
+          requests,
+          blockedPersonIds: _blockedPersonIds,
+          personIdOf: (request) => request.otherPersonId,
+        );
+    _visibleIncoming = hide(_incomingRequests);
+    _visibleOutgoing = hide(_outgoingRequests);
+  }
 
   /// Eventi una tantum da mostrare all'utente.
   Stream<EncounterNotice> get notices => _notices.stream;
 
-  int get pendingIncomingCount => _incomingRequests
+  int get pendingIncomingCount => _visibleIncoming
       .where((r) => r.status == EncounterRequestStatus.pending)
       .length;
 
   EncounterRequest? get activeMatch => _findActiveMatchUseCase([
-    ..._incomingRequests,
-    ..._outgoingRequests,
+    ..._visibleIncoming,
+    ..._visibleOutgoing,
   ], locallyEndedIds: _locallyEndedIds);
 
   /// C'è già una richiesta con questa persona (o sta partendo)? Per la UI di
@@ -311,6 +348,7 @@ class ProEncounters extends ChangeNotifier {
         final previous = [..._incomingRequests, ..._outgoingRequests];
         _incomingRequests = snapshot.incoming;
         _outgoingRequests = snapshot.outgoing;
+        _refreshVisibleRequests();
         _confirmAwaitingRequests();
         unawaited(
           _reportEndedMatch(
@@ -319,10 +357,37 @@ class ProEncounters extends ChangeNotifier {
               next: [...snapshot.incoming, ...snapshot.outgoing],
               locallyEndedIds: Set.of(_locallyEndedIds),
               endingIds: Set.of(_endingIds),
+              blockedPersonIds: _blockedPersonIds,
             ),
           ),
         );
     }
+    notifyListeners();
+  }
+
+  /// Hai bloccato o segnalato qualcuno: le sue richieste spariscono subito
+  /// e, se era il tuo match, finisce qui (chat cancellata, pagina chiusa da
+  /// `CmpMatchGate`) — per mano tua, quindi senza avviso.
+  void _onBlockedChanged(Set<String> blocked) {
+    _blockedPersonIds = blocked;
+    final all = [..._incomingRequests, ..._outgoingRequests];
+    final match = _findActiveMatchUseCase(
+      all,
+      locallyEndedIds: _locallyEndedIds,
+    );
+    if (match != null && blocked.contains(match.otherPersonId)) {
+      unawaited(
+        _detectEndedMatchUseCase(
+          previous: all,
+          next: all,
+          locallyEndedIds: Set.of(_locallyEndedIds),
+          blockedPersonIds: blocked,
+        ),
+      );
+      _locallyEndedIds.add(match.id);
+    }
+    _awaitingSentAt.removeWhere((personId, _) => blocked.contains(personId));
+    _refreshVisibleRequests();
     notifyListeners();
   }
 
@@ -377,6 +442,8 @@ class ProEncounters extends ChangeNotifier {
   void _clearState() {
     _incomingRequests = [];
     _outgoingRequests = [];
+    _visibleIncoming = const [];
+    _visibleOutgoing = const [];
     _awaitingSentAt.clear();
     _lostRequestsTimer?.cancel();
     _lostRequestsTimer = null;
@@ -388,6 +455,7 @@ class ProEncounters extends ChangeNotifier {
   void dispose() {
     _sessionSubscription.cancel();
     _restartSubscription.cancel();
+    _blockedSubscription?.cancel();
     _requestsSubscription?.cancel();
     _rejectionsSubscription?.cancel();
     _lostRequestsTimer?.cancel();

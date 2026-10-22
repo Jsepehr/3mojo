@@ -4,6 +4,7 @@ import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
 import '/features/session/domain/usecases/withdraw_profile_usecase.dart';
 import '../../domain/entities/profile.dart';
+import '../../domain/usecases/accept_terms_usecase.dart';
 import '../../domain/usecases/get_profile_usecase.dart';
 import '../../domain/usecases/save_profile_usecase.dart';
 
@@ -19,15 +20,23 @@ class ProProfile extends ChangeNotifier {
     required GetProfileUseCase getProfileUseCase,
     required SaveProfileUseCase saveProfileUseCase,
     required WithdrawProfileUseCase withdrawProfileUseCase,
+    AcceptTermsUseCase? acceptTermsUseCase,
   }) : _getProfileUseCase = getProfileUseCase,
        _saveProfileUseCase = saveProfileUseCase,
-       _withdrawProfileUseCase = withdrawProfileUseCase {
+       _withdrawProfileUseCase = withdrawProfileUseCase,
+       _acceptTermsUseCase =
+           acceptTermsUseCase ??
+           AcceptTermsUseCase(
+             getProfileUseCase: getProfileUseCase,
+             saveProfileUseCase: saveProfileUseCase,
+           ) {
     _load();
   }
 
   final GetProfileUseCase _getProfileUseCase;
   final SaveProfileUseCase _saveProfileUseCase;
   final WithdrawProfileUseCase _withdrawProfileUseCase;
+  final AcceptTermsUseCase _acceptTermsUseCase;
 
   bool _isLoading = true;
   Profile? _profile;
@@ -73,6 +82,24 @@ class ProProfile extends ChangeNotifier {
     }
     notifyListeners();
     return saved;
+  }
+
+  /// Accetta i termini d'uso attuali per il profilo già salvato (chiesto
+  /// dallo Start ai profili compilati prima che esistessero). `true` se
+  /// salvato; altrimenti il motivo è in [failure].
+  Future<bool> acceptTerms() async {
+    final result = await _acceptTermsUseCase(const NoParams());
+    final accepted = result.match((failure) {
+      _failure = failure;
+      return false;
+    }, (_) => true);
+    if (accepted) {
+      _failure = null;
+      final reloaded = await _getProfileUseCase(const NoParams());
+      reloaded.match((_) {}, (p) => _profile = p);
+    }
+    notifyListeners();
+    return accepted;
   }
 
   /// Cancella il profilo; da online chiude prima la sessione. `true` se

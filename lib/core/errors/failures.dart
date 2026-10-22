@@ -177,3 +177,26 @@ class SensitiveDataConsentRequiredFailure extends ValidationFailure {
     super.message = 'Consent to sensitive data is required',
   ]);
 }
+
+/// Start (o salvataggio del profilo) senza aver accettato la versione
+/// attuale dei termini d'uso (`Profile.currentTermsVersion`): tolleranza
+/// zero per contenuti inaccettabili, e chi non li accetta non va online.
+class TermsNotAcceptedFailure extends ValidationFailure {
+  const TermsNotAcceptedFailure([
+    super.message = 'The terms of use must be accepted',
+  ]);
+}
+
+// --- Sicurezza (blocca/segnala) ---
+
+/// Già mandate in questa sessione tutte le segnalazioni ammesse
+/// ([maxReports], come il server, `ModerationStore.maxReportsPerSession`):
+/// la segnalazione non parte, ma il blocco sì (vedi `ReportPersonUseCase`).
+class TooManyReportsFailure extends ValidationFailure {
+  const TooManyReportsFailure(this.maxReports) : super('Too many reports');
+
+  final int maxReports;
+
+  @override
+  List<Object?> get props => [message, maxReports];
+}

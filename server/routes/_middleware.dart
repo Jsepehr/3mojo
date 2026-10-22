@@ -19,6 +19,9 @@ Middleware _cors() {
   };
 }
 
+/// `Authorization` **non** è tra gli header ammessi apposta: gli endpoint
+/// admin (`/admin/reports`, `AdminReportsApi`) lo richiedono, e così un
+/// browser non può chiamarli da un'altra origine.
 const _corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',

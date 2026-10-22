@@ -11,6 +11,10 @@ enum MatchEndReason {
   /// Il server ha dimenticato la sessione durante una caduta: richieste e
   /// match di prima non esistono più lì.
   sessionRestarted,
+
+  /// Hai bloccato (o segnalato) l'altra persona: il match finisce per mano
+  /// tua, e il server lo chiude anche dall'altra parte.
+  blocked,
 }
 
 /// Il match [match] è finito per [reason] (vedi

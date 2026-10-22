@@ -18,6 +18,7 @@ import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
 import '/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart';
 import '/features/profile/presentation/pages/ui_profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
+import '/features/safety/presentation/widgets/cmp_person_safety_menu_button.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_connection_banner.dart';
 import '/features/settings/presentation/widgets/cmp_app_drawer.dart';
@@ -244,6 +245,8 @@ class _OnlineHome extends StatelessWidget {
               onRequest: (person) => _chooseProposalAndRequest(context, person),
               onEndSession: () => _endSession(context),
               onRetakeSelfie: () => _endAndRetakeSelfie(context),
+              actionsOf: (person) =>
+                  CmpPersonSafetyMenuButton(personId: person.id),
             ),
           ),
         ],

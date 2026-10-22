@@ -18,5 +18,9 @@ class ConnectionRepositoryImpl implements ConnectionRepository {
       _remoteDataSource.watchHandshakes();
 
   @override
+  Stream<void> watchSessionClosures() =>
+      _remoteDataSource.watchSessionClosures();
+
+  @override
   void checkConnection() => _remoteDataSource.checkAlive();
 }

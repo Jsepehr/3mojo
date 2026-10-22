@@ -14,6 +14,7 @@ class SessionFailureTexts {
     FaceCheckUnavailableFailure() => l10n.selfie_error_check_failed,
     SelfieCaptureFailure() => l10n.selfie_error_camera,
     ProfileMissingFailure() => l10n.start_error_profile_missing,
+    TermsNotAcceptedFailure() => l10n.start_error_terms_required,
     CacheFailure() => l10n.profile_error_storage,
     ConnectionFailure() => l10n.action_not_sent_offline,
     _ => l10n.action_failed_generic,

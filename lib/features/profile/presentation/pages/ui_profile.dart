@@ -7,6 +7,7 @@ import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/profile_labels.dart';
 import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
+import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/l10n/generated/app_localizations.dart';
 
@@ -14,6 +15,11 @@ import '/l10n/generated/app_localizations.dart';
 /// tasto indietro — `UiHome` la mostra al posto della home finché manca) e
 /// poi modificabile dal menu. Resta cifrato sul telefono; il server lo
 /// riceve solo a ogni Start.
+///
+/// Al primo avvio (e finché il profilo salvato non li ha accettati) chiede
+/// anche di accettare i **termini d'uso** attuali: la casella si salva col
+/// profilo cifrato (`Profile.acceptedTermsVersion`), la regola sta in
+/// `SaveProfileUseCase`.
 ///
 /// "Tutti" è la prima scelta di "chi vuoi incontrare" apposta: insieme a
 /// "preferisco non dirlo" è il percorso che non rivela nulla e non richiede
@@ -35,6 +41,7 @@ class _UiProfileState extends State<UiProfile> {
   List<String> _languages = [];
   bool _isAdultConfirmed = false;
   bool _sensitiveDataConsent = false;
+  bool _termsAccepted = false;
   bool _isSaving = false;
 
   /// Finché l'errore di una visita precedente non è stato azzerato (dopo il
@@ -58,6 +65,7 @@ class _UiProfileState extends State<UiProfile> {
       _languages = [...existing.languages];
       _isAdultConfirmed = existing.isAdultConfirmed;
       _sensitiveDataConsent = existing.sensitiveDataConsent;
+      _termsAccepted = existing.hasAcceptedCurrentTerms;
     }
   }
 
@@ -72,6 +80,7 @@ class _UiProfileState extends State<UiProfile> {
       defaultIntent: _defaultIntent,
       languages: _languages,
       showGender: _showGender,
+      acceptedTermsVersion: _termsAccepted ? Profile.currentTermsVersion : 0,
     );
   }
 
@@ -80,6 +89,7 @@ class _UiProfileState extends State<UiProfile> {
     if (draft == null) return false;
     return draft.lookingFor.isNotEmpty &&
         draft.isAdultConfirmed &&
+        draft.hasAcceptedCurrentTerms &&
         (!draft.needsSensitiveDataConsent || draft.sensitiveDataConsent);
   }
 
@@ -309,6 +319,27 @@ class _UiProfileState extends State<UiProfile> {
                 onChanged: (value) =>
                     setState(() => _sensitiveDataConsent = value ?? false),
               ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                l10n.terms_accept_checkbox,
+                style: theme.textTheme.bodyMedium,
+              ),
+              value: _termsAccepted,
+              onChanged: (value) =>
+                  setState(() => _termsAccepted = value ?? false),
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                icon: const Icon(Icons.description_outlined),
+                label: Text(l10n.read_the_terms),
+                onPressed: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const UiTermsOfUse())),
+              ),
+            ),
             if (failure != null) ...[
               const SizedBox(height: 8),
               CmpInlineError(message: ProfileLabels.failure(l10n, failure)),

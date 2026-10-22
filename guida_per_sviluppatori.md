@@ -22,7 +22,7 @@ flutter pub get          # dalla root, per l'app
 cd server && dart pub get  # per il server
 ```
 
-Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`, senza parametri nell'URL), non richieste HTTP separate: il client si autentica col primo messaggio, poi manda presenza/azioni sul canale aperto, e il server spinge indietro liste e aggiornamenti appena cambia qualcosa. Ci passano presenza/vicinanze, richieste d'incontro (`encounters/`) **e** i messaggi di chat — per la chat il server fa solo da postino (inoltra, non conserva, e solo tra due sessioni con un match attivo): la cronologia esiste solo in memoria sui due telefoni, mai su disco (vedi §3.4). Eccezione deliberata: `paywall/` (§3.6) usa due route HTTP semplici (`POST /paywall/purchase`, `POST /paywall/status`) — non serve il push in tempo reale per un controllo puntuale come "sono ancora sbloccato?".
+Comunicano tramite un **unico WebSocket per sessione** (`GET /ws`, senza parametri nell'URL), non richieste HTTP separate: il client si autentica col primo messaggio, poi manda presenza/azioni sul canale aperto, e il server spinge indietro liste e aggiornamenti appena cambia qualcosa. Ci passano presenza/vicinanze, richieste d'incontro (`encounters/`) **e** i messaggi di chat — per la chat il server fa solo da postino (inoltra, non conserva, e solo tra due sessioni con un match attivo): la cronologia esiste solo in memoria sui due telefoni, mai su disco (vedi §3.4). Sullo stesso canale passano anche **Blocca/Segnala** (§3.8). Il server tiene tutto in RAM **tranne** i record di moderazione delle sessioni segnalate (selfie, motivi, conteggio, ora al minuto; cifrati, cancellati dopo 30 giorni — §4): è l'unico dato che sopravvive a una sessione. Eccezione deliberata: `paywall/` (§3.6) usa due route HTTP semplici (`POST /paywall/purchase`, `POST /paywall/status`) — non serve il push in tempo reale per un controllo puntuale come "sono ancora sbloccato?".
 
 **Fonte di verità del protocollo**: il commento in testa a [server/routes/ws.dart](server/routes/ws.dart) (tutti i messaggi e i campi). In sintesi:
 
@@ -251,6 +251,8 @@ Il server (`RealtimeMessageHandler._handleChatMessage` → `ConnectionHub.relayC
 
 **Profilo** (`Profile`: genere, chi vuoi incontrare, conferma 18+, consenso al dato sensibile, intento predefinito, max 2 lingue, "mostra il mio genere"): compilato una volta (`UiHome` mostra `UiProfile(isOnboarding: true)` finché manca) e modificabile dal drawer. `SaveProfileUseCase` contiene le regole (18+, almeno un genere cercabile, lingue supportate, consenso esplicito salvo il percorso neutro "preferisco non dirlo" + "tutti"), ognuna col suo `Failure`. Salvato **cifrato** da `ProfileLocalDataSourceImpl` (`flutter_secure_storage`: Keystore su Android con `allowBackup="false"`, Keychain `first_unlock_this_device` su iOS), mai in `shared_preferences` né sul server se non in RAM durante la sessione (`PresenceProfileModel` manda solo ciò che serve al matching: mai la conferma d'età né il consenso).
 
+**Termini d'uso**: `SaveProfileUseCase` esige anche l'accettazione dei termini attuali (`Profile.acceptedTermsVersion` ≥ `Profile.currentTermsVersion`, salvata nel profilo cifrato; `TermsNotAcceptedFailure` → `ProfileLabels`): nell'onboarding di `UiProfile` è una casella obbligatoria con "Leggi i termini" (`UiTermsOfUse`). I profili salvati prima (campo assente nel JSON = 0) li accettano allo Start: `StartSessionUseCase` ritorna `TermsNotAcceptedFailure`, `UiStartSession` apre `CmpTermsAcceptanceDialog` e, se accettati, `ProProfile.acceptTerms` (`AcceptTermsUseCase`, che ricompone il profilo e passa da `SaveProfileUseCase`) e riprova lo Start. Il testo (`CmpTermsOfUse`, in `safety/`) è uno solo per pagina e dialog: cambiarlo nella sostanza vuol dire alzare `Profile.currentTermsVersion`, così tutti li riaccettano.
+
 **Il Keychain iOS sopravvive alla disinstallazione**: per questo `main.dart`, prima di tutto, esegue `WipeDataFromPreviousInstallUseCase` — se manca il segno di installazione in `shared_preferences` (che invece sparisce con l'app), cancella tutto l'archivio cifrato rimasto da un'installazione precedente (`deleteAll`: profilo e token di sblocco), poi mette il segno. Se la cancellazione fallisce il segno non viene messo e si riprova al prossimo avvio.
 
 **Protezioni di piattaforma**:
@@ -258,11 +260,27 @@ Il server (`RealtimeMessageHandler._handleChatMessage` → `ConnectionHub.relayC
 - iOS: gli screenshot non si possono bloccare; `PrivacyCover` in `AppDelegate.swift` copre la finestra col blu del brand quando la scena va **in background** (`didEnterBackground`, prima dello snapshot del selettore delle app, che così non contiene selfie né chat) e la scopre a `willEnterForeground`/`didActivate` — non già a `willDeactivate`, che scatta anche dietro ai dialoghi di permesso (posizione, fotocamera) e li avrebbe fatti apparire su uno schermo blu pieno;
 - in memoria: selfie solo come byte (§3.1), cache delle immagini svuotata a End, chat mai su disco (§3.4).
 
+### 3.8 `safety/` — Blocca e Segnala
+
+Richiesti da Apple (guideline 1.2, contenuti generati dagli utenti) e necessari per la sicurezza. **Modello ibrido**: l'effetto lo decide e applica il **server**, il telefono nasconde subito per non aspettarlo.
+
+**Dove**: il bottone "⋯" `CmpPersonSafetyMenuButton` (un vero `PopupMenuButton` con tooltip — etichetta per lo screen reader, 48 dp — non un long-press nascosto) su ogni tile di "Vicinanze" non bloccata dal paywall (composto da `UiHome` → `CmpPaywalledNearbyList.actionsOf` → `CmpNearbyPersonTile.actions`: `nearby` non sa cosa contiene), su ogni richiesta in entrata (`CmpIncomingRequestTile.actions`) e in uscita (`CmpOutgoingRequestTile.trailing`) di `UiEncounters`, e nell'AppBar di `UiActiveMatch`. Ogni scelta passa da una conferma (`showBlockConfirmDialog`, `showReportDialog` con i motivi in `RadioGroup`), poi `HapticFeedback.mediumImpact` e una snackbar d'esito (`SafetyLabels`); i rifiuti che arrivano dopo dal server li mostra `CmpSafetyNoticeListener` (in cima all'app, `app.dart`).
+
+**Dominio**: `BlockPersonUseCase`, `ReportPersonUseCase` (motivo da `ReportReason`, lista chiusa uguale al server, niente testo libero; al più `maxReportsPerSession` = 5 per sessione come il server — oltre **blocca comunque** e ritorna `TooManyReportsFailure`), `WatchBlockedPeopleUseCase`, `HideBlockedPeopleUseCase` (puro e generico: lo usano `ProNearby` per le persone e `ProEncounters` per le richieste, senza che `safety/` dipenda da loro), `WatchSafetyRejectionsUseCase`, `ClearSafetySessionStateUseCase` (passo di End). `SafetyRepositoryImpl` manda sul socket e **solo se è partito** segna la persona tra i bloccati della sessione (`BlockedPeopleLocalDataSourceImpl`, solo in memoria) e conta la segnalazione; offline → `ConnectionFailure`, nessuno nascosto. Se il bloccato era il match, `ProEncounters` lo chiude da sé: `DetectEndedMatchUseCase` con `blockedPersonIds` → `MatchEndReason.blocked` (chat cancellata, nessun avviso "l'altra persona è uscita"), e `CmpMatchGate` chiude la pagina. Il finto (`SafetyRemoteDataSourceFakeImpl`) applica solo il limite di 5: sparizione e chiusura del match le fa il filtro dei bloccati, come col server vero.
+
+**Sul filo** (`server/routes/ws.dart`): `{"type":"block","personId"}` e `{"type":"report","personId","reason"}`, con lo pseudonimo ricevuto. Nessuna conferma; rifiuti `rejected` con `action` `block`/`report` e `reason` `unknownPerson` (persona già uscita), `invalidReason`, `tooManyReports`.
+
+**Sul server** (§4): `BlockStore` (id interni, nei due sensi, per tutta la sessione di chi blocca, anche oltre la grazia e le riconnessioni) filtra `SessionStore.nearbyPeople` (prima del paywall, hotspot compresi) e la chat; `RealtimeMessageHandler._applyBlock` cancella/chiude e poi dimentica le richieste tra i due e lo pseudonimo con cui il bloccato vedeva l'altro. **Chi viene bloccato vede esattamente ciò che vedrebbe se l'altro avesse premuto End**: richiesta `cancelled` o match `ended` (l'app gli dice "l'altra persona è uscita"), poi più nulla; sparisce dalle sue Vicinanze entro la finestra di 5 s; ogni azione col vecchio pseudonimo fallisce come verso chi è uscito (`notNearby`, `notDelivered`, `unknownPerson`). Limite: con un secondo telefono (o un amico vicino) può accorgersi che l'altro è ancora online. Il blocco **non sopravvive** a End o a un nuovo Start di nessuno dei due (niente id permanenti): i testi lo dicono ("Non vi vedrete più per il resto di questa sessione").
+
+**Segnalazioni e chiusura automatica** (`ModerationStore`, in RAM): con segnalazioni da almeno 3 sessioni diverse e 2 IP diversi (configurabili) la sessione segnalata viene chiusa (`SessionLifecycle.closeForModeration`: `{"type":"sessionClosed","reason":"reports"}`, socket chiuso 4010, `endNow`) e gli IP che ha usato non possono fare nuovi Start per 30 minuti (`rateLimited`, lo stesso codice del limite ai nuovi Start). Sul telefono `RealtimeConnection` smette di riconnettersi e avvisa (`sessionClosures`) → `WatchSessionClosedByServerUseCase` → `ProSession` fa End e `CmpConnectionNoticeListener` mostra un dialog. Ogni segnalazione accettata aggiorna il **record di moderazione** della sessione segnalata (`ModerationRecordStore`, cifrato su disco, 30 giorni).
+
+**Contatti e termini**: dal drawer "Sicurezza e segnalazioni" (`UiSafety`): come bloccare/segnalare, quanto dura un blocco, cosa fare in pericolo, i termini d'uso e il contatto pubblicato `SafetyContact.email` (`lib/core/config/safety_contact.dart`, **segnaposto `.example` da sostituire** prima della pubblicazione), mostrato e copiato negli appunti (l'app non include `url_launcher`). I termini: §3.7.
+
 ---
 
 ## 4. Il server (`server/`, Dart Frog)
 
-Routing basato su file (convenzione Dart Frog): il path della cartella/file sotto `routes/` diventa l'URL. Variabili d'ambiente (`TLS_CERT_PATH`/`TLS_KEY_PATH`, `DEBUG_ENDPOINTS_TOKEN`, `TRUSTED_PROXY`) e riepilogo dei limiti: [server/README.md](server/README.md).
+Routing basato su file (convenzione Dart Frog): il path della cartella/file sotto `routes/` diventa l'URL. Variabili d'ambiente (`TLS_CERT_PATH`/`TLS_KEY_PATH`, `DEBUG_ENDPOINTS_TOKEN`, `TRUSTED_PROXY`, `MODERATION_KEY`/`MODERATION_DIR`, `ADMIN_TOKEN`, soglie e cooldown della moderazione) e riepilogo dei limiti: [server/README.md](server/README.md).
 
 ```
 server/
@@ -274,6 +292,8 @@ server/
     debug/sessions.dart   → GET /debug/sessions   (spento di default, vedi sotto)
     paywall/purchase.dart → POST /paywall/purchase (limitata per IP)
     paywall/status.dart   → POST /paywall/status  ({"unlockToken"} nel corpo)
+    admin/reports/…       → GET /admin/reports, GET /admin/reports/<id>/selfie, DELETE /admin/reports/<id>
+                            (spenti senza ADMIN_TOKEN, solo TLS, vedi AdminReportsApi)
   lib/src/
     socket_session.dart   ← SocketSession: un socket dall'apertura alla chiusura (hello, limiti, end)
     session_lifecycle.dart ← SessionLifecycle: nascita, grazia di 45 s, fine (endNow), purge per silenzio
@@ -290,12 +310,18 @@ server/
     new_session_rate_limiter.dart ← NewSessionRateLimiter: limite ai nuovi Start per IP
     rate_limiters.dart    ← SlidingWindowRateLimiter, purchaseRateLimiter, ConnectionRateLimiter
     client_ip.dart        ← IP del client vero dietro un proxy fidato (TRUSTED_PROXY)
+    block_store.dart      ← BlockStore: blocchi della sessione, nei due sensi, in RAM
+    report_reason.dart    ← ReportReason: motivi di segnalazione (lista chiusa)
+    moderation_store.dart ← ModerationStore: conteggi delle segnalazioni, soglia di chiusura, cooldown per IP (RAM)
+    moderation_records.dart ← ModerationRecordStore: record di moderazione cifrati su disco, 30 giorni
+    admin_reports_api.dart ← AdminReportsApi: logica (e protezioni) degli endpoint /admin/reports
+    constant_time.dart    ← confronto a tempo costante dei token (debug, admin)
     geo.dart              distanza Haversine tra due coordinate
     meeting_chance.dart   soglie di permanenza → low/medium/high
   tool/simulate_fake_devices.dart ← 20 dispositivi finti contro il server vero
 ```
 
-Tutti gli store sono singleton in RAM (`Xxx.instance`) con un costruttore per i test: nessun database, riavvii il server e ogni sessione, richiesta e sblocco spariscono.
+Tutti gli store sono singleton in RAM (`Xxx.instance`) con un costruttore per i test: nessun database, riavvii il server e ogni sessione, richiesta, sblocco, blocco e conteggio di segnalazioni spariscono. **Unica eccezione**: i record di moderazione (`ModerationRecordStore`) — uno per sessione segnalata, con selfie della persona segnalata, motivi con conteggio, numero di segnalazioni, `createdAt`/`updatedAt` al minuto e se è scattata la chiusura; **mai** posizione, chat, IP (nemmeno in hash), id interni o pseudonimi. Cifrati AES-256-GCM (pacchetto `cryptography`, chiave `MODERATION_KEY`, l'id del record come dato autenticato), un file per record in `MODERATION_DIR`, scritti in modo atomico e cancellati dopo 30 giorni (all'avvio in `main.dart` e ogni ora). Senza chiave non si salva nulla e il server lo scrive all'avvio. Si rivedono con gli endpoint `/admin/reports` (bearer `ADMIN_TOKEN`, solo TLS, limite per IP).
 
 **`GET /ws`** ([routes/ws.dart](server/routes/ws.dart)) upgrada la richiesta a WebSocket con `shelf_web_socket` + `fromShelfHandler` (il ponte di Dart Frog verso un `shelf.Handler`, necessario perché solo la `shelf.Request` sottostante supporta l'hijack dell'upgrade), con ping WebSocket ogni 20 s; risolve l'IP del client (`resolveClientIp`) e affida il socket a una `SocketSession`. La route avvia anche (idempotenti) `SessionLifecycle.startAutoPurge` e `ConnectionHub.startHotspotDetection`.
 
@@ -409,6 +435,6 @@ flutter test                 # app: test/core/** e test/features/**
 cd server && dart test       # server: server/test/**
 ```
 
-App: i fake condivisi stanno in `test/support/` (`fake_repositories.dart`, `fake_realtime_socket.dart` per provare `RealtimeConnection` senza rete, `build_providers.dart`); per i timer si usa `fake_async`.
+App: i fake condivisi stanno in `test/support/` (`fake_repositories.dart`, `fake_realtime_socket.dart` per provare `RealtimeConnection` senza rete, `fake_safety.dart` per blocca/segnala, `build_providers.dart`); per i timer si usa `fake_async`.
 
 Server: `mocktail` per i finti `RequestContext` di Dart Frog dove serve (`test/routes/index_test.dart`, `test/routes/paywall/status_test.dart`). La route `/ws` fa hijack del socket e non è testabile con un `RequestContext` finto, ma tutta la sua logica sta in `SocketSession`, provata con due `StreamController` al posto del socket (`test/src/socket_session_test.dart`). Gli store hanno costruttori per i test con orologio controllabile o istanze indipendenti dai singleton — `SessionStore.withClock(...)`, `HotspotStore.withClock(...)`, `PaywallStore.withClock(...)`, `NewSessionRateLimiter.withClock(...)`, `EncounterStore.empty()`, `SessionCredentials.empty()`, `ConnectionHub.withStore(...)` — altrimenti i test si "sporcherebbero" a vicenda, dato che non c'è modo di resettare un singleton tra un test e l'altro.

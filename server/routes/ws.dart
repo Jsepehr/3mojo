@@ -39,6 +39,24 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   match attivo, mai conservato (il server fa solo da postino); un testo
 ///   oltre 1000 unità UTF-16 torna `rejected` `invalidText` (il socket resta
 ///   aperto, solo un frame oltre 16 KB lo chiude con 4009);
+/// - `{"type": "block", "personId": ...}` — blocca la persona (uno
+///   pseudonimo ricevuto): da subito, e per tutta la vita della propria
+///   sessione (anche attraverso grazia e riconnessioni), i due non si
+///   vedono più in "Vicinanze", le richieste tra loro sono cancellate (il
+///   match, se c'è, chiuso), la chat non passa. Nessuna conferma; rifiuto
+///   `rejected` `unknownPerson` se lo pseudonimo non si risolve (vedi
+///   `BlockStore`). Non sopravvive a End/nuovo Start (niente id permanenti);
+/// - `{"type": "report", "personId": ..., "reason": ...}` — segnala (e
+///   **blocca**) la persona. `reason` dalla lista chiusa `ReportReason`
+///   (`fakePhoto`, `inappropriatePhoto`, `harassment`, `underage`, `spam`,
+///   `other`), niente testo libero. Rifiuti: `invalidReason` (motivo
+///   mancante o fuori lista: nessun effetto, nemmeno il blocco),
+///   `unknownPerson`, `tooManyReports` (oltre 5 segnalazioni nella sessione:
+///   il blocco vale comunque, la segnalazione no). Da 3 sessioni diverse e
+///   2 IP diversi la sessione segnalata viene chiusa (`sessionClosed`,
+///   sotto) e il suo IP non può fare nuovi Start per 30 minuti; ogni
+///   segnalazione aggiorna il record di moderazione cifrato (vedi
+///   `ModerationStore`, `ModerationRecordStore`);
 /// - `{"type": "ping"}` — ogni 20 s, per dire "sono vivo" (risposta:
 ///   `pong`);
 /// - `{"type": "end"}` — End esplicito: la sessione finisce subito.
@@ -66,13 +84,27 @@ import 'package:threemojo_server/src/socket_session.dart';
 /// - `{"type": "pong"}` — risposta a ogni `ping`;
 /// - `{"type": "chatMessage", "fromPersonId": ..., "text": ..., "sentAt": ...}`;
 /// - `{"type": "rejected", "action": ..., "reason": ..., ...}` — un'azione
-///   rifiutata dalle regole del server (vedi `RealtimeMessageHandler`).
+///   rifiutata dalle regole del server (vedi `RealtimeMessageHandler`); per
+///   `block`/`report` c'è anche `personId`;
+/// - `{"type": "sessionClosed", "reason": "reports"}` — la sessione è stata
+///   chiusa dal server dopo abbastanza segnalazioni: subito dopo il socket
+///   si chiude (4010) e la sessione non esiste più (un nuovo `hello` con lo
+///   stesso segreto è un nuovo Start, e dallo stesso IP torna `rateLimited`
+///   per il cooldown).
+///
+/// **Cosa vede chi viene bloccato**: esattamente ciò che vedrebbe se l'altro
+/// avesse premuto End — la richiesta tra loro `cancelled` (o il match
+/// `ended`) nel suo snapshot normale e poi più nulla, l'altro sparisce dalle
+/// "Vicinanze" (entro 5 s), e ogni azione col vecchio pseudonimo fallisce
+/// come verso chi è uscito (`notNearby`, `notDelivered`, `unknownPerson`).
+/// Nessun messaggio dice "sei stato bloccato".
 ///
 /// **Id**: `personId`/`otherPersonId`/`fromPersonId` sono pseudonimi per
 /// osservatore (`Pseudonyms`): la stessa persona ha un id diverso per ognuno
 /// che la vede, e il client rimanda indietro quello che ha ricevuto.
 ///
-/// **Chiusura**: con `end` la sessione finisce subito; ogni altra chiusura
+/// **Chiusura**: con `end` (o con `sessionClosed`) la sessione finisce
+/// subito; ogni altra chiusura
 /// (rete persa, app uccisa) la nasconde e avvia un periodo di grazia di 45 s
 /// in cui riconnettersi con lo stesso segreto la riprende intatta (vedi
 /// `SessionLifecycle`). Il server manda un ping WebSocket ogni 20 s

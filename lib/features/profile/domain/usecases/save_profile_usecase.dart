@@ -12,6 +12,9 @@ import '../repositories/profile_repository.dart';
 /// - al massimo [Profile.maxLanguages] lingue, solo tra quelle supportate;
 /// - consenso esplicito al dato sensibile, se il profilo lo richiede
 ///   ([Profile.needsSensitiveDataConsent]);
+/// - i termini d'uso attuali accettati ([Profile.hasAcceptedCurrentTerms]):
+///   tolleranza zero per contenuti inaccettabili, e conseguenze delle
+///   segnalazioni scritte chiaramente prima di usare l'app;
 /// - "mostra il mio genere" non ha senso con "preferisco non dirlo": viene
 ///   spento invece di rifiutare il salvataggio.
 ///
@@ -41,6 +44,9 @@ class SaveProfileUseCase implements UseCase<Unit, Profile> {
     if (profile.needsSensitiveDataConsent && !profile.sensitiveDataConsent) {
       return const Left(SensitiveDataConsentRequiredFailure());
     }
+    if (!profile.hasAcceptedCurrentTerms) {
+      return const Left(TermsNotAcceptedFailure());
+    }
 
     final normalized = Profile(
       gender: profile.gender,
@@ -51,6 +57,7 @@ class SaveProfileUseCase implements UseCase<Unit, Profile> {
       defaultIntent: profile.defaultIntent,
       languages: languages.toList(),
       showGender: profile.showGender && profile.gender != Gender.unspecified,
+      acceptedTermsVersion: profile.acceptedTermsVersion,
     );
     return _repository.saveProfile(normalized);
   }

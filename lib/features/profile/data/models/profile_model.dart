@@ -12,6 +12,7 @@ class ProfileModel extends Profile {
     super.defaultIntent,
     super.languages,
     super.showGender,
+    super.acceptedTermsVersion,
   });
 
   factory ProfileModel.fromEntity(Profile profile) => ProfileModel(
@@ -22,6 +23,7 @@ class ProfileModel extends Profile {
     defaultIntent: profile.defaultIntent,
     languages: profile.languages,
     showGender: profile.showGender,
+    acceptedTermsVersion: profile.acceptedTermsVersion,
   );
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,9 @@ class ProfileModel extends Profile {
       defaultIntent: intent == null ? null : MeetIntent.values.byName(intent),
       languages: (json['languages'] as List<dynamic>).cast<String>(),
       showGender: json['showGender'] as bool,
+      // Assente nei profili salvati prima dei termini d'uso: 0, da
+      // accettare allo Start.
+      acceptedTermsVersion: json['acceptedTermsVersion'] as int? ?? 0,
     );
   }
 
@@ -47,5 +52,6 @@ class ProfileModel extends Profile {
     'defaultIntent': defaultIntent?.name,
     'languages': languages,
     'showGender': showGender,
+    'acceptedTermsVersion': acceptedTermsVersion,
   };
 }

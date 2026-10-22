@@ -17,7 +17,9 @@ import 'dart:math';
 /// nemmeno più dal server: agli altri client arrivano solo pseudonimi per
 /// osservatore (vedi `Pseudonyms`).
 ///
-/// Solo in memoria, come il resto del server: nessuna persistenza.
+/// Solo in memoria, come tutto lo stato di sessione: nessuna persistenza
+/// (i record di moderazione, `ModerationRecordStore`, non contengono né
+/// segreti né id).
 class SessionCredentials {
   SessionCredentials._({Random? random}) : _random = random ?? Random.secure();
 

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/geo.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/meeting_chance.dart';
@@ -505,6 +506,10 @@ class SessionStore {
   Iterable<Session> get allSessions =>
       _sessions.values.where((session) => session.connected);
 
+  /// **Blocchi** ([blockStore], vedi `BlockStore`): chi ha bloccato
+  /// `sessionId`, o è stato bloccato da lei, non compare — come se fosse
+  /// uscito.
+  ///
   /// Persone entro [radiusMeters] da `sessionId` (o entro un hotspot attivo
   /// di cui entrambi fanno parte — vedi [HotspotStore] — anche se la
   /// distanza diretta tra i due supera [radiusMeters]), con probabilità
@@ -552,6 +557,7 @@ class SessionStore {
     required double radiusMeters,
     HotspotStore? hotspotStore,
     PaywallStore? paywallStore,
+    BlockStore? blockStore,
   }) {
     final me = _sessions[sessionId];
     if (me == null) return null;
@@ -561,6 +567,7 @@ class SessionStore {
 
     final hotspots = hotspotStore ?? HotspotStore.instance;
     final paywall = paywallStore ?? PaywallStore.instance;
+    final blocks = blockStore ?? BlockStore.instance;
     final results = <NearbyPersonResult>[];
 
     final candidateIds = _sessionIdsNear(me.anchorLat, radiusMeters);
@@ -589,6 +596,10 @@ class SessionStore {
       // economico da controllare.
       if (other == null) continue;
       if (!other.connected) continue; // nel periodo di grazia: invisibile.
+      // Un blocco vale nei due sensi, anche dentro un hotspot, ed è tolto
+      // **prima** del paywall: la lista è quella che si avrebbe se l'altra
+      // persona non ci fosse (vedi `BlockStore`).
+      if (blocks.isBlockedEitherWay(sessionId, otherId)) continue;
 
       // Matching reciproco: ci si vede solo se ognuno rientra in ciò che
       // cerca l'altro (vedi `PresenceProfile.mutuallyCompatible`).

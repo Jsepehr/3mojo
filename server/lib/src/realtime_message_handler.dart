@@ -1,10 +1,18 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
+import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_proposal.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
+import 'package:threemojo_server/src/moderation_records.dart';
+import 'package:threemojo_server/src/moderation_store.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/presence_profile.dart';
+import 'package:threemojo_server/src/report_reason.dart';
 import 'package:threemojo_server/src/selfie_validator.dart';
+import 'package:threemojo_server/src/session_lifecycle.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 /// Interpreta i messaggi di un client **già autenticato** (dopo `hello`,
@@ -18,6 +26,13 @@ import 'package:threemojo_server/src/session_store.dart';
 /// pseudonimi per osservatore (vedi `Pseudonyms`): qui vengono ritradotti
 /// negli id interni, e uno pseudonimo che quel client non ha mai ricevuto
 /// non si risolve.
+///
+/// **Blocca e Segnala** (`block`, `report`): il blocco vale nei due sensi
+/// per tutta la vita della sessione di chi blocca (`BlockStore`); segnalare
+/// implica bloccare, conta per la chiusura automatica (`ModerationStore`) e
+/// aggiorna il record di moderazione cifrato (`ModerationRecordStore`) —
+/// l'unico dato che il server conserva oltre le sessioni. Vedi
+/// [_applyBlock] per cosa vede chi viene bloccato.
 class RealtimeMessageHandler {
   RealtimeMessageHandler({
     required SessionStore sessions,
@@ -25,11 +40,21 @@ class RealtimeMessageHandler {
     required ConnectionHub hub,
     required PaywallStore paywall,
     required HotspotStore hotspots,
+    BlockStore? blocks,
+    ModerationStore? moderation,
+    ModerationRecordStore? records,
+    SessionLifecycle? lifecycle,
+    DateTime Function()? now,
   }) : _sessions = sessions,
        _encounters = encounters,
        _hub = hub,
        _paywall = paywall,
-       _hotspots = hotspots;
+       _hotspots = hotspots,
+       _blocks = blocks ?? BlockStore.instance,
+       _moderation = moderation ?? ModerationStore.instance,
+       _records = records ?? ModerationRecordStore.instance,
+       _lifecycleOverride = lifecycle,
+       _now = now ?? DateTime.now;
 
   static final RealtimeMessageHandler instance = RealtimeMessageHandler(
     sessions: SessionStore.instance,
@@ -37,6 +62,9 @@ class RealtimeMessageHandler {
     hub: ConnectionHub.instance,
     paywall: PaywallStore.instance,
     hotspots: HotspotStore.instance,
+    blocks: BlockStore.instance,
+    moderation: ModerationStore.instance,
+    records: ModerationRecordStore.instance,
   );
 
   /// Una presenza porta (solo la prima volta) il selfie: ~310 KB in base64
@@ -76,10 +104,26 @@ class RealtimeMessageHandler {
   final ConnectionHub _hub;
   final PaywallStore _paywall;
   final HotspotStore _hotspots;
+  final BlockStore _blocks;
+  final ModerationStore _moderation;
+  final ModerationRecordStore _records;
+  final SessionLifecycle? _lifecycleOverride;
+  final DateTime Function() _now;
+
+  /// Chi chiude una sessione segnalata: quello iniettato (test) o il
+  /// singleton, letto solo quando serve.
+  SessionLifecycle get _lifecycle =>
+      _lifecycleOverride ?? SessionLifecycle.instance;
 
   /// Gestisce un messaggio già decodificato di [sessionId] (id interno).
   /// `hello` ed `end` li gestisce `SocketSession`, non arrivano qui.
-  void handle(String sessionId, Map<String, dynamic> message) {
+  /// [clientIp] è l'IP del socket (vuoto se ignoto): serve solo alla soglia
+  /// della chiusura automatica per segnalazioni, mai salvato.
+  void handle(
+    String sessionId,
+    Map<String, dynamic> message, {
+    String clientIp = '',
+  }) {
     switch (message['type']) {
       case 'ping':
         // "Sono vivo": `lastSeen` è già aggiornato da chi chiama. Il `pong`
@@ -98,6 +142,10 @@ class RealtimeMessageHandler {
         _handleEndMatch(sessionId, message);
       case 'chatMessage':
         _handleChatMessage(sessionId, message);
+      case 'block':
+        _handleBlock(sessionId, message);
+      case 'report':
+        _handleReport(sessionId, message, clientIp: clientIp);
     }
   }
 
@@ -215,11 +263,14 @@ class RealtimeMessageHandler {
       return;
     }
 
+    // Un blocco (in uno dei due sensi) toglie la persona dalla lista:
+    // `notNearby`, come per chi è uscito.
     final nearby = _sessions.nearbyPeople(
       sessionId: sessionId,
       radiusMeters: ConnectionHub.radiusMeters,
       hotspotStore: _hotspots,
       paywallStore: _paywall,
+      blockStore: _blocks,
     );
     final target = nearby
         ?.where((person) => person.sessionId == toSessionId)
@@ -344,5 +395,124 @@ class RealtimeMessageHandler {
           text: text,
         );
     if (!delivered) _reject(sessionId, action, 'notDelivered', extra);
+  }
+
+  /// La sessione dietro [personId] (pseudonimo che [sessionId] ha
+  /// ricevuto), o `null` se non si risolve o è [sessionId] stessa.
+  String? _resolvePerson(String sessionId, Object? personId) {
+    if (personId is! String || personId.isEmpty) return null;
+    final target = _hub.pseudonyms.resolve(
+      viewerId: sessionId,
+      pseudonym: personId,
+    );
+    return target == sessionId ? null : target;
+  }
+
+  Map<String, dynamic> _personExtra(Object? personId) => {
+    if (personId is String && personId.length <= 64) 'personId': personId,
+  };
+
+  void _handleBlock(String sessionId, Map<String, dynamic> message) {
+    final personId = message['personId'];
+    final target = _resolvePerson(sessionId, personId);
+    if (target == null) {
+      _reject(sessionId, 'block', 'unknownPerson', _personExtra(personId));
+      return;
+    }
+    _applyBlock(blockerId: sessionId, blockedId: target);
+  }
+
+  /// Segnalare implica bloccare. Il blocco si applica anche oltre il limite
+  /// di segnalazioni (`tooManyReports`); un motivo fuori lista invece non
+  /// fa nulla (`invalidReason`).
+  void _handleReport(
+    String sessionId,
+    Map<String, dynamic> message, {
+    required String clientIp,
+  }) {
+    const action = 'report';
+    final personId = message['personId'];
+    final extra = _personExtra(personId);
+    final reason = ReportReason.parse(message['reason']);
+    if (reason == null) {
+      _reject(sessionId, action, 'invalidReason', extra);
+      return;
+    }
+    final target = _resolvePerson(sessionId, personId);
+    if (target == null) {
+      _reject(sessionId, action, 'unknownPerson', extra);
+      return;
+    }
+
+    _applyBlock(blockerId: sessionId, blockedId: target);
+    final outcome = _moderation.report(
+      reporterId: sessionId,
+      reporterIp: clientIp,
+      reportedId: target,
+      reason: reason,
+      selfieBase64: _sessions.selfieBase64For(target) ?? '',
+    );
+    switch (outcome.result) {
+      case ReportResult.tooManyReports:
+        _reject(sessionId, action, 'tooManyReports', extra);
+        return;
+      case ReportResult.duplicate:
+        return;
+      case ReportResult.accepted:
+        _saveRecord(outcome.tally!);
+        if (outcome.shouldAutoClose) _lifecycle.closeForModeration(target);
+    }
+  }
+
+  /// Aggiorna il record di moderazione in background: un disco lento o
+  /// pieno non deve rallentare né far cadere il socket.
+  void _saveRecord(ReportTally tally) {
+    final record = ModerationRecord(
+      id: tally.recordId,
+      createdAt: ModerationRecord.roundToMinute(tally.createdAt),
+      updatedAt: ModerationRecord.roundToMinute(_now()),
+      reasons: {
+        for (final entry in tally.reasons.entries) entry.key.name: entry.value,
+      },
+      reportCount: tally.reporters.length,
+      autoClosed: tally.autoClosed,
+      selfieBase64: tally.selfieBase64,
+    );
+    unawaited(
+      _records.save(record).catchError((Object error, StackTrace stackTrace) {
+        developer.log(
+          'Salvataggio del record di moderazione fallito',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }),
+    );
+  }
+
+  /// [blockerId] blocca [blockedId]: da ora i due non si vedono più in
+  /// "Vicinanze", nessuna richiesta né chat passa tra loro, per tutta la
+  /// vita della sessione di chi blocca (anche attraverso grazia e
+  /// riconnessioni: vale sugli id interni, vedi `BlockStore`).
+  ///
+  /// **Cosa vede chi è bloccato**: esattamente ciò che vedrebbe se l'altro
+  /// avesse premuto End — gli stessi passi di `SessionLifecycle.endNow`:
+  /// la richiesta pendente tra loro diventa `cancelled` e il match `ended`
+  /// nel suo snapshot normale (l'app dice "l'altra persona è uscita"), poi
+  /// le richieste tra i due spariscono; l'altro sparisce dalle sue
+  /// "Vicinanze" (entro la finestra di 5 s per osservatore,
+  /// `ConnectionHub.nearbyPushMinInterval`); e lo pseudonimo con cui lo
+  /// vedeva non si risolve più, quindi ogni azione verso di lui fallisce
+  /// come verso chi è uscito (richiesta `notNearby`, chat `notDelivered`,
+  /// blocco/segnalazione `unknownPerson`). Limite: con una seconda sessione
+  /// o un amico lì vicino potrebbe accorgersi che l'altro è ancora online.
+  void _applyBlock({required String blockerId, required String blockedId}) {
+    _blocks.block(blockerId, blockedId);
+    final affected = _encounters.closeAllBetween(blockerId, blockedId);
+    if (affected.isNotEmpty) _hub.pushEncounterSnapshot(blockedId);
+    _encounters.forgetPair(blockerId, blockedId);
+    _hub
+      ..pseudonyms.forgetPair(viewerId: blockedId, targetId: blockerId)
+      ..pushEncounterSnapshot(blockerId)
+      ..broadcastNearbyUpdates();
   }
 }

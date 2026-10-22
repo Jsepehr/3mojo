@@ -53,6 +53,9 @@ class ConnectionRemoteDataSourceImpl implements ConnectionRemoteDataSource {
   Stream<ServerHandshake> watchHandshakes() => _handshakes.stream;
 
   @override
+  Stream<void> watchSessionClosures() => _connection.sessionClosures;
+
+  @override
   void checkAlive() => _connection.checkAlive();
 
   static ConnectionStatus _toStatus(RealtimeStatus status) => switch (status) {

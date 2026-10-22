@@ -52,6 +52,7 @@ class ProfileLabels {
         UnsupportedLanguageFailure() => l10n.profile_error_unsupported_language,
         SensitiveDataConsentRequiredFailure() =>
           l10n.profile_error_consent_required,
+        TermsNotAcceptedFailure() => l10n.profile_error_terms_required,
         CacheFailure() => l10n.profile_error_storage,
         _ => l10n.action_failed_generic,
       };

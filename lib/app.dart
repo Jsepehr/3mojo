@@ -67,6 +67,20 @@ import 'features/profile/domain/usecases/delete_profile_usecase.dart';
 import 'features/profile/domain/usecases/get_profile_usecase.dart';
 import 'features/profile/domain/usecases/save_profile_usecase.dart';
 import 'features/profile/presentation/providers/pro_profile.dart';
+import 'features/safety/data/datasources/blocked_people_local_data_source.dart';
+import 'features/safety/data/datasources/blocked_people_local_data_source_impl.dart';
+import 'features/safety/data/datasources/safety_remote_data_source.dart';
+import 'features/safety/data/datasources/safety_remote_data_source_fake_impl.dart';
+import 'features/safety/data/datasources/safety_remote_data_source_impl.dart';
+import 'features/safety/data/repositories/safety_repository_impl.dart';
+import 'features/safety/domain/repositories/safety_repository.dart';
+import 'features/safety/domain/usecases/block_person_usecase.dart';
+import 'features/safety/domain/usecases/clear_safety_session_state_usecase.dart';
+import 'features/safety/domain/usecases/report_person_usecase.dart';
+import 'features/safety/domain/usecases/watch_blocked_people_usecase.dart';
+import 'features/safety/domain/usecases/watch_safety_rejections_usecase.dart';
+import 'features/safety/presentation/providers/pro_safety.dart';
+import 'features/safety/presentation/widgets/cmp_safety_notice_listener.dart';
 import 'features/session/data/datasources/connection_remote_data_source.dart';
 import 'features/session/data/datasources/connection_remote_data_source_impl.dart';
 import 'features/session/data/datasources/face_detection_local_data_source.dart';
@@ -93,6 +107,7 @@ import 'features/session/domain/usecases/start_session_usecase.dart';
 import 'features/session/domain/usecases/take_selfie_usecase.dart';
 import 'features/session/domain/usecases/watch_connection_status_usecase.dart';
 import 'features/session/domain/usecases/watch_server_session_restarts_usecase.dart';
+import 'features/session/domain/usecases/watch_session_closed_by_server_usecase.dart';
 import 'features/session/domain/usecases/watch_session_usecase.dart';
 import 'features/session/domain/usecases/withdraw_profile_usecase.dart';
 import 'features/session/presentation/pages/ui_home.dart';
@@ -117,7 +132,7 @@ import 'l10n/generated/app_localizations.dart';
 /// `CmpMatchGate` così un match può prendere il controllo da qualsiasi punto.
 /// `fakeMode` (letta in `main.dart` prima di costruire l'albero) sceglie i
 /// datasource finti al posto di quelli reali per nearby/encounters/chat/
-/// paywall — le uniche feature che dipendono dal backend `server/`.
+/// paywall/safety — le uniche feature che dipendono dal backend `server/`.
 class App extends StatelessWidget {
   const App({required this.fakeMode, super.key});
 
@@ -140,6 +155,7 @@ class App extends StatelessWidget {
           StopBeingVisibleUseCase(context.read()),
           ClearEncounterSessionStateUseCase(context.read()),
           ClearChatSessionUseCase(context.read()),
+          ClearSafetySessionStateUseCase(context.read()),
           DiscardSelfieFilesUseCase(context.read()),
         ],
       );
@@ -225,6 +241,18 @@ class App extends StatelessWidget {
         Provider<ChatRepository>(
           create: (context) => ChatRepositoryImpl(context.read()),
         ),
+        Provider<SafetyRemoteDataSource>(
+          create: (_) => fakeMode
+              ? SafetyRemoteDataSourceFakeImpl()
+              : SafetyRemoteDataSourceImpl(),
+        ),
+        Provider<BlockedPeopleLocalDataSource>(
+          create: (_) => BlockedPeopleLocalDataSourceImpl(),
+        ),
+        Provider<SafetyRepository>(
+          create: (context) =>
+              SafetyRepositoryImpl(context.read(), context.read()),
+        ),
         Provider<SettingsLocalDataSource>(
           create: (_) => SettingsLocalDataSourceImpl(),
         ),
@@ -261,6 +289,8 @@ class App extends StatelessWidget {
             ),
             takeSelfieUseCase: TakeSelfieUseCase(context.read()),
             flipSelfieUseCase: FlipSelfieUseCase(context.read()),
+            watchSessionClosedByServerUseCase:
+                WatchSessionClosedByServerUseCase(context.read()),
           ),
         ),
         ChangeNotifierProvider<ProConnection>(
@@ -271,6 +301,8 @@ class App extends StatelessWidget {
             watchServerSessionRestartsUseCase:
                 WatchServerSessionRestartsUseCase(context.read()),
             checkConnectionUseCase: CheckConnectionUseCase(context.read()),
+            watchSessionClosedByServerUseCase:
+                WatchSessionClosedByServerUseCase(context.read()),
           ),
         ),
         ChangeNotifierProvider<ProNearby>(
@@ -290,6 +322,9 @@ class App extends StatelessWidget {
               context.read(),
             ),
             openAppSettingsUseCase: OpenAppSettingsUseCase(context.read()),
+            watchBlockedPeopleUseCase: WatchBlockedPeopleUseCase(
+              context.read(),
+            ),
           ),
         ),
         ChangeNotifierProvider<ProPaywall>(
@@ -330,6 +365,25 @@ class App extends StatelessWidget {
               ForgetEndedMatchUseCase(
                 DeleteConversationUseCase(context.read()),
               ),
+            ),
+            watchBlockedPeopleUseCase: WatchBlockedPeopleUseCase(
+              context.read(),
+            ),
+          ),
+        ),
+        ChangeNotifierProvider<ProSafety>(
+          create: (context) => ProSafety(
+            watchSessionUseCase: WatchSessionUseCase(context.read()),
+            blockPersonUseCase: BlockPersonUseCase(context.read()),
+            reportPersonUseCase: ReportPersonUseCase(
+              context.read(),
+              BlockPersonUseCase(context.read()),
+            ),
+            watchSafetyRejectionsUseCase: WatchSafetyRejectionsUseCase(
+              getCurrentSessionUseCase: GetCurrentSessionUseCase(
+                context.read(),
+              ),
+              repository: context.read(),
             ),
           ),
         ),
@@ -389,7 +443,9 @@ class App extends StatelessWidget {
           // sola seguendo `ProEncounters.activeMatch`.
           home: const CmpConnectionNoticeListener(
             child: CmpEncounterNoticeListener(
-              child: CmpMatchGate(child: UiHome()),
+              child: CmpSafetyNoticeListener(
+                child: CmpMatchGate(child: UiHome()),
+              ),
             ),
           ),
         ),

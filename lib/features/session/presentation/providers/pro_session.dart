@@ -12,6 +12,7 @@ import '/features/session/domain/usecases/end_session_usecase.dart';
 import '/features/session/domain/usecases/flip_selfie_usecase.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/domain/usecases/take_selfie_usecase.dart';
+import '/features/session/domain/usecases/watch_session_closed_by_server_usecase.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
 
 /// Stato di sessione: online/offline, dati della sessione corrente, e lo
@@ -26,6 +27,11 @@ import '/features/session/domain/usecases/watch_session_usecase.dart';
 /// ha senso che si spenga da solo; da offline torna al comportamento
 /// normale e le foto decodificate per lo schermo vengono tolte dalla RAM.
 ///
+/// Se il server chiude la sessione per conto suo (dopo le segnalazioni di
+/// più persone, `WatchSessionClosedByServerUseCase`) si fa End anche qui:
+/// lato server la sessione non c'è più. L'avviso lo mostra
+/// `CmpConnectionNoticeListener`.
+///
 /// L'errore è esposto come `Failure` (non come stringa): è la UI
 /// (`SessionFailureTexts`) a scegliere il testo tradotto dal suo tipo.
 class ProSession extends ChangeNotifier {
@@ -36,12 +42,16 @@ class ProSession extends ChangeNotifier {
     required CheckSelfieHasFaceUseCase checkSelfieHasFaceUseCase,
     required TakeSelfieUseCase takeSelfieUseCase,
     required FlipSelfieUseCase flipSelfieUseCase,
+    WatchSessionClosedByServerUseCase? watchSessionClosedByServerUseCase,
   }) : _startSessionUseCase = startSessionUseCase,
        _endSessionUseCase = endSessionUseCase,
        _checkSelfieHasFaceUseCase = checkSelfieHasFaceUseCase,
        _takeSelfieUseCase = takeSelfieUseCase,
        _flipSelfieUseCase = flipSelfieUseCase {
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
+    _closedByServerSubscription = watchSessionClosedByServerUseCase
+        ?.call()
+        .listen((_) => end());
   }
 
   final StartSessionUseCase _startSessionUseCase;
@@ -51,6 +61,7 @@ class ProSession extends ChangeNotifier {
   final FlipSelfieUseCase _flipSelfieUseCase;
 
   late final StreamSubscription<OnlineSession?> _sessionSubscription;
+  StreamSubscription<void>? _closedByServerSubscription;
   bool _isLoading = true;
   bool _isEnding = false;
   OnlineSession? _session;
@@ -170,6 +181,7 @@ class ProSession extends ChangeNotifier {
   @override
   void dispose() {
     _sessionSubscription.cancel();
+    _closedByServerSubscription?.cancel();
     super.dispose();
   }
 }

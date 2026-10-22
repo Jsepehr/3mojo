@@ -20,7 +20,10 @@ import 'cmp_paywall_banner.dart';
 ///
 /// Non conosce `encounters/` né `session/`: con chi c'è già una richiesta,
 /// cosa fa un tap e come si chiude la sessione arrivano da fuori (`UiHome`)
-/// — [requestStateOf], [onRequest], [onEndSession], [onRetakeSelfie]. Una
+/// — [requestStateOf], [onRequest], [onEndSession], [onRetakeSelfie]; e
+/// così anche le azioni su una persona ([actionsOf]: Segnala/Blocca),
+/// offerte solo a chi è libero dal paywall (una foto che non vedi non si
+/// segnala; chi ti scrive lo blocchi dalla sua richiesta). Una
 /// tile già richiesta ha la foto attenuata, un chip che dice perché, e non
 /// è più cliccabile.
 class CmpPaywalledNearbyList extends StatelessWidget {
@@ -30,6 +33,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
     required this.onRequest,
     this.onEndSession,
     this.onRetakeSelfie,
+    this.actionsOf,
   });
 
   final CmpNearbyRequestState Function(String personId) requestStateOf;
@@ -40,6 +44,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
   final void Function(NearbyPerson person) onRequest;
   final VoidCallback? onEndSession;
   final VoidCallback? onRetakeSelfie;
+  final Widget Function(NearbyPerson person)? actionsOf;
 
   static const _getLockedNearbyPeopleUseCase = GetLockedNearbyPeopleUseCase();
 
@@ -92,6 +97,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
                 person: person,
                 isLocked: entry.isLocked,
                 requestState: requestState,
+                actions: entry.isLocked ? null : actionsOf?.call(person),
                 onTap: entry.isLocked
                     ? () => showPaywallConfirmDialog(context)
                     : requestState != CmpNearbyRequestState.none

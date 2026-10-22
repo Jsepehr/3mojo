@@ -16,6 +16,7 @@ import '/features/chat/presentation/widgets/cmp_chat_message_bubble.dart';
 import '/features/encounters/domain/entities/encounter_proposal.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
+import '/features/safety/presentation/widgets/cmp_person_safety_menu_button.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/widgets/cmp_connection_banner.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -36,6 +37,10 @@ const _emojiPickerHeight = 256.0;
 /// un'intestazione "È un incontro" con le due foto, la proposta della
 /// richiesta ("🥤 Bere qualcosa insieme") e un suggerimento per rompere il
 /// ghiaccio adatto a quella proposta.
+///
+/// Nell'AppBar, accanto a "Termina", il menu "⋯" con Segnala e Blocca
+/// (`safety/`): bloccare chiude il match da sé (la pagina la chiude
+/// `CmpMatchGate`), senza la conferma di "Termina" — ha già la sua.
 class UiActiveMatch extends StatefulWidget {
   const UiActiveMatch({super.key, required this.request});
 
@@ -205,6 +210,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
             ],
           ),
           actions: [
+            CmpPersonSafetyMenuButton(personId: widget.request.otherPersonId),
             CmpEndButton(
               label: l10n.end_match,
               isBusy: _isLeaving,

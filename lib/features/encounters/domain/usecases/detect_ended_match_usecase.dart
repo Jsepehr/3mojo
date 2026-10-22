@@ -16,7 +16,11 @@ import 'forget_ended_match_usecase.dart';
 ///   persona è uscita" (la chat la cancella già `EndMatchUseCase`);
 /// - [sessionRestarted]: il server ha dimenticato la sessione, quindi il
 ///   match (se c'era) non esiste più comunque
-///   ([MatchEndReason.sessionRestarted]), qualunque cosa dica [next].
+///   ([MatchEndReason.sessionRestarted]), qualunque cosa dica [next];
+/// - l'altra persona è tra i bloccati di questa sessione
+///   ([blockedPersonIds]): il match è finito perché l'hai bloccata tu
+///   ([MatchEndReason.blocked]) — niente "l'altra persona è uscita", ma la
+///   chat se ne va lo stesso.
 ///
 /// `null` = nessun match finito.
 class DetectEndedMatchUseCase {
@@ -34,6 +38,7 @@ class DetectEndedMatchUseCase {
     required Iterable<EncounterRequest> next,
     Set<String> locallyEndedIds = const {},
     Set<String> endingIds = const {},
+    Set<String> blockedPersonIds = const {},
     bool sessionRestarted = false,
   }) async {
     final previousMatch = _findActiveMatchUseCase(
@@ -45,6 +50,8 @@ class DetectEndedMatchUseCase {
     final MatchEndReason reason;
     if (sessionRestarted) {
       reason = MatchEndReason.sessionRestarted;
+    } else if (blockedPersonIds.contains(previousMatch.otherPersonId)) {
+      reason = MatchEndReason.blocked;
     } else {
       final nextMatch = _findActiveMatchUseCase(
         next,

@@ -25,6 +25,7 @@ const testProfile = Profile(
   lookingFor: Profile.searchableGenders,
   isAdultConfirmed: true,
   sensitiveDataConsent: true,
+  acceptedTermsVersion: Profile.currentTermsVersion,
 );
 
 OnlineSession testSession(String id) => OnlineSession(
@@ -93,12 +94,16 @@ class FakeSessionRepository implements SessionRepository {
 class FakeConnectionRepository implements ConnectionRepository {
   final status = StreamController<ConnectionStatus>.broadcast();
   final handshakes = StreamController<ServerHandshake>.broadcast();
+  final closures = StreamController<void>.broadcast();
 
   @override
   Stream<ConnectionStatus> watchStatus() => status.stream;
 
   @override
   Stream<ServerHandshake> watchHandshakes() => handshakes.stream;
+
+  @override
+  Stream<void> watchSessionClosures() => closures.stream;
 
   int checkCalls = 0;
 

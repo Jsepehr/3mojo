@@ -12,6 +12,10 @@ abstract class ConnectionRepository {
   /// Ogni benvenuto del server (primo collegamento e riconnessioni).
   Stream<ServerHandshake> watchHandshakes();
 
+  /// Un evento quando il server chiude la sessione per conto suo (dopo le
+  /// segnalazioni di più persone): lato server la sessione non c'è più.
+  Stream<void> watchSessionClosures();
+
   /// Verifica che il collegamento sia davvero vivo e, se non lo è (o se si
   /// stava aspettando il prossimo tentativo), riconnette subito. Non
   /// fallisce: l'esito si vede da [watchStatus].

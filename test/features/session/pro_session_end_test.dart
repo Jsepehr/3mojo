@@ -20,6 +20,7 @@ import 'package:threemojo_app/features/session/domain/usecases/end_session_useca
 import 'package:threemojo_app/features/session/domain/usecases/flip_selfie_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/start_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/take_selfie_usecase.dart';
+import 'package:threemojo_app/features/session/domain/usecases/watch_session_closed_by_server_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
 import 'package:threemojo_app/features/session/presentation/providers/pro_session.dart';
 
@@ -63,8 +64,9 @@ class _StuckNearbyRepository implements NearbyRepository {
 
 ProSession _buildProSession(
   FakeSessionRepository sessionRepository,
-  NearbyRepository nearbyRepository,
-) {
+  NearbyRepository nearbyRepository, {
+  FakeConnectionRepository? connection,
+}) {
   final faceDetectionRepository = FakeFaceDetectionRepository();
   final selfieRepository = _UnusedSelfieRepository();
   return ProSession(
@@ -87,6 +89,9 @@ ProSession _buildProSession(
     ),
     takeSelfieUseCase: TakeSelfieUseCase(selfieRepository),
     flipSelfieUseCase: FlipSelfieUseCase(selfieRepository),
+    watchSessionClosedByServerUseCase: connection == null
+        ? null
+        : WatchSessionClosedByServerUseCase(connection),
   );
 }
 
@@ -140,6 +145,28 @@ void main() {
       async.elapse(const Duration(seconds: 4));
 
       expect(sessionRepository.endSessionCalls, 1);
+    });
+  });
+
+  test('a session closed by the server after reports ends here too', () {
+    fakeAsync((async) {
+      final sessionRepository = FakeSessionRepository(
+        current: testSession('a'),
+      );
+      final connection = FakeConnectionRepository();
+      final proSession = _buildProSession(
+        sessionRepository,
+        _StuckNearbyRepository(),
+        connection: connection,
+      );
+      async.flushMicrotasks();
+      expect(proSession.isOnline, isTrue);
+
+      connection.closures.add(null);
+      async.elapse(const Duration(seconds: 4));
+
+      expect(sessionRepository.endSessionCalls, 1);
+      expect(proSession.isOnline, isFalse);
     });
   });
 }

@@ -5,6 +5,8 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
+import '/features/safety/domain/usecases/hide_blocked_people_usecase.dart';
+import '/features/safety/domain/usecases/watch_blocked_people_usecase.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
 import '../../domain/entities/background_location_notice.dart';
@@ -30,6 +32,11 @@ import '../../domain/usecases/watch_nearby_people_usecase.dart';
 /// riprova da soli dopo una pausa, così tornando dalle impostazioni la
 /// lista riparte senza toccare nulla.
 ///
+/// Chi hai bloccato o segnalato in questa sessione sparisce **subito**
+/// ([people] lo nasconde con `HideBlockedPeopleUseCase`, dai bloccati di
+/// `WatchBlockedPeopleUseCase`), senza aspettare la lista successiva del
+/// server, che comunque non lo manda più.
+///
 /// Chi hai già richiesto non sta più qui: lo decide `ProEncounters` dallo
 /// snapshot delle richieste (la fonte di verità è il server).
 ///
@@ -53,10 +60,19 @@ class ProNearby extends ChangeNotifier {
     required WatchNearbyPeopleUseCase watchNearbyPeopleUseCase,
     required OpenLocationSettingsUseCase openLocationSettingsUseCase,
     required OpenAppSettingsUseCase openAppSettingsUseCase,
+    WatchBlockedPeopleUseCase? watchBlockedPeopleUseCase,
+    HideBlockedPeopleUseCase hideBlockedPeopleUseCase =
+        const HideBlockedPeopleUseCase(),
   }) : _watchNearbyPeopleUseCase = watchNearbyPeopleUseCase,
        _openLocationSettingsUseCase = openLocationSettingsUseCase,
-       _openAppSettingsUseCase = openAppSettingsUseCase {
+       _openAppSettingsUseCase = openAppSettingsUseCase,
+       _hideBlockedPeopleUseCase = hideBlockedPeopleUseCase {
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
+    _blockedSubscription = watchBlockedPeopleUseCase?.call().listen((blocked) {
+      _blockedPersonIds = blocked;
+      _refreshVisiblePeople();
+      notifyListeners();
+    });
   }
 
   static const Duration _locationRetryDelay = Duration(seconds: 3);
@@ -69,6 +85,12 @@ class ProNearby extends ChangeNotifier {
   final WatchNearbyPeopleUseCase _watchNearbyPeopleUseCase;
   final OpenLocationSettingsUseCase _openLocationSettingsUseCase;
   final OpenAppSettingsUseCase _openAppSettingsUseCase;
+  final HideBlockedPeopleUseCase _hideBlockedPeopleUseCase;
+  StreamSubscription<Set<String>>? _blockedSubscription;
+  Set<String> _blockedPersonIds = const {};
+
+  /// [_people] senza i bloccati di questa sessione: è ciò che si mostra.
+  List<NearbyPerson> _visiblePeople = const [];
 
   late final StreamSubscription<OnlineSession?> _sessionSubscription;
   StreamSubscription<void>? _subscription;
@@ -85,7 +107,16 @@ class ProNearby extends ChangeNotifier {
   /// La sessione è online ma l'ascolto aspetta i testi della notifica.
   bool _waitingForNotice = false;
 
-  List<NearbyPerson> get people => _people;
+  List<NearbyPerson> get people => _visiblePeople;
+
+  void _refreshVisiblePeople() {
+    _visiblePeople = _hideBlockedPeopleUseCase(
+      _people,
+      blockedPersonIds: _blockedPersonIds,
+      personIdOf: (person) => person.id,
+    );
+  }
+
   bool get isLoading => _isLoading;
 
   /// Perché la lista non si può mostrare ora, o `null` se va tutto bene.
@@ -143,6 +174,7 @@ class ProNearby extends ChangeNotifier {
     _locationRetryTimer = null;
     _waitingForNotice = false;
     _people = [];
+    _visiblePeople = const [];
     _hasList = false;
     _failure = null;
     _isLoading = true;
@@ -191,6 +223,7 @@ class ProNearby extends ChangeNotifier {
         _isLoading = false;
       case Right(:final value):
         _people = value;
+        _refreshVisiblePeople();
         _hasList = true;
         _failure = null;
         _isLoading = false;
@@ -212,6 +245,7 @@ class ProNearby extends ChangeNotifier {
   @override
   void dispose() {
     _sessionSubscription.cancel();
+    _blockedSubscription?.cancel();
     _locationRetryTimer?.cancel();
     _retryFeedbackTimer?.cancel();
     _subscription?.cancel();

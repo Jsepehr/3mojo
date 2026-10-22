@@ -144,7 +144,7 @@ class SocketSession {
       return;
     }
     if (type == 'hello') return;
-    _handler.handle(sessionId, decoded);
+    _handler.handle(sessionId, decoded, clientIp: _clientIp);
   }
 
   void _handleHello(Object? type, Map<String, dynamic> message) {
@@ -167,7 +167,7 @@ class SocketSession {
       case HelloAccepted(:final publicId, :final resumed):
         _helloTimer?.cancel();
         _sessionId = publicId;
-        _lifecycle.attach(publicId, _outgoing, resumed: resumed);
+        _lifecycle.attach(publicId, _outgoing, resumed: resumed, ip: _clientIp);
     }
   }
 

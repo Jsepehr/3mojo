@@ -10,6 +10,14 @@
       informazioni sensibili (genere + chi vuoi incontrare = possibile
       orientamento, art. 9 GDPR), messaggi della chat (inoltrati, non
       conservati dal server).
+  - ECCEZIONE alla "nessuna conservazione" (blocca/segnala): se una
+    sessione viene segnalata, il server conserva il selfie di quella
+    persona in un record di moderazione cifrato (con motivi, conteggio e
+    ora al minuto; niente posizione, chat, IP o identificativi) per al più
+    30 giorni, per la revisione umana. DA RIVEDERE nelle dichiarazioni
+    (qui e in App Store Connect / Data safety di Play) nella fase
+    dedicata: la voce "PhotosorVideos" oggi dichiara solo
+    AppFunctionality e non dice della conservazione per la moderazione.
   - API "required reason": UserDefaults (CA92.1) — shared_preferences,
     usato solo per dati dell'app stessa, letti e scritti solo da lei: le
     impostazioni (lingua, tema, modalità finta in debug), il segno di

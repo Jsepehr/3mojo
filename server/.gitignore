@@ -14,3 +14,5 @@ build/
 
 # Test related files
 coverage/
+# Record di moderazione cifrati (MODERATION_DIR di default): mai nel repository.
+moderation_records/

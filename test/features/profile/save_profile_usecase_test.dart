@@ -13,6 +13,7 @@ Profile _profile({
   bool sensitiveDataConsent = true,
   List<String> languages = const [],
   bool showGender = false,
+  int acceptedTermsVersion = Profile.currentTermsVersion,
 }) => Profile(
   gender: gender,
   lookingFor: lookingFor,
@@ -20,6 +21,7 @@ Profile _profile({
   sensitiveDataConsent: sensitiveDataConsent,
   languages: languages,
   showGender: showGender,
+  acceptedTermsVersion: acceptedTermsVersion,
 );
 
 void main() {
@@ -36,6 +38,20 @@ void main() {
     expect(repository.saved, isNull, reason: 'nothing must be stored');
     return result.getLeft().toNullable();
   }
+
+  test('rejects a profile that has not accepted the current terms of '
+      'use, and keeps the accepted version when saving', () async {
+    expect(
+      await rejection(_profile(acceptedTermsVersion: 0)),
+      isA<TermsNotAcceptedFailure>(),
+    );
+
+    final result = await saveProfile(_profile());
+
+    expect(result.isRight(), isTrue);
+    expect(repository.saved?.acceptedTermsVersion, Profile.currentTermsVersion);
+    expect(repository.saved?.hasAcceptedCurrentTerms, isTrue);
+  });
 
   test('rejects a profile without the 18+ confirmation', () async {
     expect(

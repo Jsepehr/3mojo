@@ -14,6 +14,7 @@ import 'package:threemojo_app/features/encounters/domain/usecases/send_encounter
 import 'package:threemojo_app/features/encounters/domain/usecases/watch_encounter_rejections_usecase.dart';
 import 'package:threemojo_app/features/encounters/domain/usecases/watch_encounter_requests_usecase.dart';
 import 'package:threemojo_app/features/encounters/presentation/providers/pro_encounters.dart';
+import 'package:threemojo_app/features/safety/domain/usecases/watch_blocked_people_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/get_current_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_server_session_restarts_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
@@ -25,6 +26,7 @@ ProEncounters buildProEncounters({
   required FakeEncounterRepository encounters,
   required FakeChatRepository chat,
   FakeConnectionRepository? connection,
+  WatchBlockedPeopleUseCase? watchBlockedPeopleUseCase,
   DateTime Function()? now,
 }) => ProEncounters(
   watchSessionUseCase: WatchSessionUseCase(sessions),
@@ -47,6 +49,7 @@ ProEncounters buildProEncounters({
   detectEndedMatchUseCase: DetectEndedMatchUseCase(
     ForgetEndedMatchUseCase(DeleteConversationUseCase(chat)),
   ),
+  watchBlockedPeopleUseCase: watchBlockedPeopleUseCase,
   now: now,
 );
 

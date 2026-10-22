@@ -15,7 +15,9 @@ import 'dart:math';
 /// sessioni finisce. La mappa inversa traduce gli id che il client rimanda
 /// (richieste, chat): un id ricevuto da un altro client non si risolve.
 ///
-/// Solo in memoria, come il resto del server.
+/// Solo in memoria, come tutto lo stato di sessione del server (l'unico dato
+/// su disco sono i record di moderazione, `ModerationRecordStore`, che non
+/// contengono pseudonimi).
 class Pseudonyms {
   Pseudonyms({Random? random}) : _random = random ?? Random.secure();
 
@@ -58,6 +60,17 @@ class Pseudonyms {
       final pseudonym = entry.value.remove(sessionId);
       if (pseudonym != null) _inverse[entry.key]?.remove(pseudonym);
     }
+  }
+
+  /// Dimentica solo lo pseudonimo con cui [viewerId] vede [targetId]: da
+  /// lì in poi uno pseudonimo che [viewerId] rimanda per [targetId] non si
+  /// risolve più, come se [targetId] fosse uscito. Usato quando [targetId]
+  /// blocca [viewerId] (vedi `RealtimeMessageHandler`): per chi è bloccato
+  /// ogni azione verso chi l'ha bloccato fallisce come verso chi ha
+  /// premuto End. Se mai servisse di nuovo, ne nascerebbe uno nuovo.
+  void forgetPair({required String viewerId, required String targetId}) {
+    final pseudonym = _forward[viewerId]?.remove(targetId);
+    if (pseudonym != null) _inverse[viewerId]?.remove(pseudonym);
   }
 
   String _newId() {

@@ -230,6 +230,17 @@ void main() {
       expect(result?.reason, MatchEndReason.sessionRestarted);
       expect(chat.deleted, ['p1']);
     });
+    test('a match with someone you blocked ends because of you: reason '
+        '"blocked", never "ended by the partner", and the chat goes', () async {
+      final result = await useCase(
+        previous: [match],
+        next: [match],
+        blockedPersonIds: {'p1'},
+      );
+
+      expect(result?.reason, MatchEndReason.blocked);
+      expect(chat.deleted, ['p1']);
+    });
   });
 
   group('FindLostEncounterRequestsUseCase', () {

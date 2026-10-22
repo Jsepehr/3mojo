@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '/core/widgets/cmp_status_message.dart';
+import '/features/safety/presentation/widgets/cmp_person_safety_menu_button.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
 import '../providers/pro_encounters.dart';
@@ -10,7 +11,8 @@ import '../widgets/cmp_outgoing_request_tile.dart';
 
 /// Pagina "Richieste" (Like): sezione richieste in arrivo da confermare,
 /// sezione richieste mandate con il loro stato. Senza nessuna delle due,
-/// un `CmpStatusMessage` neutro spiega da dove arrivano.
+/// un `CmpStatusMessage` neutro spiega da dove arrivano. Ogni richiesta ha
+/// il menu "⋯" con Segnala e Blocca (`safety/`).
 class UiEncounters extends StatelessWidget {
   const UiEncounters({super.key});
 
@@ -52,6 +54,9 @@ class UiEncounters extends StatelessWidget {
                   request.id,
                   false,
                 ),
+                actions: CmpPersonSafetyMenuButton(
+                  personId: request.otherPersonId,
+                ),
               ),
           ],
           _SectionHeader(title: l10n.your_requests),
@@ -68,7 +73,12 @@ class UiEncounters extends StatelessWidget {
             )
           else
             for (final request in outgoing)
-              CmpOutgoingRequestTile(request: request),
+              CmpOutgoingRequestTile(
+                request: request,
+                trailing: CmpPersonSafetyMenuButton(
+                  personId: request.otherPersonId,
+                ),
+              ),
         ],
       ),
     );

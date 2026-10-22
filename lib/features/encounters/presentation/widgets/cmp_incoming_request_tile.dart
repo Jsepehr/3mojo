@@ -14,6 +14,9 @@ import '../encounter_proposal_labels.dart';
 /// mostra dal profilo, e i bottoni "No, grazie"/"Sì" (con un tic di
 /// vibrazione a ogni risposta).
 ///
+/// [actions] (facoltativo, nell'angolo in alto) è il menu "⋯" con Segnala
+/// e Blocca, composto da chi usa la scheda (`UiEncounters`).
+///
 /// Il "Sì" ha una spunta neutra, non il cuore: si accetta una proposta
 /// (due chiacchiere, bere qualcosa…), non per forza un appuntamento.
 class CmpIncomingRequestTile extends StatelessWidget {
@@ -22,11 +25,13 @@ class CmpIncomingRequestTile extends StatelessWidget {
     required this.request,
     required this.onAccept,
     required this.onDecline,
+    this.actions,
   });
 
   final EncounterRequest request;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final Widget? actions;
 
   void _answer(VoidCallback answer) {
     HapticFeedback.selectionClick();
@@ -49,66 +54,76 @@ class CmpIncomingRequestTile extends StatelessWidget {
         ? null
         : intent;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            CmpPhoto(image: photo, size: 96),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ExcludeSemantics(
-                  child: Text(
-                    EncounterProposalLabels.emoji(proposal),
-                    style: const TextStyle(fontSize: 22),
-                  ),
+    final content = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          CmpPhoto(image: photo, size: 96),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ExcludeSemantics(
+                child: Text(
+                  EncounterProposalLabels.emoji(proposal),
+                  style: const TextStyle(fontSize: 22),
                 ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    EncounterProposalLabels.received(l10n, proposal),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  EncounterProposalLabels.received(l10n, proposal),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium,
                 ),
-              ],
-            ),
-            // Ciò che la persona mostra dal proprio profilo, per decidere
-            // sapendo cosa cerca — mai chi cerca.
-            if (CmpProfileDetails.hasAny(
+              ),
+            ],
+          ),
+          // Ciò che la persona mostra dal proprio profilo, per decidere
+          // sapendo cosa cerca — mai chi cerca.
+          if (CmpProfileDetails.hasAny(
+            intent: shownIntent,
+            languages: request.otherLanguages,
+            visibleGender: request.otherVisibleGender,
+          )) ...[
+            const SizedBox(height: 8),
+            CmpProfileDetails(
               intent: shownIntent,
               languages: request.otherLanguages,
               visibleGender: request.otherVisibleGender,
-            )) ...[
-              const SizedBox(height: 8),
-              CmpProfileDetails(
-                intent: shownIntent,
-                languages: request.otherLanguages,
-                visibleGender: request.otherVisibleGender,
-                alignment: WrapAlignment.center,
-              ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                OutlinedButton(
-                  onPressed: () => _answer(onDecline),
-                  child: Text(l10n.no_thanks),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _answer(onAccept),
-                  icon: const Icon(Icons.check),
-                  label: Text(l10n.yes),
-                ),
-              ],
+              alignment: WrapAlignment.center,
             ),
           ],
-        ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              OutlinedButton(
+                onPressed: () => _answer(onDecline),
+                child: Text(l10n.no_thanks),
+              ),
+              FilledButton.icon(
+                onPressed: () => _answer(onAccept),
+                icon: const Icon(Icons.check),
+                label: Text(l10n.yes),
+              ),
+            ],
+          ),
+        ],
       ),
+    );
+
+    final menu = actions;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: menu == null
+          ? content
+          : Stack(
+              children: [
+                content,
+                PositionedDirectional(top: 4, end: 4, child: menu),
+              ],
+            ),
     );
   }
 }

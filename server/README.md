@@ -5,9 +5,12 @@
 [![Powered by Dart Frog](https://img.shields.io/endpoint?url=https://tinyurl.com/dartfrog-badge)](https://dart-frog.dev)
 
 Backend [Dart Frog](https://dart-frog.dev) dell'app **Raen** (`threemojo_app`,
-nella cartella superiore). Tiene tutto **solo in RAM** (sessioni, richieste
-d'incontro, sblocchi, hotspot): riavviarlo cancella tutto. Architettura e
-regole sono spiegate in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md) (§4).
+nella cartella superiore). Tiene **solo in RAM** tutto lo stato di sessione
+(sessioni, richieste d'incontro, chat inoltrate, blocchi, segnalazioni,
+sblocchi, hotspot): riavviarlo lo cancella. **Unica eccezione**: i record di
+moderazione (vedi [Segnalazioni e moderazione](#segnalazioni-e-moderazione)),
+cifrati su disco e cancellati dopo 30 giorni. Architettura e regole sono
+spiegate in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md) (§4).
 
 [dart_frog_lint_badge]: https://img.shields.io/badge/style-dart_frog_lint-1DF9D2.svg
 [dart_frog_lint_link]: https://pub.dev/packages/dart_frog_lint
@@ -27,7 +30,8 @@ script/CI/agenti no: legge da stdin e va in crash con `StdinException`.
 
 Route: `GET /` (controllo di salute), `GET /ws` (WebSocket), `POST
 /paywall/purchase`, `POST /paywall/status`, `GET /debug/sessions` (spento di
-default).
+default), `GET /admin/reports`, `GET /admin/reports/<id>/selfie`, `DELETE
+/admin/reports/<id>` (spenti di default, vedi sotto).
 
 ## Variabili d'ambiente
 
@@ -37,6 +41,13 @@ default).
 | `DEBUG_ENDPOINTS_TOKEN` | Accende `GET /debug/sessions`, che risponde solo con l'header `X-Debug-Token` uguale a questo valore. Senza, l'endpoint risponde 404. Da non impostare in produzione. Non espone posizioni né distanze tra persone. |
 | `MAX_NEW_SESSIONS_PER_IP` | Quanti nuovi Start (hello con un segreto nuovo) ammette lo stesso IP ogni 10 minuti (`NewSessionRateLimiter`). Default 20; un valore non intero o ≤ 0 è ignorato. Da alzare solo per le prove in locale (es. `200` col simulatore, che da solo apre 20 sessioni). |
 | `TRUSTED_PROXY` | IP dei reverse proxy fidati, separati da virgola (es. `127.0.0.1,10.0.0.5`). Solo per le connessioni che arrivano da uno di questi si legge `X-Forwarded-For` per i limiti per IP (nuovi Start su `/ws`, `POST /paywall/purchase`). Vuoto = l'header è ignorato (chiunque potrebbe falsificarlo). Dietro un proxy **va impostato**, altrimenti tutti i client sembrano lo stesso IP. |
+| `MODERATION_KEY` | Chiave AES-256-GCM dei record di moderazione: 32 byte in base64, es. `openssl rand -base64 32`. **Senza (o non valida) i record non vengono salvati** e il server lo scrive nel log all'avvio; blocchi, soglie e chiusura automatica funzionano lo stesso. Tenerla fuori dal repository e dai backup dei record: chi ha i file senza la chiave non legge nulla. Cambiarla rende illeggibili i record vecchi (spariscono comunque entro 30 giorni dalla data del file). |
+| `MODERATION_DIR` | Cartella dei record (un file `<id>.rec` per record). Default `moderation_records` nella cartella di lavoro. Creata con permessi `700` dove possibile; va su un disco non condiviso. |
+| `ADMIN_TOKEN` | Accende gli endpoint `/admin/reports` (header `Authorization: Bearer <token>`, confronto a tempo costante). Almeno 32 caratteri (es. `openssl rand -hex 32`), altrimenti restano spenti (404) e il server lo scrive nel log. |
+| `ADMIN_ALLOW_INSECURE_HTTP` | `true` = gli endpoint admin rispondono anche in chiaro, **solo** a connessioni da loopback (sviluppo locale). In ogni altro caso servono TLS diretto (`TLS_*`) o un proxy fidato (`TRUSTED_PROXY`) che mandi `X-Forwarded-Proto: https`, altrimenti 403. |
+| `MODERATION_AUTO_CLOSE_REPORTS` | Da quante sessioni diverse deve essere segnalata una sessione per essere chiusa da sola. Default 3. |
+| `MODERATION_AUTO_CLOSE_MIN_IPS` | Da quanti IP diversi devono arrivare quelle segnalazioni. Default 2 (se nessun segnalatore ha un IP noto, la condizione è ignorata). |
+| `MODERATION_COOLDOWN_MINUTES` | Dopo una chiusura automatica, per quanti minuti gli IP della sessione chiusa non possono fare nuovi Start (risposta `rateLimited`). Default 30, `0` = spento; un valore non intero è ignorato. |
 
 Senza `TLS_*` il server resta in chiaro: va bene in sviluppo locale, in
 produzione **solo** dietro un reverse proxy che termina TLS. L'app in release
@@ -75,6 +86,55 @@ lista è ordinata per fasce di 25 m, senza distanze (vedi `SessionStore`).
 controparte solo la prima volta per ogni richiesta su ogni socket; gli
 snapshot successivi lo omettono e il client riusa quello già ricevuto.
 
+## Segnalazioni e moderazione
+
+Dall'app si può **bloccare** e **segnalare** (che implica bloccare) chi si
+vede in "Vicinanze", nelle richieste o nel match (`block`/`report` su `/ws`,
+protocollo in `routes/ws.dart`).
+
+- **Blocco** (`BlockStore`): nei due sensi, per tutta la vita della sessione
+  di chi blocca (anche attraverso grazia e riconnessioni), sugli id interni.
+  Chi è bloccato vede esattamente ciò che vedrebbe se l'altro avesse premuto
+  End. Non sopravvive a End/nuovo Start di nessuno dei due: non esistono id
+  permanenti.
+- **Chiusura automatica** (`ModerationStore`, in RAM): segnalazioni da almeno
+  3 sessioni diverse e 2 IP diversi → la sessione segnalata riceve
+  `sessionClosed`, viene chiusa (`SessionLifecycle.closeForModeration`) e i
+  suoi IP non possono fare nuovi Start per 30 minuti. **IP condivisi**: il
+  Wi-Fi di un locale o il CGNAT di un operatore mobile mettono molte persone
+  dietro lo stesso IP — durante il cooldown anche loro non possono fare uno
+  Start nuovo (le sessioni già aperte non sono toccate); per questo il
+  cooldown è breve e regolabile (`MODERATION_COOLDOWN_MINUTES`, `0` lo
+  spegne). Dietro un reverse proxy senza `TRUSTED_PROXY` tutti sembrano lo
+  stesso IP: la condizione dei 2 IP non scatta mai e il cooldown colpirebbe
+  il proxy.
+- **Record di moderazione** (`ModerationRecordStore`): l'unico dato che il
+  server conserva oltre le sessioni. Uno per sessione segnalata, aggiornato
+  a ogni segnalazione: id casuale, selfie della persona segnalata (già senza
+  EXIF), motivi con conteggio, numero di segnalazioni, se è scattata la
+  chiusura automatica, ora di creazione e aggiornamento arrotondate al
+  minuto. **Niente** posizione, chat, id o pseudonimi, profilo, IP (nemmeno
+  in hash). Cifrato AES-256-GCM (`MODERATION_KEY`), cancellato 30 giorni dopo
+  la creazione (all'avvio e ogni ora) o a mano dopo la revisione.
+
+### Endpoint admin
+
+Solo con `ADMIN_TOKEN`, solo su HTTPS, 120 richieste per IP ogni 10 minuti
+(`AdminReportsApi`). `Authorization` non è tra gli header CORS ammessi: non
+si chiamano da un browser su un'altra origine.
+
+```
+curl -H "Authorization: Bearer $ADMIN_TOKEN" https://host/admin/reports
+curl -H "Authorization: Bearer $ADMIN_TOKEN" -o selfie.jpg https://host/admin/reports/<id>/selfie
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://host/admin/reports/<id>
+```
+
+La lista risponde `{"recordsEnabled", "retentionDays", "reports": [{"id",
+"createdAt", "updatedAt", "expiresAt", "reasons", "reportCount",
+"autoClosed", "hasSelfie"}]}`; `DELETE` risponde 204 (segnalazione risolta,
+record cancellato) o 404. Codici: 404 spenti o id inesistente/malformato,
+429 troppe richieste, 403 senza TLS, 401 token mancante o sbagliato.
+
 ## Limiti
 
 | Cosa | Limite | Dove |
@@ -88,6 +148,9 @@ snapshot successivi lo omettono e il client riusa quello già ricevuto.
 | Richieste d'incontro pendenti | 5 in uscita, 20 in entrata per sessione | `EncounterStore` |
 | Spostamenti | oltre 50 m/s (+250 m di tolleranza GPS) la presenza è scartata | `SessionStore.upsertPosition` |
 | Posizioni | al più una utile ogni 10 s per sessione; quelle in più sono ignorate in silenzio (`tooSoon`, nessun rifiuto, socket aperto) | `SessionStore.minPositionInterval` |
+| Segnalazioni | 5 per sessione di chi segnala (le successive → `rejected` `tooManyReports`, il blocco vale comunque); un doppione verso la stessa persona non conta | `ModerationStore.maxReportsPerSession` |
+| Chiusura automatica | 3 sessioni diverse da 2 IP diversi (configurabile); poi cooldown di 30 minuti sui nuovi Start da quegli IP | `ModerationStore`, `SessionLifecycle.hello` |
+| Endpoint admin | 120 richieste per IP ogni 10 minuti | `AdminReportsApi` |
 | Liste `nearby` | al più una diversa ogni 5 s per osservatore (le modifiche nel frattempo partono alla fine della finestra), oltre al throttle globale di 500 ms | `ConnectionHub.nearbyPushMinInterval` |
 
 ## Simulatore di dispositivi

@@ -59,6 +59,24 @@ void main() {
       expect(sessions.current, isNull);
     });
 
+    test('a profile that has not accepted the current terms of use: '
+        'TermsNotAcceptedFailure, no face check, no session', () async {
+      profiles.saved = const Profile(
+        gender: Gender.male,
+        lookingFor: Profile.searchableGenders,
+        isAdultConfirmed: true,
+        sensitiveDataConsent: true,
+      );
+
+      final result = await startSession(
+        StartSessionParams(selfieBytes: _selfie),
+      );
+
+      expect(result.getLeft().toNullable(), isA<TermsNotAcceptedFailure>());
+      expect(faces.checked, isEmpty);
+      expect(sessions.current, isNull);
+    });
+
     test('an unreadable profile keeps its own failure', () async {
       profiles.getResult = const Left(CacheFailure('Profile unreadable'));
 

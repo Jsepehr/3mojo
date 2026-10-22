@@ -697,5 +697,210 @@
   "proposal_send_hint": "Send the request",
   "@proposal_send_hint": {
     "description": "Screen reader hint on each proposal in the sheet: tapping it sends the encounter request right away"
+  },
+  "safety_menu_tooltip": "Report or block",
+  "@safety_menu_tooltip": {
+    "description": "Tooltip and screen reader label of the \"more\" (⋯) button on a person (Nearby tile, request, match app bar) that opens Report / Block"
+  },
+  "report": "Report",
+  "@report": {
+    "description": "Menu item that opens the report dialog for a person"
+  },
+  "block": "Block",
+  "@block": {
+    "description": "Menu item and confirm button: block a person for the rest of the session"
+  },
+  "block_dialog_title": "Block this person?",
+  "@block_dialog_title": {
+    "description": "Title of the dialog confirming a block. Neutral about the other person's gender"
+  },
+  "block_dialog_body": "You won't see each other for the rest of this session: this person disappears from Nearby, requests between you are cancelled and your match, if any, ends. They won't be notified. Raen has no accounts: if they start a new session, you might see them again.",
+  "@block_dialog_body": {
+    "description": "Body of the block confirmation: what happens, that the other person is not told, and honestly how long it lasts (only this session: the app has no accounts). Neutral about gender"
+  },
+  "person_blocked": "Blocked. You won't see each other for the rest of this session.",
+  "@person_blocked": {
+    "description": "Snackbar after a block was sent"
+  },
+  "report_dialog_title": "Report this person",
+  "@report_dialog_title": {
+    "description": "Title of the report dialog. Neutral about gender"
+  },
+  "report_dialog_body": "Choose a reason. Reporting also blocks this person for the rest of this session. Reports from several people can end their session and create a moderation record that is kept for 30 days.",
+  "@report_dialog_body": {
+    "description": "Text above the list of report reasons: reporting also blocks, and what reports can lead to (session closed, moderation record kept 30 days)"
+  },
+  "report_send": "Report and block",
+  "@report_send": {
+    "description": "Confirm button of the report dialog: sends the report (which also blocks)"
+  },
+  "report_reason_fake_photo": "Fake photo or someone else's photo",
+  "@report_reason_fake_photo": {
+    "description": "Report reason (closed list)"
+  },
+  "report_reason_inappropriate_photo": "Inappropriate photo",
+  "@report_reason_inappropriate_photo": {
+    "description": "Report reason (closed list)"
+  },
+  "report_reason_harassment": "Harassment or offensive messages",
+  "@report_reason_harassment": {
+    "description": "Report reason (closed list)"
+  },
+  "report_reason_underage": "Seems to be under 18",
+  "@report_reason_underage": {
+    "description": "Report reason (closed list): the person looks younger than 18"
+  },
+  "report_reason_spam": "Spam or scam",
+  "@report_reason_spam": {
+    "description": "Report reason (closed list)"
+  },
+  "report_reason_other": "Something else",
+  "@report_reason_other": {
+    "description": "Report reason (closed list): anything else (no free text)"
+  },
+  "person_reported": "Thanks for reporting. This person is blocked for the rest of this session.",
+  "@person_reported": {
+    "description": "Snackbar after a report was sent (it also blocks)"
+  },
+  "too_many_reports": "You've already sent {count} reports in this session: this one wasn't sent, but the person is blocked.",
+  "@too_many_reports": {
+    "description": "Snackbar: the per-session report limit is reached; the report was not sent but the person was blocked anyway",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "block_rejected_person_gone": "This person had already left: there was nothing to block.",
+  "@block_rejected_person_gone": {
+    "description": "Snackbar: the server could not apply a block because the person had already left (their session ended)"
+  },
+  "report_rejected_person_gone": "This person had already left: the report wasn't sent.",
+  "@report_rejected_person_gone": {
+    "description": "Snackbar: the server could not record a report because the person had already left"
+  },
+  "report_rejected_generic": "The report couldn't be sent.",
+  "@report_rejected_generic": {
+    "description": "Snackbar: the server refused a report for another reason"
+  },
+  "safety_and_reports": "Safety & reports",
+  "@safety_and_reports": {
+    "description": "Drawer item and title of the safety page (how to block/report, terms, contact)"
+  },
+  "safety_page_intro": "Raen is for meeting people in person, with respect. If someone makes you uncomfortable, you can block or report them at any time.",
+  "@safety_page_intro": {
+    "description": "Intro of the safety page"
+  },
+  "safety_how_to_block_title": "Block",
+  "@safety_how_to_block_title": {
+    "description": "Section title on the safety page"
+  },
+  "safety_how_to_block_body": "Tap ⋯ on a person in Nearby, on a request or in the match chat, then choose Block. You won't see each other for the rest of your session: requests are cancelled, the match ends and messages no longer get through. The other person isn't told.",
+  "@safety_how_to_block_body": {
+    "description": "How to block (the ⋯ button) and what happens"
+  },
+  "safety_how_to_report_title": "Report",
+  "@safety_how_to_report_title": {
+    "description": "Section title on the safety page"
+  },
+  "safety_how_to_report_body": "From the same ⋯ menu, choose Report and a reason: reporting also blocks. When several different people report the same session, it is closed automatically. Each reported session creates a moderation record for human review — the photo of the reported person, the reasons and the time, never location or chats — kept encrypted and deleted after 30 days.",
+  "@safety_how_to_report_body": {
+    "description": "How reporting works, the automatic closure and the moderation record (what it contains and for how long). Must stay true to the server behaviour"
+  },
+  "safety_no_accounts_title": "How long a block lasts",
+  "@safety_no_accounts_title": {
+    "description": "Section title on the safety page: limits of blocking without accounts"
+  },
+  "safety_no_accounts_body": "Raen has no accounts, so a block lasts until you end your session. After a new Start, or if the other person starts again, you might see each other again: block or report again if needed.",
+  "@safety_no_accounts_body": {
+    "description": "Honest note: without accounts a block lasts until the session ends. \"End\" and \"Start\" are the app buttons (use the same words as those buttons)"
+  },
+  "safety_in_danger_title": "If you're in danger",
+  "@safety_in_danger_title": {
+    "description": "Section title on the safety page"
+  },
+  "safety_in_danger_body": "Contact local emergency services right away (112 in the EU). Meet in public places and tell someone you trust where you are.",
+  "@safety_in_danger_body": {
+    "description": "Advice for emergencies (112 is the EU emergency number)"
+  },
+  "safety_contact_title": "Contact us",
+  "@safety_contact_title": {
+    "description": "Section title on the safety page: published contact"
+  },
+  "safety_contact_body": "To report a problem, appeal a decision or ask us to remove a moderation record, write to:",
+  "@safety_contact_body": {
+    "description": "Text before the safety contact e-mail address"
+  },
+  "copy_email": "Copy address",
+  "@copy_email": {
+    "description": "Tooltip of the button that copies the contact e-mail address"
+  },
+  "email_copied": "Address copied",
+  "@email_copied": {
+    "description": "Snackbar after copying the contact e-mail address"
+  },
+  "terms_of_use": "Terms of use",
+  "@terms_of_use": {
+    "description": "Title of the terms of use (page and acceptance dialog)"
+  },
+  "terms_intro": "By using Raen you accept these rules. There is zero tolerance for objectionable content and abusive users.",
+  "@terms_intro": {
+    "description": "First line of the terms of use: zero tolerance"
+  },
+  "terms_rule_adults": "Raen is only for people aged 18 or over. No minors.",
+  "@terms_rule_adults": {
+    "description": "Terms rule: adults only"
+  },
+  "terms_rule_own_photo": "Your selfie must be a real photo of you: no photos of other people.",
+  "@terms_rule_own_photo": {
+    "description": "Terms rule: the selfie must be a real photo of yourself"
+  },
+  "terms_rule_no_offensive": "No offensive, sexual, violent or hateful content, in your photo or in messages.",
+  "@terms_rule_no_offensive": {
+    "description": "Terms rule: no offensive/sexual/violent content"
+  },
+  "terms_rule_respect": "No harassment, threats, spam or scams. Respect a no.",
+  "@terms_rule_respect": {
+    "description": "Terms rule: no harassment, spam or scams; respect a no"
+  },
+  "terms_rule_enforcement": "Reports from other people can end your session right away and pause new sessions from your network for a while. Each reported session creates a moderation record (photo, reasons, time — no location, no chats), kept encrypted and deleted after 30 days.",
+  "@terms_rule_enforcement": {
+    "description": "Terms rule: consequences of reports (session closed, new sessions from the same network paused, moderation record kept 30 days). Must stay true to the server behaviour"
+  },
+  "terms_accept_checkbox": "I have read and accept the terms of use",
+  "@terms_accept_checkbox": {
+    "description": "Checkbox in the profile and in the acceptance dialog: mandatory acceptance of the terms of use"
+  },
+  "read_the_terms": "Read the terms",
+  "@read_the_terms": {
+    "description": "Button in the profile that opens the terms of use page"
+  },
+  "terms_accept_dialog_body": "Before going online, read and accept the terms of use.",
+  "@terms_accept_dialog_body": {
+    "description": "Text at the top of the dialog asking existing users to accept the terms before going online"
+  },
+  "accept": "Accept",
+  "@accept": {
+    "description": "Button accepting the terms of use"
+  },
+  "profile_error_terms_required": "Accept the terms of use to continue.",
+  "@profile_error_terms_required": {
+    "description": "Profile error: the terms of use were not accepted"
+  },
+  "start_error_terms_required": "To go online you need to accept the terms of use.",
+  "@start_error_terms_required": {
+    "description": "Start error: the saved profile has not accepted the current terms of use"
+  },
+  "session_closed_after_reports_title": "Session closed",
+  "@session_closed_after_reports_title": {
+    "description": "Title of the dialog shown when the server closed the session after reports from several people"
+  },
+  "session_closed_after_reports_body": "Your session was closed after reports from several people. New sessions from this network are paused for a while. Please respect Raen's terms of use.",
+  "@session_closed_after_reports_body": {
+    "description": "Body of the dialog: the session was closed after reports, new sessions from this network are paused for a while"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "Generic button closing an informational dialog"
   }
 }

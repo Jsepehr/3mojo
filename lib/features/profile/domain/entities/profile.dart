@@ -27,7 +27,14 @@ class Profile extends Equatable {
     this.defaultIntent,
     this.languages = const [],
     this.showGender = false,
+    this.acceptedTermsVersion = 0,
   });
+
+  /// La versione attuale dei termini d'uso (`CmpTermsOfUse`). Se i termini
+  /// cambiano in modo sostanziale si alza di uno: chi aveva accettato la
+  /// versione precedente deve accettarli di nuovo (al salvataggio del
+  /// profilo e allo Start, vedi `SaveProfileUseCase`/`StartSessionUseCase`).
+  static const currentTermsVersion = 1;
 
   /// I generi che si possono cercare ("Tutti" = tutti e tre).
   static const searchableGenders = {
@@ -59,6 +66,15 @@ class Profile extends Equatable {
   final List<String> languages;
   final bool showGender;
 
+  /// Quale versione dei termini d'uso è stata accettata (0 = nessuna: i
+  /// profili salvati prima che esistessero). Sta sull'entity perché è una
+  /// regola di business a leggerla: senza i termini attuali non si va
+  /// online.
+  final int acceptedTermsVersion;
+
+  bool get hasAcceptedCurrentTerms =>
+      acceptedTermsVersion >= currentTermsVersion;
+
   bool get looksForEveryone => lookingFor.containsAll(searchableGenders);
 
   /// Genere + "chi cerchi" lasciano dedurre l'orientamento sessuale (dato
@@ -77,5 +93,6 @@ class Profile extends Equatable {
     defaultIntent,
     languages,
     showGender,
+    acceptedTermsVersion,
   ];
 }

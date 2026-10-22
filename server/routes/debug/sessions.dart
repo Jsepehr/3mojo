@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
+import 'package:threemojo_server/src/constant_time.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
 /// `GET /debug/sessions` — solo per test locali: elenca tutte le sessioni
@@ -20,7 +21,7 @@ Response onRequest(RequestContext context) {
   final expectedToken = Platform.environment['DEBUG_ENDPOINTS_TOKEN'] ?? '';
   final providedToken = context.request.headers['x-debug-token'] ?? '';
   if (expectedToken.isEmpty ||
-      !_constantTimeEquals(providedToken, expectedToken)) {
+      !constantTimeEquals(providedToken, expectedToken)) {
     return Response(statusCode: HttpStatus.notFound);
   }
 
@@ -29,15 +30,4 @@ Response onRequest(RequestContext context) {
   }
 
   return Response.json(body: SessionStore.instance.debugSnapshot());
-}
-
-/// Confronto che non si ferma al primo carattere diverso: il tempo di
-/// risposta non rivela quanta parte del token è giusta.
-bool _constantTimeEquals(String a, String b) {
-  if (a.length != b.length) return false;
-  var diff = 0;
-  for (var i = 0; i < a.length; i++) {
-    diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
-  }
-  return diff == 0;
 }

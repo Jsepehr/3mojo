@@ -25,11 +25,15 @@ class StartSessionParams extends Equatable {
 /// Azione: vai online. Valida che ci sia un selfie e che contenga un volto
 /// (compone `CheckSelfieHasFaceUseCase` come sotto-passo genuino), e che il
 /// profilo sia stato compilato (compone `GetProfileUseCase`: genere e "chi
-/// cerchi" servono al server per il matching) prima di salvare la sessione
-/// — è la regola di business, non un dettaglio della UI.
+/// cerchi" servono al server per il matching) con i **termini d'uso
+/// attuali accettati** (`Profile.hasAcceptedCurrentTerms`: i profili
+/// salvati prima che esistessero li devono accettare qui, vedi
+/// `AcceptTermsUseCase`) prima di salvare la sessione — è la regola di
+/// business, non un dettaglio della UI.
 ///
 /// Errori (tipizzati: la UI sceglie il testo dal tipo, vedi
 /// `SessionFailureTexts`): `SelfieMissingFailure`, `ProfileMissingFailure`,
+/// `TermsNotAcceptedFailure` (la UI chiede di accettarli e riprova),
 /// `NoFaceInSelfieFailure`, `FaceCheckUnavailableFailure`, o quello del
 /// profilo illeggibile (`CacheFailure`).
 class StartSessionUseCase
@@ -59,6 +63,9 @@ class StartSessionUseCase
         return const Left(ProfileMissingFailure());
       case Right(:final value?):
         profile = value;
+    }
+    if (!profile.hasAcceptedCurrentTerms) {
+      return const Left(TermsNotAcceptedFailure());
     }
 
     final faceResult = await _checkSelfieHasFaceUseCase(params.selfieBytes);

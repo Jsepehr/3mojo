@@ -36,6 +36,11 @@ enum CmpNearbyRequestState {
 /// (il testo resta leggibile) e un chip dice perché la tile non risponde
 /// più al tocco. Il tocco ([onTap]) è dentro la `Card`, ritagliato ai suoi
 /// angoli: l'effetto ripple si vede.
+///
+/// [actions] (facoltativo, in fondo alla riga) è ciò che chi compone vuole
+/// offrire su questa persona — in "Vicinanze" il menu "⋯" con Segnala e
+/// Blocca (`safety/`): `nearby` non sa cosa contiene. Ha il suo tocco, che
+/// non apre la tendina della proposta.
 class CmpNearbyPersonTile extends StatelessWidget {
   const CmpNearbyPersonTile({
     super.key,
@@ -43,12 +48,14 @@ class CmpNearbyPersonTile extends StatelessWidget {
     this.isLocked = false,
     this.requestState = CmpNearbyRequestState.none,
     this.onTap,
+    this.actions,
   });
 
   final NearbyPerson person;
   final bool isLocked;
   final CmpNearbyRequestState requestState;
   final VoidCallback? onTap;
+  final Widget? actions;
 
   /// Margini della card nella lista: gli stessi 16 px ai lati del banner
   /// del paywall e delle schede delle richieste.
@@ -99,6 +106,7 @@ class CmpNearbyPersonTile extends StatelessWidget {
                   ],
                 ),
               ),
+              ?actions,
             ],
           ),
         ),

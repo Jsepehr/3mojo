@@ -300,6 +300,42 @@ class EncounterStore {
     return affected;
   }
 
+  /// Un blocco tra [sessionIdA] e [sessionIdB] (vedi `BlockStore`): tra i
+  /// due le richieste pendenti diventano `cancelled` e il match attivo
+  /// `ended` — **gli stessi passaggi** di [cancelAllPendingFor] e
+  /// [endActiveMatchesFor] quando una sessione finisce, così chi è bloccato
+  /// vede ciò che vedrebbe se l'altro avesse premuto End. Ritorna quelle
+  /// toccate, per notificare.
+  List<EncounterRequest> closeAllBetween(String sessionIdA, String sessionIdB) {
+    final affected = <EncounterRequest>[];
+    for (final request in _requests.values) {
+      if (!request.involves(sessionIdA) || !request.involves(sessionIdB)) {
+        continue;
+      }
+      switch (request.status) {
+        case EncounterRequestStatus.pending:
+          request.status = EncounterRequestStatus.cancelled;
+          affected.add(request);
+        case EncounterRequestStatus.accepted:
+          request.status = EncounterRequestStatus.ended;
+          affected.add(request);
+        case EncounterRequestStatus.declined ||
+            EncounterRequestStatus.cancelled ||
+            EncounterRequestStatus.ended:
+          break;
+      }
+    }
+    return affected;
+  }
+
+  /// Toglie ogni richiesta tra [sessionIdA] e [sessionIdB] — dopo un blocco
+  /// e dopo averli notificati, come [forgetSession] a fine sessione.
+  void forgetPair(String sessionIdA, String sessionIdB) =>
+      _requests.removeWhere(
+        (_, request) =>
+            request.involves(sessionIdA) && request.involves(sessionIdB),
+      );
+
   /// Toglie del tutto ogni richiesta che coinvolge [sessionId] — l'ultimo
   /// passo della fine sessione, dopo aver notificato le controparti.
   void forgetSession(String sessionId) =>

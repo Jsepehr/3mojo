@@ -66,6 +66,33 @@ void main() {
     expect(server.connection.status, RealtimeStatus.online);
   });
 
+  test('a session closed by the server (sessionClosed) is announced and '
+      'never reconnected: that would be a new Start', () async {
+    final events = <Object>[];
+    server.connection.connect(_secret).listen(events.add, onError: events.add);
+    var closures = 0;
+    server.connection.sessionClosures.listen((_) => closures++);
+    await pumpEvents();
+    server.last.welcome();
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'sessionClosed', 'reason': 'reports'});
+    await server.last.serverCloses(code: 4010);
+    await pumpEvents();
+
+    expect(closures, 1);
+    expect(server.sockets, hasLength(1));
+    expect(events.whereType<ServerException>(), isEmpty);
+    expect(server.connection.status, RealtimeStatus.offline);
+
+    // Nemmeno "Riprova" o il ritorno in primo piano la riaprono.
+    server.connection
+      ..connect(_secret)
+      ..checkAlive();
+    await pumpEvents();
+    expect(server.sockets, hasLength(1));
+  });
+
   test('keeps retrying while the server is unreachable', () async {
     server.nextSocketConnects = false;
     server.connection.connect(_secret);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '/core/errors/failures.dart';
 import '/core/theme/raen_colors.dart';
 import '/core/widgets/cmp_busy_filled_button.dart';
 import '/core/widgets/cmp_inline_error.dart';
@@ -11,6 +12,7 @@ import '/core/widgets/cmp_photo.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
+import '/features/safety/presentation/widgets/cmp_terms_acceptance_dialog.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/session_failure_texts.dart';
@@ -110,11 +112,30 @@ class _UiStartSessionState extends State<UiStartSession> {
     if (selfieBytes == null) return;
 
     final proSession = context.read<ProSession>();
-    setState(() => _isStarting = true);
-    await proSession.start(
-      StartSessionParams(selfieBytes: selfieBytes, intent: _intent),
+    final proProfile = context.read<ProProfile>();
+    final params = StartSessionParams(
+      selfieBytes: selfieBytes,
+      intent: _intent,
     );
+    setState(() => _isStarting = true);
+    await proSession.start(params);
     if (!mounted) return;
+
+    // Profilo salvato prima dei termini d'uso: si chiedono qui, una volta,
+    // e accettati si riprova subito. Rifiutati, resta l'errore che lo dice.
+    if (proSession.failure is TermsNotAcceptedFailure) {
+      // Niente puntini nel bottone mentre si leggono i termini.
+      setState(() => _isStarting = false);
+      final accepted = await showTermsAcceptanceDialog(context);
+      if (!mounted) return;
+      if (accepted) {
+        setState(() => _isStarting = true);
+        if (await proProfile.acceptTerms() && mounted) {
+          await proSession.start(params);
+        }
+        if (!mounted) return;
+      }
+    }
 
     if (proSession.isOnline) {
       HapticFeedback.mediumImpact();

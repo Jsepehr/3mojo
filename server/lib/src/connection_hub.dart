@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
@@ -25,7 +26,8 @@ class ConnectionHub {
     this._encounterStore,
     this._paywallStore,
     this._hotspotStore,
-    this.pseudonyms, {
+    this.pseudonyms,
+    this._blockStore, {
     Duration broadcastThrottleInterval =
         ConnectionHub.broadcastThrottleInterval,
     Duration nearbyPushMinInterval = ConnectionHub.nearbyPushMinInterval,
@@ -40,6 +42,7 @@ class ConnectionHub {
     PaywallStore? paywallStore,
     HotspotStore? hotspotStore,
     Pseudonyms? pseudonyms,
+    BlockStore? blockStore,
     Duration broadcastThrottleInterval =
         ConnectionHub.broadcastThrottleInterval,
     Duration nearbyPushMinInterval = ConnectionHub.nearbyPushMinInterval,
@@ -49,6 +52,7 @@ class ConnectionHub {
     paywallStore ?? PaywallStore.instance,
     hotspotStore ?? HotspotStore.instance,
     pseudonyms ?? Pseudonyms(),
+    blockStore ?? BlockStore.instance,
     broadcastThrottleInterval: broadcastThrottleInterval,
     nearbyPushMinInterval: nearbyPushMinInterval,
   );
@@ -59,6 +63,7 @@ class ConnectionHub {
     PaywallStore.instance,
     HotspotStore.instance,
     Pseudonyms(),
+    BlockStore.instance,
   );
 
   static const double radiusMeters = 100;
@@ -102,6 +107,10 @@ class ConnectionHub {
   final EncounterStore _encounterStore;
   final PaywallStore _paywallStore;
   final HotspotStore _hotspotStore;
+
+  /// I blocchi tra sessioni: tolgono le persone dalle liste e fermano la
+  /// chat (vedi `BlockStore`).
+  final BlockStore _blockStore;
 
   /// Gli pseudonimi per osservatore — condivisi con
   /// `RealtimeMessageHandler`, che li ritraduce negli id interni.
@@ -266,6 +275,11 @@ class ConnectionHub {
     if (!_encounterStore.hasActiveMatch(fromSessionId, toSessionId)) {
       return false;
     }
+    // Difesa in profondità: un blocco chiude già il match, ma la chat tra
+    // due sessioni bloccate non deve passare in nessun caso.
+    if (_blockStore.isBlockedEitherWay(fromSessionId, toSessionId)) {
+      return false;
+    }
     if (!_sinks.containsKey(toSessionId)) return false;
     sendTo(toSessionId, {
       'type': 'chatMessage',
@@ -366,6 +380,7 @@ class ConnectionHub {
       radiusMeters: radiusMeters,
       hotspotStore: _hotspotStore,
       paywallStore: _paywallStore,
+      blockStore: _blockStore,
     );
     if (people == null) return false;
 

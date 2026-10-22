@@ -12,11 +12,17 @@ import '../encounter_proposal_labels.dart';
 /// etichetta breve, "🥤 Bere qualcosa") e il suo stato come chip: in
 /// attesa (orologio, neutro), accettata (cuore pieno, rosso-cuore: la buona
 /// notizia), "non questa volta"/annullata/finita (croce, solo bordo — uno
-/// stato chiuso che non deve attirare l'occhio).
+/// stato chiuso che non deve attirare l'occhio). [trailing] (facoltativo)
+/// è il menu "⋯" con Segnala e Blocca, composto da `UiEncounters`.
 class CmpOutgoingRequestTile extends StatelessWidget {
-  const CmpOutgoingRequestTile({super.key, required this.request});
+  const CmpOutgoingRequestTile({
+    super.key,
+    required this.request,
+    this.trailing,
+  });
 
   final EncounterRequest request;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +32,7 @@ class CmpOutgoingRequestTile extends StatelessWidget {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CmpPhoto(image: photo, size: 56),
+      trailing: trailing,
       title: Row(
         children: [
           ExcludeSemantics(

@@ -8,6 +8,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
+import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/delete_profile_usecase.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/get_profile_usecase.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/save_profile_usecase.dart';
@@ -63,6 +64,7 @@ void main() {
 
   late FakeSessionRepository sessions;
   late FakeFaceDetectionRepository faces;
+  late FakeProfileRepository profiles;
   late ProSession proSession;
   late ProProfile proProfile;
   late AppLocalizations l10n;
@@ -70,7 +72,7 @@ void main() {
   setUp(() async {
     sessions = FakeSessionRepository();
     faces = FakeFaceDetectionRepository(result: const Right(false));
-    final profiles = FakeProfileRepository(saved: testProfile);
+    profiles = FakeProfileRepository(saved: testProfile);
     final selfies = _FakeSelfieRepository();
     final endSession = EndSessionUseCase(repository: sessions);
     proSession = ProSession(
@@ -180,5 +182,61 @@ void main() {
     expect(find.byType(UiStartSession), findsNothing);
     // Lo stesso selfie scattato è quello controllato e messo in sessione.
     expect(faces.checked.last, sessions.current!.selfieBytes);
+  });
+
+  testWidgets('a profile saved before the terms of use existed is asked to '
+      'accept them at Start, and then goes online', (tester) async {
+    faces.result = const Right(true);
+    profiles.saved = const Profile(
+      gender: Gender.male,
+      lookingFor: Profile.searchableGenders,
+      isAdultConfirmed: true,
+      sensitiveDataConsent: true,
+    );
+    await pumpHost(tester);
+    await openWizard(tester);
+    await shootAndConfirm(tester);
+
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
+    await tester.pumpAndSettle();
+
+    expect(proSession.isOnline, isFalse);
+    expect(find.text(l10n.terms_accept_dialog_body), findsOneWidget);
+    final accept = find.widgetWithText(FilledButton, l10n.accept);
+    expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+
+    await tester.ensureVisible(find.text(l10n.terms_accept_checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.terms_accept_checkbox));
+    await tester.pump();
+    await tester.tap(accept);
+    await tester.pumpAndSettle();
+
+    expect(profiles.saved?.hasAcceptedCurrentTerms, isTrue);
+    expect(proSession.isOnline, isTrue);
+    expect(find.byType(UiStartSession), findsNothing);
+  });
+
+  testWidgets('declining the terms keeps you offline, with the reason on '
+      'screen', (tester) async {
+    faces.result = const Right(true);
+    profiles.saved = const Profile(
+      gender: Gender.male,
+      lookingFor: Profile.searchableGenders,
+      isAdultConfirmed: true,
+      sensitiveDataConsent: true,
+    );
+    await pumpHost(tester);
+    await openWizard(tester);
+    await shootAndConfirm(tester);
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+
+    expect(proSession.isOnline, isFalse);
+    expect(profiles.saved?.hasAcceptedCurrentTerms, isFalse);
+    expect(find.text(l10n.start_error_terms_required), findsOneWidget);
   });
 }

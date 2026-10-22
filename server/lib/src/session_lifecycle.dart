@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
+import 'package:threemojo_server/src/moderation_store.dart';
 import 'package:threemojo_server/src/new_session_rate_limiter.dart';
 import 'package:threemojo_server/src/session_credentials.dart';
 import 'package:threemojo_server/src/session_store.dart';
@@ -27,7 +29,10 @@ class HelloInvalidSecret extends HelloOutcome {
   const HelloInvalidSecret();
 }
 
-/// Troppi nuovi Start dallo stesso IP (`NewSessionRateLimiter`).
+/// Troppi nuovi Start dallo stesso IP (`NewSessionRateLimiter`), oppure
+/// l'IP è in cooldown dopo una chiusura per segnalazioni
+/// (`ModerationStore.isInCooldown`): stesso codice per il client, che non
+/// deve sapere quale dei due.
 class HelloRateLimited extends HelloOutcome {
   const HelloRateLimited();
 }
@@ -47,10 +52,15 @@ class HelloRateLimited extends HelloOutcome {
 /// - **silenzio** (nessun messaggio da più di `maxAge`, vedi
 ///   [startAutoPurge]) → [endNow], che chiude anche il socket.
 ///
+/// - **segnalazioni** (abbastanza persone diverse l'hanno segnalata, vedi
+///   `ModerationStore`) → [closeForModeration]: avviso `sessionClosed`,
+///   cooldown sui nuovi Start dai suoi IP, poi [endNow].
+///
 /// [endNow] toglie la sessione da `SessionStore`, dimentica la credenziale,
 /// cancella le richieste pendenti, chiude il match attivo (`accepted` →
 /// `ended`) avvisando subito i partner, e infine toglie da `EncounterStore`
-/// ogni richiesta della sessione (prima crescevano per sempre).
+/// ogni richiesta della sessione (prima crescevano per sempre) e da
+/// `BlockStore`/`ModerationStore` ogni blocco e segnalazione in cui compare.
 class SessionLifecycle {
   SessionLifecycle({
     required SessionStore sessions,
@@ -58,9 +68,13 @@ class SessionLifecycle {
     required ConnectionHub hub,
     required SessionCredentials credentials,
     required NewSessionRateLimiter rateLimiter,
+    BlockStore? blocks,
+    ModerationStore? moderation,
     this.gracePeriod = defaultGracePeriod,
     DateTime Function()? now,
-  }) : _sessions = sessions,
+  }) : _blocks = blocks ?? BlockStore.instance,
+       _moderation = moderation ?? ModerationStore.instance,
+       _sessions = sessions,
        _encounters = encounters,
        _hub = hub,
        _credentials = credentials,
@@ -73,6 +87,8 @@ class SessionLifecycle {
     hub: ConnectionHub.instance,
     credentials: SessionCredentials.instance,
     rateLimiter: NewSessionRateLimiter.instance,
+    blocks: BlockStore.instance,
+    moderation: ModerationStore.instance,
   );
 
   /// Abbastanza per un cambio di rete o un tunnel, abbastanza poco perché
@@ -82,14 +98,20 @@ class SessionLifecycle {
   static const defaultGracePeriod = Duration(seconds: 45);
 
   /// Codice di chiusura WebSocket usato quando è il server a chiudere la
-  /// sessione (purge per silenzio).
+  /// sessione (purge per silenzio, chiusura per segnalazioni).
   static const closeCodeSessionEnded = 4010;
+
+  /// Quanti IP diversi si ricordano per sessione (riconnessioni da reti
+  /// diverse): servono solo al cooldown di [closeForModeration].
+  static const maxIpsPerSession = 5;
 
   final SessionStore _sessions;
   final EncounterStore _encounters;
   final ConnectionHub _hub;
   final SessionCredentials _credentials;
   final NewSessionRateLimiter _rateLimiter;
+  final BlockStore _blocks;
+  final ModerationStore _moderation;
   final DateTime Function() _now;
   final Duration gracePeriod;
 
@@ -99,6 +121,10 @@ class SessionLifecycle {
   /// chi non ha ancora mandato una presenza (e quindi non è in
   /// `SessionStore`), così anche un socket che saluta e poi tace finisce.
   final Map<String, DateTime> _lastSeen = {};
+
+  /// Gli IP da cui ogni sessione si è collegata — solo in RAM, solo finché
+  /// vive, solo per il cooldown di [closeForModeration].
+  final Map<String, Set<String>> _ipsBySession = {};
   Timer? _autoPurgeTimer;
 
   /// `true` se [sessionId] è nel periodo di grazia.
@@ -112,7 +138,8 @@ class SessionLifecycle {
       return const HelloInvalidSecret();
     }
     final resumed = _credentials.knows(secret!);
-    if (!resumed && !_rateLimiter.tryStart(ip)) {
+    if (!resumed &&
+        (_moderation.isInCooldown(ip) || !_rateLimiter.tryStart(ip))) {
       return const HelloRateLimited();
     }
     return HelloAccepted(
@@ -124,12 +151,20 @@ class SessionLifecycle {
   /// Collega il socket appena autenticato: annulla un'eventuale grazia in
   /// corso, rende di nuovo visibile la sessione, manda `welcome`, lo stato
   /// delle richieste e una lista "vicinanze" fresca.
+  ///
+  /// [ip] è l'IP del socket (vuoto se ignoto): ricordato per il cooldown
+  /// di [closeForModeration].
   void attach(
     String sessionId,
     StreamSink<dynamic> sink, {
     required bool resumed,
+    String ip = '',
   }) {
     _graceTimers.remove(sessionId)?.cancel();
+    if (ip.isNotEmpty) {
+      final ips = _ipsBySession.putIfAbsent(sessionId, () => {});
+      if (ips.length < maxIpsPerSession) ips.add(ip);
+    }
     _lastSeen[sessionId] = _now();
     _hub.register(sessionId, sink);
     _sessions
@@ -186,6 +221,7 @@ class SessionLifecycle {
   void endNow(String sessionId) {
     _graceTimers.remove(sessionId)?.cancel();
     _lastSeen.remove(sessionId);
+    _ipsBySession.remove(sessionId);
     _hub.disconnect(sessionId);
 
     _sessions.remove(sessionId);
@@ -205,9 +241,27 @@ class SessionLifecycle {
       _hub.pushEncounterSnapshot(partner);
     }
     _encounters.forgetSession(sessionId);
+    _blocks.forgetSession(sessionId);
+    _moderation.forgetSession(sessionId);
     _hub
       ..forgetSession(sessionId)
       ..broadcastNearbyUpdates();
+  }
+
+  /// Chiude [sessionId] perché l'hanno segnalata abbastanza persone diverse
+  /// (vedi `ModerationStore`): cooldown sui nuovi Start dai suoi IP, avviso
+  /// `{"type": "sessionClosed", "reason": "reports"}` (così l'app chiude la
+  /// sessione e lo dice, invece di riprovare a collegarsi), chiusura del
+  /// socket con [closeCodeSessionEnded] e infine [endNow] — l'unica fine di
+  /// sessione che esista. Per i partner è una normale fine di sessione.
+  void closeForModeration(String sessionId) {
+    for (final ip in _ipsBySession[sessionId] ?? const <String>{}) {
+      _moderation.startCooldown(ip);
+    }
+    _hub
+      ..sendTo(sessionId, const {'type': 'sessionClosed', 'reason': 'reports'})
+      ..disconnect(sessionId, code: closeCodeSessionEnded, reason: 'reports');
+    endNow(sessionId);
   }
 
   /// Termina (chiudendone il socket) ogni sessione silenziosa da più di
