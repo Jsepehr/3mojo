@@ -29,6 +29,9 @@ class _World {
       hotspotStore: hotspots,
       pseudonyms: pseudonyms,
       broadcastThrottleInterval: Duration.zero,
+      // Niente finestra per osservatore: questi test guardano le regole,
+      // non il ritmo degli invii (provato in connection_hub_test.dart).
+      nearbyPushMinInterval: Duration.zero,
     );
     rateLimiter = NewSessionRateLimiter.withClock(() => clock);
     lifecycle = SessionLifecycle(
@@ -344,6 +347,31 @@ void main() {
       expect(b.nearby(), hasLength(1));
     });
 
+    test('presences closer than the rate limit are ignored in silence, '
+        'without closing the socket', () async {
+      final (a, b) = await twoNeighbours();
+      final aInternal = world.credentials.publicIdFor(_secret('a'));
+      double aLat() => world.sessions.allSessions
+          .firstWhere((s) => s.sessionId == aInternal)
+          .lat;
+
+      a.presence(lat: 0.0001);
+      await _settle();
+      // Within 10 s of the last accepted one: the position is not used.
+      a.presence(lat: 0.0002);
+      await _settle();
+
+      expect(aLat(), 0.0001);
+      expect(a.rejected('presence'), isNull);
+      expect(a.closedByServer, isFalse);
+      expect(b.nearby(), hasLength(1));
+
+      world.clock = world.clock.add(SessionStore.minPositionInterval);
+      a.presence(lat: 0.0002);
+      await _settle();
+      expect(aLat(), 0.0002);
+    });
+
     test('a teleport is refused', () async {
       final (a, _) = await twoNeighbours();
 
@@ -475,8 +503,12 @@ void main() {
       final (a, b) = await twoNeighbours();
       final bId = a.nearbyIdAt(0);
 
-      // B walks ~550m away (plausible after 5 minutes).
+      // B walks ~550m away (plausible after 5 minutes): two readings, 10 s
+      // apart (closer ones are ignored by the per-session rate limit),
+      // confirm the move and reset its anchor.
       b.presence(lat: 0.005);
+      await _settle();
+      world.clock = world.clock.add(SessionStore.minPositionInterval);
       b.presence(lat: 0.005);
       await _settle();
       a.send({'type': 'sendEncounterRequest', 'toPersonId': bId});
@@ -507,9 +539,12 @@ void main() {
       world.hub.broadcastNearbyUpdates();
       await _settle();
 
-      // 3 people: the 2 farthest are free, the closest is locked.
-      final closest = viewer.nearby().first;
-      expect(closest['locked'], isTrue);
+      // 3 people: the 2 farthest are free, the closest is locked. Not
+      // necessarily first in the list: 'near' and 'mid' share the same 25 m
+      // band, where the order is a per-viewer hash, not the distance.
+      final locked = viewer.nearby().where((p) => p['locked'] == true);
+      expect(locked, hasLength(1));
+      final closest = locked.single;
       viewer.send({
         'type': 'sendEncounterRequest',
         'toPersonId': closest['personId'],

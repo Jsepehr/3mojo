@@ -19,7 +19,8 @@ enum MeetingChance { low, medium, high }
 ///
 /// **Nessuna distanza**: il server non la manda più (un numero preciso a
 /// ogni aggiornamento basterebbe a trilaterare la posizione di qualcuno).
-/// La lista arriva già ordinata dal server, dalla persona più vicina.
+/// La lista arriva già ordinata dal server, per fasce di distanza di 25 m
+/// (dentro una fascia l'ordine non dice chi è più vicino).
 ///
 /// [id] è uno pseudonimo valido **solo per questo telefono**: la stessa
 /// persona ha un id diverso per ognuno che la vede (vedi `Pseudonyms` nel

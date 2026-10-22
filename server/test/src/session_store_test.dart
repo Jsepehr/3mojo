@@ -28,13 +28,22 @@ void main() {
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
     });
 
-    test('a person already there before you arrive shows up immediately', () {
+    test('a person already there before you arrive shows up as soon as you '
+        'have stayed put for a minute yourself, with their own dwell', () {
       // 'b' has been in place for 6 minutes before 'a' ever asks — this is
       // the scenario that motivated arrivedAt-based (not tick-based) dwell.
+      // It used to show up immediately: now the viewer must stay put too
+      // (otherwise a fake GPS walking along the edge of the circle is a
+      // location oracle), so 'a' sees nobody for its own first minute.
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
       clock = clock.add(const Duration(minutes: 6));
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
 
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+      clock = clock.add(const Duration(seconds: 59));
+      expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+
+      clock = clock.add(const Duration(seconds: 1));
       final result = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
       expect(result.single.meetingChance, MeetingChance.high);
     });
@@ -71,7 +80,7 @@ void main() {
       );
     });
 
-    test('moving away for 2+ readings in a row resets the dwell time', () {
+    test('moving away for 3 readings in a row resets the dwell time', () {
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
 
@@ -84,12 +93,15 @@ void main() {
         MeetingChance.high,
       );
 
-      // 'b' walks far enough away for two readings in a row (confirming a
-      // real move, not GPS noise), then comes right back — dwell time
-      // should restart from zero.
-      store.upsertPosition(sessionId: 'b', lat: 0.001, lng: 0);
-      store.upsertPosition(sessionId: 'b', lat: 0.001, lng: 0);
-      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      // 'b' walks far enough away for three readings in a row (the median
+      // of the last three readings leaves the anchor twice in a row:
+      // a real move, not GPS noise), then comes right back — dwell time
+      // should restart from zero. Readings 10 s apart: closer ones are
+      // ignored by the per-session rate limit.
+      for (final lat in [0.001, 0.001, 0.001, 0.0]) {
+        clock = clock.add(SessionStore.minPositionInterval);
+        store.upsertPosition(sessionId: 'b', lat: lat, lng: 0);
+      }
 
       expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
     });
@@ -101,8 +113,10 @@ void main() {
 
       // One isolated GPS jump, then back close to the anchor — should not
       // be treated as a real move, dwell keeps accumulating uninterrupted.
-      store.upsertPosition(sessionId: 'b', lat: 0.001, lng: 0);
-      store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+      for (final lat in [0.001, 0.0, 0.0]) {
+        clock = clock.add(SessionStore.minPositionInterval);
+        store.upsertPosition(sessionId: 'b', lat: lat, lng: 0);
+      }
 
       expect(
         store
@@ -325,9 +339,11 @@ void main() {
     test('a physically impossible jump is discarded, a plausible one is '
         'accepted once enough time has passed', () {
       store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
-      clock = clock.add(const Duration(seconds: 1));
+      // Past the rate limit (a closer presence would just be ignored as
+      // tooSoon, before any speed check).
+      clock = clock.add(SessionStore.minPositionInterval);
 
-      // ~11km in one second.
+      // ~11km in ten seconds.
       expect(
         store.upsertPosition(sessionId: 'b', lat: 0.1, lng: 0),
         PresenceOutcome.implausibleMovement,
@@ -361,7 +377,7 @@ void main() {
       expect(store.profileFor('b')!.intent, 'chat');
     });
 
-    test('nearby people come sorted from the closest', () {
+    test('nearby people come sorted from the closest distance band', () {
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
       store.upsertPosition(sessionId: 'far', lat: 0.0008, lng: 0);
       store.upsertPosition(sessionId: 'near', lat: 0.0001, lng: 0);
@@ -371,6 +387,234 @@ void main() {
       final result = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
 
       expect(result.map((p) => p.sessionId), ['near', 'mid', 'far']);
+    });
+
+    group('the viewer must stay put too, distances go anchor to anchor', () {
+      // ~1 m in degrees of latitude (and of longitude at the equator).
+      const metersToDeg = 1 / 111320;
+
+      /// Una lettura ogni [SessionStore.minPositionInterval]: la frequenza
+      /// massima che il server usa davvero.
+      void readingAt(String id, double northMeters, [double eastMeters = 0]) {
+        clock = clock.add(SessionStore.minPositionInterval);
+        store.upsertPosition(
+          sessionId: id,
+          lat: northMeters * metersToDeg,
+          lng: eastMeters * metersToDeg,
+        );
+      }
+
+      bool sees(String viewer, String other) => store
+          .nearbyPeople(sessionId: viewer, radiusMeters: 100)!
+          .any((p) => p.sessionId == other);
+
+      test('after a confirmed move the viewer sees nobody for a minute, and '
+          'nobody sees the viewer', () {
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+        clock = clock.add(const Duration(minutes: 5));
+        expect(sees('a', 'b'), isTrue);
+
+        // 'a' moves 70 m: still well within 100 m of 'b', but a real move.
+        for (var i = 0; i < 3; i++) {
+          readingAt('a', 70);
+        }
+        expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+        expect(sees('b', 'a'), isFalse);
+
+        clock = clock.add(const Duration(seconds: 59));
+        expect(store.nearbyPeople(sessionId: 'a', radiusMeters: 100), isEmpty);
+        clock = clock.add(const Duration(seconds: 1));
+        expect(sees('a', 'b'), isTrue);
+        expect(sees('b', 'a'), isTrue);
+      });
+
+      test('small steps along the edge of the circle never change what the '
+          'viewer sees, even far past the edge', () {
+        store.upsertPosition(sessionId: 'target', lat: 0, lng: 0);
+        clock = clock.add(const Duration(minutes: 10));
+        store.upsertPosition(sessionId: 'a', lat: 95 * metersToDeg, lng: 0);
+        clock = clock.add(const Duration(minutes: 1));
+        expect(sees('a', 'target'), isTrue);
+
+        // Ten minutes of 5 m steps back and forth across the 100 m edge,
+        // then a slow walk out to 145 m: the raw position is often outside
+        // the circle, but the anchor (95 m) stays where it was.
+        final changes = <bool>[];
+        var last = true;
+        for (var i = 0; i < 60; i++) {
+          final north = i < 50 ? 95.0 + 5 * (i % 3) : 95.0 + 5 * (i - 49);
+          readingAt('a', north);
+          final now = sees('a', 'target');
+          if (now != last) changes.add(now);
+          last = now;
+        }
+
+        expect(changes, isEmpty);
+      });
+
+      test('forcing anchor resets yields at most one sample per confirmed '
+          'move plus a minute of waiting', () {
+        store.upsertPosition(sessionId: 'target', lat: 0, lng: 0);
+        // 'witness' is within 100 m of both probing spots: a non-empty list
+        // means "the viewer got an answer", whatever the answer about
+        // 'target' is.
+        store.upsertPosition(
+          sessionId: 'witness',
+          lat: 130 * metersToDeg,
+          lng: 0,
+        );
+        clock = clock.add(const Duration(minutes: 10));
+        const inside = 95.0; // sees 'target'
+        const outside = 165.0; // 70 m further: a real move, past the edge
+        store.upsertPosition(sessionId: 'a', lat: inside * metersToDeg, lng: 0);
+
+        // The best a prober can do: as soon as it gets an answer, hop to the
+        // other spot, one reading every 10 s, for 15 minutes.
+        final start = clock;
+        final answers = <(DateTime, bool)>[];
+        var spot = inside;
+        var waiting = true;
+        for (var i = 0; i < 90; i++) {
+          readingAt('a', spot);
+          final list = store.nearbyPeople(sessionId: 'a', radiusMeters: 100)!;
+          if (waiting && list.isNotEmpty) {
+            answers.add((clock, list.any((p) => p.sessionId == 'target')));
+            spot = spot == inside ? outside : inside;
+          }
+          waiting = list.isEmpty;
+        }
+
+        expect(answers.length, greaterThanOrEqualTo(5));
+        // It is still an oracle (each answer is right)...
+        for (final (index, (_, seesTarget)) in answers.indexed) {
+          expect(seesTarget, index.isEven);
+        }
+        // ...but a slow one: never two answers less than a minute plus the
+        // readings to confirm the move apart. Before, every single reading
+        // (or every 0.5 s broadcast) was an answer.
+        for (var i = 1; i < answers.length; i++) {
+          expect(
+            answers[i].$1.difference(answers[i - 1].$1),
+            greaterThanOrEqualTo(const Duration(seconds: 80)),
+          );
+        }
+        expect(
+          answers.length,
+          lessThanOrEqualTo(clock.difference(start).inSeconds ~/ 80 + 1),
+        );
+      });
+
+      test('indoor GPS jitter of 20-50 m, with a bad first fix, never resets '
+          'anyone nor empties the list', () {
+        // A phone left on a table: every reading is 20-50 m off the real
+        // spot, in changing directions, sometimes twice on the same side.
+        // The first fix is 50 m off: with an anchor fixed on it (the old
+        // rule) a reading 45 m on the other side was already 95 m "away".
+        const jitter = <(double, double)>[
+          (-45, 0), (0, 40), (0, -40), (30, -30), (-30, 30), (20, 0), //
+          (-50, 0), (-50, 0), (0, 50), (0, 50), (35, 35), (-35, -35),
+        ];
+        store
+          ..upsertPosition(sessionId: 'a', lat: 0, lng: 50 * metersToDeg)
+          ..upsertPosition(sessionId: 'b', lat: 0, lng: -50 * metersToDeg);
+        final bArrivedAt = store.allSessions
+            .firstWhere((s) => s.sessionId == 'b')
+            .arrivedAt;
+
+        // Half an hour, a reading every 10 s each.
+        for (var i = 0; i < 180; i++) {
+          final (east, north) = jitter[i % jitter.length];
+          readingAt('a', north, east);
+          store.upsertPosition(
+            sessionId: 'b',
+            lat: -north * metersToDeg,
+            lng: -east * metersToDeg,
+          );
+          if (clock.difference(bArrivedAt) >= const Duration(minutes: 1)) {
+            expect(sees('a', 'b'), isTrue, reason: 'reading $i');
+            expect(sees('b', 'a'), isTrue, reason: 'reading $i');
+          }
+        }
+
+        final b = store.allSessions.firstWhere((s) => s.sessionId == 'b');
+        expect(b.arrivedAt, bArrivedAt);
+        expect(
+          store
+              .nearbyPeople(sessionId: 'a', radiusMeters: 100)!
+              .single
+              .meetingChance,
+          MeetingChance.high,
+        );
+      });
+
+      test('positions closer than the rate limit are ignored, the unlock '
+          'token they carry is not', () {
+        store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+        clock = clock.add(const Duration(seconds: 9));
+
+        expect(
+          store.upsertPosition(
+            sessionId: 'b',
+            lat: 0.0001,
+            lng: 0,
+            unlockToken: 'token',
+          ),
+          PresenceOutcome.tooSoon,
+        );
+        final b = store.allSessions.single;
+        expect(b.lat, 0);
+        expect(store.unlockTokenFor('b'), 'token');
+
+        clock = clock.add(const Duration(seconds: 1));
+        expect(
+          store.upsertPosition(sessionId: 'b', lat: 0.0001, lng: 0),
+          PresenceOutcome.accepted,
+        );
+        expect(b.lat, 0.0001);
+      });
+    });
+
+    test('within a distance band the order is fixed per viewer, not by the '
+        'exact distance', () {
+      const metersToDeg = 1 / 111320;
+      List<String> orderSeenBy(Map<String, double> metersNorth) {
+        clock = DateTime(2026, 1, 1);
+        store = SessionStore.withClock(() => clock);
+        store.upsertPosition(sessionId: 'viewer', lat: 0, lng: 0);
+        for (final MapEntry(:key, :value) in metersNorth.entries) {
+          store.upsertPosition(
+            sessionId: key,
+            lat: value * metersToDeg,
+            lng: 0,
+          );
+        }
+        clock = clock.add(const Duration(minutes: 5));
+        return store
+            .nearbyPeople(sessionId: 'viewer', radiusMeters: 100)!
+            .map((p) => p.sessionId)
+            .toList();
+      }
+
+      // p1-p4 in the first 25 m band, 'far' in the third one.
+      final first = orderSeenBy({
+        'p1': 3,
+        'p2': 9,
+        'p3': 16,
+        'p4': 23,
+        'far': 60,
+      });
+      final shuffled = orderSeenBy({
+        'p1': 23,
+        'p2': 3,
+        'p3': 9,
+        'p4': 16,
+        'far': 55,
+      });
+
+      expect(first, shuffled);
+      expect(first.last, 'far');
+      expect(first.take(4), unorderedEquals(['p1', 'p2', 'p3', 'p4']));
     });
 
     test('the debug snapshot exposes no distances between people', () {

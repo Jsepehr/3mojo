@@ -22,7 +22,11 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   "showGender": bool, "selfieBase64": ..., "unlockToken": ...}` — dopo
 ///   ogni `welcome` e poi a ogni aggiornamento di posizione. Profilo e
 ///   selfie (JPEG, ≤ ~230 KB) contano solo alla nascita della sessione:
-///   dopo si possono omettere. `unlockToken` solo se si è pagato;
+///   dopo si possono omettere. `unlockToken` solo se si è pagato. Il server
+///   usa **al più una posizione ogni 10 s** per sessione
+///   (`SessionStore.minPositionInterval`): quelle in più sono ignorate in
+///   silenzio (token e selfie mancante sono comunque presi), senza rifiuto
+///   né chiusura;
 /// - `{"type": "sendEncounterRequest", "toPersonId": ..., "proposal": ...}`
 ///   — `proposal` è cosa si propone, un codice della lista chiusa
 ///   `EncounterProposal` (`sayHi`, `chat`, `friendship`, `getToKnow`,
@@ -44,9 +48,14 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   hello valido; `resumed: true` = stessa sessione di prima (stessa
 ///   permanenza, richieste e match), `false` = sessione nuova;
 /// - `{"type": "nearby", "people": [{"personId", "meetingChance", "locked",
-///   "selfieBase64"?, "intent"?, "languages"?, "gender"?}]}` — già ordinata
-///   dalla persona più vicina, **senza distanze**; `locked` = dietro il
-///   paywall (niente selfie);
+///   "selfieBase64"?, "intent"?, "languages"?, "gender"?}]}` — ordinata per
+///   fasce di distanza di 25 m (dentro una fascia, un ordine fisso per chi
+///   guarda), **senza distanze**; `locked` = dietro il paywall (niente
+///   selfie). **Vuota per il primo minuto** della sessione e dopo ogni
+///   spostamento confermato: anche chi guarda dev'essere fermo da un minuto
+///   (le distanze vanno da ancora ad ancora, vedi `SessionStore`). Al più
+///   una lista diversa ogni 5 s per sessione
+///   (`ConnectionHub.nearbyPushMinInterval`);
 /// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}`, ogni
 ///   richiesta `{"id", "otherPersonId", "status", "proposal",
 ///   "otherSelfieBase64"?, "otherIntent"?, "otherLanguages"?,

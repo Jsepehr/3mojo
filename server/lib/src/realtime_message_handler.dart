@@ -146,6 +146,7 @@ class RealtimeMessageHandler {
         ? rawToken
         : '';
 
+    final tokenBefore = _sessions.unlockTokenFor(sessionId);
     final outcome = _sessions.upsertPosition(
       sessionId: sessionId,
       lat: lat.toDouble(),
@@ -154,11 +155,21 @@ class RealtimeMessageHandler {
       selfieBase64: selfie,
       unlockToken: unlockToken,
     );
-    if (outcome != PresenceOutcome.accepted) {
-      _reject(sessionId, 'presence', outcome.name);
-      return;
+    switch (outcome) {
+      case PresenceOutcome.accepted:
+        _hub.broadcastNearbyUpdates();
+      case PresenceOutcome.tooSoon:
+        // Posizione ignorata in silenzio (limite di frequenza, vedi
+        // `SessionStore.minPositionInterval`): niente rifiuto, il client
+        // può legittimamente mandarne di più. Si ricalcola solo se è
+        // cambiato qualcos'altro che la presenza porta (sblocco, selfie).
+        if (tokenBefore != unlockToken || selfie.isNotEmpty) {
+          _hub.broadcastNearbyUpdates();
+        }
+      case PresenceOutcome.invalidCoordinates ||
+          PresenceOutcome.implausibleMovement:
+        _reject(sessionId, 'presence', outcome.name);
     }
-    _hub.broadcastNearbyUpdates();
   }
 
   /// Una richiesta parte solo se il destinatario è online, diverso dal

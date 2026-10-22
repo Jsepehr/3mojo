@@ -38,7 +38,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Raen uses the camera only to take the selfie for your session, which people nearby can see while you are online. The face check happens on your device: no biometric data is saved or sent.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Raen uses your precise location only while you are online: it is sent to the server to show you people within 100 metres and to show you to them. When you go offline, it is no longer shared.</string>
+	<string>Raen uses your precise location only while you are online: it is sent to the server to show you people within 100 metres (or in the same busy place) and to show you to them. When you go offline, it is no longer shared.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

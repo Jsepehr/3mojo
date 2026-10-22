@@ -18,8 +18,9 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 ///
 /// Disposizione dei 20 dispositivi (vedi [_seedDevices]):
 /// - **Gruppo A** (`a1`..`a4` nucleo stretto, `a5` sul bordo): i primi 4 sono
-///   entro ~30m l'uno dall'altro, quindi si vedono già tra loro fin da
-///   subito con la regola normale (100m) — dopo 15 minuti reali di
+///   entro ~30m l'uno dall'altro, quindi si vedono tra loro con la regola
+///   normale (100m) dopo il primo minuto (anche chi guarda dev'essere fermo
+///   da un minuto) — dopo 15 minuti reali di
 ///   permanenza qui dovrebbe formarsi un hotspot (vedi `HotspotStore` in
 ///   `lib/src/hotspot_store.dart`). `a5` è invece a ~150m dal nucleo:
 ///   **troppo lontano per vederli con la regola normale**, ma abbastanza

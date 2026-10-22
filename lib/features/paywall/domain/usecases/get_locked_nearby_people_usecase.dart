@@ -28,7 +28,7 @@ class LockedNearbyPerson extends Equatable {
 /// Puro (nessun repository, nessun I/O): riordina il risultato — tutte le
 /// persone gratis prima, quelle bloccate dopo, così chi può essere scelto
 /// subito non sta in fondo alla lista dietro a un mucchio di foto sfocate
-/// — mantenendo però l'ordine ricevuto dal server (dalla più vicina)
+/// — mantenendo però l'ordine ricevuto dal server (per fasce di distanza)
 /// dentro ciascuno dei due gruppi.
 class GetLockedNearbyPeopleUseCase {
   const GetLockedNearbyPeopleUseCase();

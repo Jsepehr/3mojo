@@ -1,3 +1,3 @@
-/* Testi delle richieste di permesso iOS (chiavi di Info.plist). Regola: raggio 100 m, posizione al server solo da online, controllo volto solo sul dispositivo. */
+/* Testi delle richieste di permesso iOS (chiavi di Info.plist). Regola: raggio 100 m (200 m nello stesso hotspot, "posto affollato"), posizione al server solo da online, controllo volto solo sul dispositivo. */
 "NSCameraUsageDescription" = "Raen usa la fotocamera solo per scattare il selfie della tua sessione, che le persone vicine possono vedere mentre sei online. Il controllo del volto avviene sul telefono: nessun dato biometrico viene salvato o inviato.";
-"NSLocationWhenInUseUsageDescription" = "Raen usa la tua posizione precisa solo mentre sei online: la invia al server per mostrarti le persone entro 100 metri e per mostrare te a loro. Quando vai offline, smette di condividerla.";
+"NSLocationWhenInUseUsageDescription" = "Raen usa la tua posizione precisa solo mentre sei online: la invia al server per mostrarti le persone entro 100 metri (o nello stesso posto affollato) e per mostrare te a loro. Quando vai offline, smette di condividerla.";

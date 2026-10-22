@@ -28,6 +28,8 @@ void main() {
         store,
         pseudonyms: pseudonyms,
         broadcastThrottleInterval: Duration.zero,
+        // Same for the per-viewer window: it gets its own group below.
+        nearbyPushMinInterval: Duration.zero,
       );
     });
 
@@ -462,6 +464,121 @@ void main() {
       );
     });
 
+    group('per-viewer window', () {
+      late ConnectionHub windowedHub;
+      const window = Duration(milliseconds: 80);
+
+      setUp(() {
+        // Global throttle off: only the per-viewer window is under test.
+        windowedHub = ConnectionHub.withStore(
+          store,
+          broadcastThrottleInterval: Duration.zero,
+          nearbyPushMinInterval: window,
+        );
+        store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
+        store.upsertPosition(sessionId: 'b', lat: 0, lng: 0);
+        clock = clock.add(const Duration(minutes: 5));
+      });
+
+      tearDown(() => windowedHub.stopHotspotDetection());
+
+      List<Object?> peopleIn(Object? raw) =>
+          (jsonDecode(raw! as String) as Map)['people'] as List;
+
+      test('a viewer gets at most one changed list per window, and the '
+          'latest state at the end of it', () async {
+        final aMessages = <dynamic>[];
+        windowedHub
+          ..register(
+            'a',
+            StreamController<dynamic>()..stream.listen(aMessages.add),
+          )
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+        expect(aMessages, hasLength(1));
+
+        // Every broadcast changes what 'a' would see ('b' drops and comes
+        // back): inside the window none of them goes out.
+        for (var i = 0; i < 10; i++) {
+          store.setConnected('b', connected: i.isOdd);
+          windowedHub.broadcastNearbyUpdates();
+        }
+        store.setConnected('b', connected: false);
+        windowedHub.broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+        expect(aMessages, hasLength(1));
+
+        await Future<void>.delayed(window * 1.5);
+        expect(aMessages, hasLength(2));
+        expect(peopleIn(aMessages.last), isEmpty);
+      });
+
+      test('a list that is back to what was sent is not sent again at the '
+          'end of the window', () async {
+        final aMessages = <dynamic>[];
+        windowedHub
+          ..register(
+            'a',
+            StreamController<dynamic>()..stream.listen(aMessages.add),
+          )
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+
+        store.setConnected('b', connected: false);
+        windowedHub.broadcastNearbyUpdates();
+        store.setConnected('b', connected: true);
+        await Future<void>.delayed(window * 1.5);
+
+        expect(aMessages, hasLength(1));
+      });
+
+      test('reconnecting does not reopen the window early', () async {
+        final first = <dynamic>[];
+        windowedHub
+          ..register('a', StreamController<dynamic>()..stream.listen(first.add))
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+        expect(first, hasLength(1));
+
+        final second = <dynamic>[];
+        windowedHub
+          ..register(
+            'a',
+            StreamController<dynamic>()..stream.listen(second.add),
+          )
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+        expect(second, isEmpty);
+
+        await Future<void>.delayed(window * 1.5);
+        expect(second, hasLength(1));
+      });
+
+      test('each viewer has its own window', () async {
+        final aMessages = <dynamic>[];
+        final bMessages = <dynamic>[];
+        windowedHub
+          ..register(
+            'a',
+            StreamController<dynamic>()..stream.listen(aMessages.add),
+          )
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+
+        // 'b' connects inside 'a''s window: its first list goes out now.
+        windowedHub
+          ..register(
+            'b',
+            StreamController<dynamic>()..stream.listen(bMessages.add),
+          )
+          ..broadcastNearbyUpdates();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(aMessages, hasLength(1));
+        expect(bMessages, hasLength(1));
+      });
+    });
+
     group('broadcast throttle', () {
       late ConnectionHub throttledHub;
 
@@ -469,6 +586,9 @@ void main() {
         throttledHub = ConnectionHub.withStore(
           store,
           broadcastThrottleInterval: const Duration(milliseconds: 50),
+          // Only the global throttle here; the per-viewer window has its
+          // own group.
+          nearbyPushMinInterval: Duration.zero,
         );
       });
 

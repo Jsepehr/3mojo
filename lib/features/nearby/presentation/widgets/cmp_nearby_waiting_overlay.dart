@@ -15,10 +15,11 @@ import '/l10n/generated/app_localizations.dart';
 /// rotazione con un dissolvenza incrociata (non uno scorrimento, per non
 /// suggerire "altre pagine da sfogliare"), in ordine casuale (mai la stessa
 /// due volte di fila) così anche a rivederla più volte non diventa
-/// prevedibile, spiegando le vere regole del server (raggio,
-/// permanenza minima, probabilità d'incontro, niente profili permanenti, un
-/// incontro alla volta) così l'attesa si legge come comportamento
-/// intenzionale, non come un bug.
+/// prevedibile, spiegando le vere regole del server (raggio, permanenza
+/// minima — anche per chi guarda: il primo minuto dopo lo Start, e dopo
+/// ogni spostamento, la lista è sempre vuota —, probabilità d'incontro,
+/// niente profili permanenti, un incontro alla volta) così l'attesa si
+/// legge come comportamento intenzionale, non come un bug.
 class CmpNearbyWaitingOverlay extends StatefulWidget {
   const CmpNearbyWaitingOverlay({super.key, required this.title});
 
@@ -31,7 +32,14 @@ class CmpNearbyWaitingOverlay extends StatefulWidget {
 
 class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
   static const _tipInterval = Duration(seconds: 6);
-  static const _tipCount = 4;
+  static const _tipCount = 5;
+
+  /// Alta abbastanza per il suggerimento più lungo (5 righe, es. in
+  /// tedesco): fissa, così il titolo non salta quando il testo cambia.
+  static const _tipHeight = 104.0;
+
+  /// Posizione di `you_too_must_stay_put_for_a_minute` in `tips`.
+  static const _stayPutTipIndex = 1;
 
   /// Il velo dietro il testo sborda oltre il testo: di lato metà del
   /// margine, sopra e sotto di più, così la forma è un ovale alto come un
@@ -58,7 +66,9 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
   @override
   void initState() {
     super.initState();
-    _tipIndex = _random.nextInt(_tipCount);
+    // Il primo è sempre "anche tu devi restare fermo un minuto": è il
+    // motivo più comune della lista vuota appena dopo lo Start (poi a caso).
+    _tipIndex = _stayPutTipIndex;
     _timer = Timer.periodic(_tipInterval, (_) => setState(_pickNextTip));
   }
 
@@ -89,6 +99,7 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
     ];
     final tips = [
       l10n.we_only_show_people_who_stay_put_within_100_meters,
+      l10n.you_too_must_stay_put_for_a_minute,
       l10n.the_longer_someone_stays_in_one_place,
       l10n.no_names_no_public_profile,
       l10n.accept_one_request_and_the_others_cancel_automatically,
@@ -137,7 +148,7 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
-                        height: 84,
+                        height: _tipHeight,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 600),
                           child: Center(

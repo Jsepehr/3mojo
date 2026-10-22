@@ -8,9 +8,9 @@
   "@meet_people_near_you": {
     "description": "Headline on the home page while offline"
   },
-  "discover_people_within_100_meters_in_real_time": "Discover people within 100 meters, in real time.",
+  "discover_people_within_100_meters_in_real_time": "Discover people within 100 meters (or in the same busy place), in real time.",
   "@discover_people_within_100_meters_in_real_time": {
-    "description": "Subtitle on the home page while offline"
+    "description": "Subtitle on the home page while offline. The server radius is 100 m, widened to 200 m for people in the same detected busy spot (hotspot)"
   },
   "start": "Start",
   "@start": {
@@ -68,9 +68,9 @@
   "@connecting_to_the_server": {
     "description": "Shown while the nearby-people connection to the server is still being established"
   },
-  "no_one_nearby_right_now": "No one within 100 meters right now",
+  "no_one_nearby_right_now": "No one nearby right now",
   "@no_one_nearby_right_now": {
-    "description": "Shown when nobody is visible within the 100-meter radius"
+    "description": "Title of the waiting overlay when the nearby list is empty (nobody visible, or you have not stayed put for a minute yet)"
   },
   "low_chance_to_meet": "Low chance to meet",
   "@low_chance_to_meet": {
@@ -88,9 +88,13 @@
   "@request_sent": {
     "description": "Snackbar shown after tapping a nearby person to send an encounter request; also the chip on a Nearby card you already sent a request to"
   },
-  "we_only_show_people_who_stay_put_within_100_meters": "We only show people within 100 meters who've stayed put for at least a minute — not everyone just passing by.",
+  "we_only_show_people_who_stay_put_within_100_meters": "We only show people within 100 meters (or in the same busy place) who've stayed put for at least a minute — not everyone just passing by.",
   "@we_only_show_people_who_stay_put_within_100_meters": {
-    "description": "Waiting/empty-state tip: 100-meter radius, and people appear only after staying in one place for at least a minute"
+    "description": "Waiting/empty-state tip: 100-meter radius (wider inside the same busy spot), and people appear only after staying in one place for at least a minute"
+  },
+  "you_too_must_stay_put_for_a_minute": "You need to stay in one place for a minute too before you see who's around — and again each time you move somewhere else.",
+  "@you_too_must_stay_put_for_a_minute": {
+    "description": "Waiting/empty-state tip: the viewer too must stay in one place for a minute before the list fills, and again after every move"
   },
   "the_longer_someone_stays_in_one_place": "The longer someone stays in one place, the higher their meeting chance: low, medium, high.",
   "@the_longer_someone_stays_in_one_place": {

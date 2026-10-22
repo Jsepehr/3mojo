@@ -6,12 +6,31 @@ import 'package:threemojo_server/src/meeting_chance.dart';
 import 'package:threemojo_server/src/presence_profile.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
 
-/// Una persona online: la sua posizione più recente, e da quando è "ferma"
-/// nello stesso punto — l'ancora di stazionarietà, non la posizione grezza.
-/// Se si sposta di più di [SessionStore.stationarityRadiusMeters] rispetto
-/// all'**ancora** (non alla singola lettura precedente: vedi
-/// `consecutiveAwayReadings`) per due letture di fila, l'ancora si aggiorna
-/// e il tempo riparte da zero.
+/// Una persona online: la sua ultima posizione accettata e la sua
+/// **ancora** — il punto in cui è "ferma", da cui si misurano **tutte** le
+/// distanze verso le altre persone (vedi [SessionStore.nearbyPeople]).
+///
+/// **L'ancora**: nasce con la sessione (o con uno spostamento confermato,
+/// sotto) e si chiama "ancora" perché poi non segue più le letture.
+/// - **Riscaldamento** (il primo [visibilityThresholdMinutes] minuto da
+///   [arrivedAt], in cui la persona non vede nessuno e nessuno la vede):
+///   l'ancora è la mediana, coordinata per coordinata, delle letture
+///   raccolte da [arrivedAt] ([anchorFixes]) — così un primo fix GPS
+///   sbagliato di 50 m non resta il riferimento per tutta la sosta.
+/// - **Dopo il riscaldamento** l'ancora è **congelata**: le letture entro
+///   [SessionStore.stationarityRadiusMeters] non la spostano più. Le
+///   distanze tra due persone ferme restano quindi identiche finché una
+///   delle due non si sposta davvero — chi muove la propria posizione (anche
+///   con un GPS falso) a piccoli passi non ottiene nessun "campione" nuovo.
+/// - **Spostamento confermato**: per [SessionStore.confirmMovementReadings]
+///   letture di fila la posizione stimata — la mediana delle ultime
+///   [SessionStore.recentFixesForMovement] letture ([recentFixes]), non la
+///   singola lettura — è oltre [SessionStore.stationarityRadiusMeters]
+///   dall'ancora (vedi [consecutiveAwayReadings]): uno o due fix sbagliati
+///   di fila, tipici al chiuso, non bastano. Allora [arrivedAt] riparte da
+///   zero e l'ancora riparte dalle letture "lontane" che lo hanno
+///   confermato: per un minuto la persona sparisce per gli altri **e** la
+///   sua lista è vuota.
 class Session {
   Session({
     required this.sessionId,
@@ -24,21 +43,38 @@ class Session {
     this.unlockToken = '',
   }) : anchorLat = lat,
        anchorLng = lng,
-       lastPositionAt = arrivedAt;
+       lastPositionAt = arrivedAt,
+       anchorFixes = [(lat, lng)],
+       recentFixes = [(lat, lng)];
 
   final String sessionId;
 
-  /// Ultima posizione nota — usata per le distanze verso le altre sessioni,
-  /// aggiornata a ogni lettura senza filtri (qui la freschezza conta più
-  /// della stabilità).
+  /// Ultima posizione accettata, grezza. Serve al controllo di velocità e
+  /// al rilevamento degli hotspot (`HotspotStore.detectAndRefresh`), **mai**
+  /// alle distanze tra persone: quelle usano l'ancora.
   double lat;
   double lng;
 
-  /// Posizione di riferimento per il calcolo di stazionarietà/dwell —
-  /// diversa da [lat]/[lng]: si sposta solo quando un allontanamento è
-  /// confermato da letture consecutive, non a ogni singola lettura rumorosa.
+  /// L'ancora (vedi la doc della classe): il punto da cui si misurano le
+  /// distanze verso gli altri e da cui si decide se la persona si è mossa.
   double anchorLat;
   double anchorLng;
+
+  /// Le letture da cui si calcola l'ancora durante il riscaldamento (al
+  /// più [SessionStore.maxAnchorFixes], le più recenti). Dopo il
+  /// riscaldamento non cresce più.
+  final List<(double, double)> anchorFixes;
+
+  /// Le letture con cui la posizione stimata è risultata oltre
+  /// [SessionStore.stationarityRadiusMeters] dall'ancora, non ancora
+  /// confermate come uno spostamento: se lo diventano, sono il punto di
+  /// partenza della nuova ancora.
+  final List<(double, double)> pendingAwayFixes = [];
+
+  /// Le ultime [SessionStore.recentFixesForMovement] letture accettate: la
+  /// loro mediana è la posizione con cui si decide se la persona si sta
+  /// allontanando dall'ancora — un fix isolato sbagliato non la sposta.
+  final List<(double, double)> recentFixes;
 
   /// Quante letture di fila sono risultate oltre
   /// [SessionStore.stationarityRadiusMeters] dall'ancora attuale, senza
@@ -52,7 +88,8 @@ class Session {
   DateTime lastSeen;
 
   /// Quando è stata accettata l'ultima posizione: serve al controllo di
-  /// velocità di [SessionStore.upsertPosition].
+  /// velocità e al limite di frequenza ([SessionStore.minPositionInterval])
+  /// di [SessionStore.upsertPosition].
   DateTime lastPositionAt;
 
   /// `false` durante il periodo di grazia dopo una caduta del socket (vedi
@@ -87,9 +124,9 @@ class Session {
 /// Una persona vicina già pronta per il client: stadio di probabilità
 /// d'incontro, selfie (se non bloccato dal paywall) e il flag [locked] già
 /// calcolati qui. **Nessuna distanza** verso il client: [distanceMeters]
-/// resta interna (serve solo a ordinare e al paywall) — un numero preciso a
-/// ogni push, insieme a qualche spostamento, basterebbe a trilaterare la
-/// posizione di una persona. Del profilo solo ciò che la persona mostra:
+/// resta interna (serve solo all'ordine per fasce e al paywall) — un
+/// numero preciso a ogni push, insieme a qualche spostamento, basterebbe a
+/// trilaterare la posizione di una persona. Del profilo solo ciò che la persona mostra:
 /// intento, lingue e il genere solo se ha scelto di renderlo visibile —
 /// **mai** chi cerca.
 class NearbyPersonResult {
@@ -108,7 +145,8 @@ class NearbyPersonResult {
   /// pseudonimo per osservatore (vedi `Pseudonyms`, `ConnectionHub`).
   final String sessionId;
 
-  /// Solo per uso interno (ordinamento, paywall): mai serializzata.
+  /// Da ancora ad ancora. Solo per uso interno (ordine per fasce, paywall):
+  /// mai serializzata.
   final double distanceMeters;
   final MeetingChance meetingChance;
   final String selfieBase64;
@@ -142,6 +180,13 @@ enum PresenceOutcome {
   /// Salto fisicamente impossibile rispetto all'ultima posizione accettata
   /// (vedi [SessionStore.maxPlausibleSpeedMetersPerSecond]): scartata.
   implausibleMovement,
+
+  /// Arrivata meno di [SessionStore.minPositionInterval] dopo l'ultima
+  /// posizione accettata: la posizione è **ignorata** (in silenzio, nessun
+  /// rifiuto al client), mentre token di sblocco e selfie mancante sono
+  /// comunque presi. Non è un errore: il client può mandare posizioni più
+  /// spesso (iOS ~1 al secondo), il server ne usa una ogni tanto.
+  tooSoon,
 }
 
 /// Tiene in memoria chi è online e la sua posizione. Un vero backend
@@ -169,6 +214,41 @@ class SessionStore {
   /// prima di considerare confermato un vero spostamento (invece di un
   /// singolo balzo rumoroso che poi torna vicino all'ancora).
   static const int confirmMovementReadings = 2;
+
+  /// Al più una posizione **utile** ogni tanto per sessione: le presenze
+  /// che arrivano prima sono ignorate ([PresenceOutcome.tooSoon]). Il
+  /// client Android manda una posizione ogni 60 s, iOS a ogni cambiamento
+  /// (anche ~1 al secondo): 10 s bastano a seguire chi si sposta davvero
+  /// (uno spostamento si conferma in 3 letture, quindi in ~20-30 s su iOS)
+  /// e tolgono a chi falsifica il GPS la possibilità di "sondare" a raffica.
+  static const Duration minPositionInterval = Duration(seconds: 10);
+
+  /// Quante letture (le più recenti) entrano nella mediana dell'ancora
+  /// durante il riscaldamento: a una lettura ogni [minPositionInterval],
+  /// copre tutto il primo minuto.
+  static const int maxAnchorFixes = 8;
+
+  /// Quante letture recenti entrano nella posizione stimata con cui si
+  /// decide se ci si allontana dall'ancora (la loro mediana, vedi
+  /// [Session]). Con 3, un fix isolato sbagliato non sposta mai la stima, e
+  /// un vero spostamento si conferma in 3 letture accettate (~20-30 s su
+  /// iOS, 2-3 minuti su Android, che manda una posizione al minuto).
+  ///
+  /// Perché la mediana (e l'ancora mediana nel riscaldamento): ora che uno
+  /// spostamento confermato svuota per un minuto anche la lista di chi si
+  /// sposta, un reset "finto" costa di più. Simulando un telefono fermo al
+  /// chiuso con errore di 20-50 m in direzione casuale a ogni lettura (caso
+  /// pessimo: errori indipendenti), una lettura ogni 10 s: ~20 reset l'ora
+  /// con la sola regola delle 2 letture grezze, ~5 con l'ancora mediana,
+  /// ~1 con anche la stima mediana; con errore di 20-40 m, ~0,1 l'ora.
+  static const int recentFixesForMovement = 3;
+
+  /// Larghezza delle fasce di distanza con cui è ordinata la lista
+  /// "vicinanze" (vedi [SessionStore.nearbyPeople]): dentro una fascia
+  /// l'ordine è fisso per osservatore e non dice chi è più vicino. Simile
+  /// all'errore tipico del GPS (5-20 m, di più al chiuso): un ordine più
+  /// fine di così sarebbe comunque in buona parte rumore.
+  static const double rankBandMeters = 25;
 
   /// Controllo di velocità sulle presenze: tra due posizioni accettate non
   /// ci si può spostare più di `velocità × tempo trascorso +`
@@ -246,17 +326,19 @@ class SessionStore {
   }
 
   /// Aggiorna la posizione di `sessionId` (creando la sessione alla prima
-  /// presenza). Se una lettura risulta oltre [stationarityRadiusMeters]
-  /// dall'ancora attuale, non resetta subito la stazionarietà: serve che
-  /// questo capiti per [confirmMovementReadings] letture di fila prima di
-  /// considerarlo un vero spostamento ("è arrivata altrove", si riparte da
-  /// zero) — un singolo balzo GPS isolato che poi torna vicino non conta.
+  /// presenza) e la sua ancora (vedi [Session]). Se la posizione stimata
+  /// (mediana delle ultime [recentFixesForMovement] letture) risulta oltre
+  /// [stationarityRadiusMeters] dall'ancora, non resetta subito la
+  /// stazionarietà: serve che questo capiti per [confirmMovementReadings]
+  /// letture di fila prima di considerarlo un vero spostamento ("è arrivata
+  /// altrove", si riparte da zero) — un balzo GPS isolato che poi torna
+  /// vicino non conta.
   ///
   /// Profilo e selfie sono fissati alla nascita della sessione: per una
   /// sessione esistente `profile` è ignorato e `selfieBase64` viene preso
-  /// solo se finora non ce n'era uno. Coordinate non valide o salti
-  /// impossibili vengono scartati (vedi [PresenceOutcome]) senza toccare
-  /// nulla.
+  /// solo se finora non ce n'era uno. Posizioni troppo ravvicinate,
+  /// coordinate non valide o salti impossibili vengono scartati (vedi
+  /// [PresenceOutcome]) senza toccare la posizione.
   PresenceOutcome upsertPosition({
     required String sessionId,
     required double lat,
@@ -291,8 +373,10 @@ class SessionStore {
       existing.selfieBase64 = selfieBase64;
     }
 
-    final secondsSinceLastPosition =
-        now.difference(existing.lastPositionAt).inMilliseconds / 1000;
+    final sinceLastPosition = now.difference(existing.lastPositionAt);
+    if (sinceLastPosition < minPositionInterval) return PresenceOutcome.tooSoon;
+
+    final secondsSinceLastPosition = sinceLastPosition.inMilliseconds / 1000;
     final jump = distanceMeters(existing.lat, existing.lng, lat, lng);
     if (jump >
         maxPlausibleSpeedMetersPerSecond * secondsSinceLastPosition +
@@ -300,25 +384,72 @@ class SessionStore {
       return PresenceOutcome.implausibleMovement;
     }
 
+    final fix = (lat, lng);
+    existing.recentFixes.add(fix);
+    if (existing.recentFixes.length > recentFixesForMovement) {
+      existing.recentFixes.removeAt(0);
+    }
     final looksAway =
-        distanceMeters(existing.anchorLat, existing.anchorLng, lat, lng) >
+        distanceMeters(
+          existing.anchorLat,
+          existing.anchorLng,
+          _median(existing.recentFixes.map((f) => f.$1)),
+          _median(existing.recentFixes.map((f) => f.$2)),
+        ) >
         stationarityRadiusMeters;
-    existing.consecutiveAwayReadings = looksAway
-        ? existing.consecutiveAwayReadings + 1
-        : 0;
+    if (looksAway) {
+      existing.consecutiveAwayReadings++;
+      existing.pendingAwayFixes.add(fix);
+    } else {
+      existing.consecutiveAwayReadings = 0;
+      existing.pendingAwayFixes.clear();
+    }
 
     if (existing.consecutiveAwayReadings >= confirmMovementReadings) {
-      existing.anchorLat = lat;
-      existing.anchorLng = lng;
-      existing.arrivedAt = now;
+      // Arrivata altrove: si riparte da zero, e la nuova ancora parte dalle
+      // letture che hanno confermato lo spostamento.
+      existing.anchorFixes
+        ..clear()
+        ..addAll(existing.pendingAwayFixes);
+      existing.pendingAwayFixes.clear();
       existing.consecutiveAwayReadings = 0;
+      existing.arrivedAt = now;
+      _refreshAnchor(existing);
+    } else if (!looksAway && _isWarmingUp(existing, now)) {
+      existing.anchorFixes.add(fix);
+      if (existing.anchorFixes.length > maxAnchorFixes) {
+        existing.anchorFixes.removeAt(0);
+      }
+      _refreshAnchor(existing);
     }
 
     existing.lat = lat;
     existing.lng = lng;
     existing.lastPositionAt = now;
-    _indexPosition(sessionId, lat);
+    _indexPosition(sessionId, existing.anchorLat);
     return PresenceOutcome.accepted;
+  }
+
+  /// Ancora non ancora congelata: il primo [visibilityThresholdMinutes]
+  /// minuto da `arrivedAt`, in cui la persona è invisibile e non vede
+  /// nessuno — perfezionarla qui non rivela niente a nessuno.
+  bool _isWarmingUp(Session session, DateTime now) =>
+      now.difference(session.arrivedAt).inMinutes < visibilityThresholdMinutes;
+
+  /// L'ancora = mediana, coordinata per coordinata, di `anchorFixes`: un
+  /// singolo fix sbagliato di decine di metri non la sposta.
+  void _refreshAnchor(Session session) {
+    session
+      ..anchorLat = _median(session.anchorFixes.map((f) => f.$1))
+      ..anchorLng = _median(session.anchorFixes.map((f) => f.$2));
+  }
+
+  static double _median(Iterable<double> values) {
+    final sorted = values.toList()..sort();
+    final middle = sorted.length ~/ 2;
+    return sorted.length.isOdd
+        ? sorted[middle]
+        : (sorted[middle - 1] + sorted[middle]) / 2;
   }
 
   /// `true` se `sessionId` ha già mandato una presenza (anche se ora è nel
@@ -357,6 +488,10 @@ class SessionStore {
   String? selfieBase64For(String sessionId) =>
       _sessions[sessionId]?.selfieBase64;
 
+  /// Il token di sblocco che `sessionId` ha mandato con l'ultima presenza
+  /// (stringa vuota se non ha pagato), `null` se la sessione non esiste.
+  String? unlockTokenFor(String sessionId) => _sessions[sessionId]?.unlockToken;
+
   /// Il profilo di sessione di `sessionId`, per mostrare nelle richieste
   /// d'incontro ciò che la persona ha scelto di rendere visibile. `null` se
   /// la sessione non è (più) online.
@@ -373,9 +508,26 @@ class SessionStore {
   /// Persone entro [radiusMeters] da `sessionId` (o entro un hotspot attivo
   /// di cui entrambi fanno parte — vedi [HotspotStore] — anche se la
   /// distanza diretta tra i due supera [radiusMeters]), con probabilità
-  /// d'incontro già calcolata, **ordinate dalla più vicina**. Ritorna `null`
-  /// se `sessionId` non ha ancora mandato una presenza sul WebSocket. Chi è
-  /// nel periodo di grazia (non connesso) non compare a nessuno.
+  /// d'incontro già calcolata, **ordinate per fasce di distanza** (sotto).
+  /// Ritorna `null` se `sessionId` non ha ancora mandato una presenza sul
+  /// WebSocket. Chi è nel periodo di grazia (non connesso) non compare a
+  /// nessuno.
+  ///
+  /// **Anche chi guarda dev'essere fermo**: finché `sessionId` non è ferma
+  /// da [visibilityThresholdMinutes] minuto (lo stesso tempo che serve per
+  /// comparire agli altri) la lista è **vuota** — appena arrivata, e di
+  /// nuovo dopo ogni spostamento confermato. E le distanze vanno **da
+  /// ancora ad ancora** (vedi [Session]), mai dall'ultima lettura grezza:
+  /// prima, chi falsificava il GPS poteva camminare a piccoli passi sul
+  /// bordo del cerchio e, con un sì/no a ogni ricalcolo, localizzare
+  /// chiunque a 10-30 m in meno di un minuto. Ora ogni "campione" costa uno
+  /// spostamento confermato più un minuto di attesa.
+  ///
+  /// **Ordine per fasce**: dalla fascia di [rankBandMeters] più vicina alla
+  /// più lontana; dentro una fascia l'ordine è fisso per osservatore (un
+  /// hash della coppia, non la distanza), così la posizione in lista non
+  /// rivela chi è più vicino di pochi metri. Il paywall (sotto) resta
+  /// invece calcolato sulla distanza esatta tra le ancore.
   ///
   /// Non scandisce *tutte* le sessioni online: raccoglie prima i candidati
   /// dall'indice spaziale (vicini a `sessionId` per il raggio base, più
@@ -404,20 +556,22 @@ class SessionStore {
     final me = _sessions[sessionId];
     if (me == null) return null;
 
+    final now = _now();
+    if (_isWarmingUp(me, now)) return <NearbyPersonResult>[];
+
     final hotspots = hotspotStore ?? HotspotStore.instance;
     final paywall = paywallStore ?? PaywallStore.instance;
-    final now = _now();
     final results = <NearbyPersonResult>[];
 
-    final candidateIds = _sessionIdsNear(me.lat, radiusMeters);
+    final candidateIds = _sessionIdsNear(me.anchorLat, radiusMeters);
     for (final hotspot in hotspots.active) {
       // Sovrastima deliberata: non sappiamo ancora (senza toccare lo stato
       // interno di HotspotStore) se `me` è davvero membro con isteresi, solo
       // che potrebbe esserlo -- il controllo esatto, `sharesAnyActiveHotspot`
       // qui sotto, decide per davvero.
       if (distanceMeters(
-            me.lat,
-            me.lng,
+            me.anchorLat,
+            me.anchorLng,
             hotspot.centerLat,
             hotspot.centerLng,
           ) <=
@@ -442,17 +596,22 @@ class SessionStore {
         continue;
       }
 
-      final distance = distanceMeters(me.lat, me.lng, other.lat, other.lng);
+      final distance = distanceMeters(
+        me.anchorLat,
+        me.anchorLng,
+        other.anchorLat,
+        other.anchorLng,
+      );
       final direct = distance <= radiusMeters;
       final viaHotspot =
           !direct &&
           hotspots.sharesAnyActiveHotspot(
             me.sessionId,
-            me.lat,
-            me.lng,
+            me.anchorLat,
+            me.anchorLng,
             other.sessionId,
-            other.lat,
-            other.lng,
+            other.anchorLat,
+            other.anchorLng,
           );
       if (!direct && !viaHotspot) continue;
 
@@ -472,7 +631,17 @@ class SessionStore {
       );
     }
 
-    results.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    int band(NearbyPersonResult p) =>
+        (p.distanceMeters / rankBandMeters).floor();
+    int tiebreak(NearbyPersonResult p) =>
+        Object.hash(me.sessionId, p.sessionId);
+    results.sort((a, b) {
+      final byBand = band(a).compareTo(band(b));
+      if (byBand != 0) return byBand;
+      final byTiebreak = tiebreak(a).compareTo(tiebreak(b));
+      if (byTiebreak != 0) return byTiebreak;
+      return a.sessionId.compareTo(b.sessionId);
+    });
     final isUnlocked =
         me.unlockToken.isNotEmpty && paywall.isUnlocked(me.unlockToken);
     return _withPaywallVisibility(results, isUnlocked: isUnlocked);
@@ -513,8 +682,8 @@ const _paywallMinFreeCount = 2;
 /// pagamento) -- minimo [_paywallMinFreeCount] anche su liste corte, dove
 /// un terzo arrotonderebbe a 0 o 1. Se sbloccato, o la lista è vuota,
 /// ritorna `people` invariata. Altrimenti ritorna una nuova lista con lo
-/// stesso ordine, ma con `locked: true` e `selfieBase64` vuoto per chi non è
-/// nel terzo gratis — `meetingChance` e ciò che la persona mostra del
+/// stesso ordine (per fasce), ma con `locked: true` e `selfieBase64` vuoto
+/// per chi non è nel terzo gratis — `meetingChance` e ciò che la persona mostra del
 /// profilo restano presenti (mai stati sensibili, danno un motivo per
 /// sbloccare la foto).
 List<NearbyPersonResult> _withPaywallVisibility(

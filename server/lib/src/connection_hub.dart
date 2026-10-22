@@ -28,7 +28,9 @@ class ConnectionHub {
     this.pseudonyms, {
     Duration broadcastThrottleInterval =
         ConnectionHub.broadcastThrottleInterval,
-  }) : _broadcastThrottleInterval = broadcastThrottleInterval;
+    Duration nearbyPushMinInterval = ConnectionHub.nearbyPushMinInterval,
+  }) : _broadcastThrottleInterval = broadcastThrottleInterval,
+       _nearbyPushMinInterval = nearbyPushMinInterval;
 
   /// Solo per i test: un hub agganciato a store controllabili invece dei
   /// singleton condivisi.
@@ -40,6 +42,7 @@ class ConnectionHub {
     Pseudonyms? pseudonyms,
     Duration broadcastThrottleInterval =
         ConnectionHub.broadcastThrottleInterval,
+    Duration nearbyPushMinInterval = ConnectionHub.nearbyPushMinInterval,
   }) => ConnectionHub._(
     sessionStore,
     encounterStore ?? EncounterStore.instance,
@@ -47,6 +50,7 @@ class ConnectionHub {
     hotspotStore ?? HotspotStore.instance,
     pseudonyms ?? Pseudonyms(),
     broadcastThrottleInterval: broadcastThrottleInterval,
+    nearbyPushMinInterval: nearbyPushMinInterval,
   );
 
   static final ConnectionHub instance = ConnectionHub._(
@@ -68,6 +72,19 @@ class ConnectionHub {
   // costosa, viene fatto al più una volta per questa finestra — vedi
   // `broadcastNearbyUpdates` sotto.
   static const Duration broadcastThrottleInterval = Duration(milliseconds: 500);
+
+  /// Al più una lista "vicinanze" **diversa** ogni tanto **per
+  /// osservatore** (il throttle sopra è globale: con traffico costante,
+  /// da solo lascerebbe arrivare a ognuno un ricalcolo ogni 500 ms). Una
+  /// lista cambiata entro questa finestra dall'ultimo invio a quella
+  /// sessione parte alla fine della finestra, già ricalcolata con lo stato
+  /// più recente — mai persa, solo rimandata. Difesa in profondità contro
+  /// chi usa la lista come oracolo: le distanze vanno già da ancora ad
+  /// ancora (vedi `SessionStore.nearbyPeople`), questo limita anche quanto
+  /// spesso si può osservare un cambiamento qualsiasi. Il primo invio dopo
+  /// un periodo di calma parte subito; resta attivo anche attraverso le
+  /// riconnessioni (riaprire il socket non lo azzera).
+  static const Duration nearbyPushMinInterval = Duration(seconds: 5);
 
   // Un hotspot si forma in minClusterSize/clusterMinDwellMinutes (minuti) e
   // vive un'ora: non serve rilevarlo di nuovo a ogni singolo aggiornamento
@@ -91,7 +108,14 @@ class ConnectionHub {
   final Pseudonyms pseudonyms;
 
   final Duration _broadcastThrottleInterval;
+  final Duration _nearbyPushMinInterval;
   final Map<String, StreamSink<dynamic>> _sinks = {};
+
+  /// Per osservatore: la finestra di [nearbyPushMinInterval] aperta
+  /// dall'ultimo invio di una lista "vicinanze", e chi ha avuto altro da
+  /// ricevere nel frattempo (vedi [_pushNearbyTo]).
+  final Map<String, Timer> _nearbyPushCooldowns = {};
+  final Set<String> _nearbyPushPending = {};
 
   /// Firma dell'ultima lista "vicinanze" mandata a ogni sessione: se non è
   /// cambiato nulla (niente distanze nel payload, quindi capita spesso) non
@@ -139,6 +163,11 @@ class ConnectionHub {
     _hotspotDetectionTimer = null;
     _broadcastThrottleTimer?.cancel();
     _broadcastThrottleTimer = null;
+    for (final timer in _nearbyPushCooldowns.values) {
+      timer.cancel();
+    }
+    _nearbyPushCooldowns.clear();
+    _nearbyPushPending.clear();
   }
 
   /// Registra il canale di [sessionId]. Se ce n'era già uno (riconnessione
@@ -178,6 +207,7 @@ class ConnectionHub {
     final sink = _sinks.remove(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _forgetNearbyPushCooldown(sessionId);
     if (sink != null) _closeSink(sink, code, reason);
   }
 
@@ -187,6 +217,12 @@ class ConnectionHub {
     pseudonyms.forget(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _forgetNearbyPushCooldown(sessionId);
+  }
+
+  void _forgetNearbyPushCooldown(String sessionId) {
+    _nearbyPushCooldowns.remove(sessionId)?.cancel();
+    _nearbyPushPending.remove(sessionId);
   }
 
   void _closeSink(StreamSink<dynamic> sink, int code, String reason) {
@@ -292,14 +328,46 @@ class ConnectionHub {
     }
   }
 
+  /// Manda a [sessionId] la sua lista, se è cambiata — ma al più una volta
+  /// per [nearbyPushMinInterval]: dentro la finestra segna solo che c'è
+  /// altro, e alla sua fine ricalcola e (se diversa) manda la lista più
+  /// recente.
   void _pushNearbyTo(String sessionId) {
+    if (_nearbyPushCooldowns.containsKey(sessionId)) {
+      _nearbyPushPending.add(sessionId);
+      return;
+    }
+    if (!_sendNearbyIfChanged(sessionId)) return;
+    if (_nearbyPushMinInterval <= Duration.zero) return;
+
+    _nearbyPushCooldowns[sessionId] = Timer(_nearbyPushMinInterval, () {
+      _nearbyPushCooldowns.remove(sessionId);
+      if (!_nearbyPushPending.remove(sessionId)) return;
+      // Socket caduto nel frattempo: alla riconnessione `attach` chiede
+      // comunque un ricalcolo.
+      if (!_sinks.containsKey(sessionId)) return;
+      try {
+        _pushNearbyTo(sessionId);
+      } catch (error, stackTrace) {
+        developer.log(
+          'Calcolo vicinanze fallito per una sessione',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    });
+  }
+
+  /// Ricalcola la lista di [sessionId] e la manda se è diversa dall'ultima
+  /// mandata. Ritorna `true` solo se è partita davvero.
+  bool _sendNearbyIfChanged(String sessionId) {
     final people = _sessionStore.nearbyPeople(
       sessionId: sessionId,
       radiusMeters: radiusMeters,
       hotspotStore: _hotspotStore,
       paywallStore: _paywallStore,
     );
-    if (people == null) return;
+    if (people == null) return false;
 
     final payload = [
       for (final person in people)
@@ -323,10 +391,11 @@ class ConnectionHub {
         ),
       ),
     );
-    if (_lastNearbySignature[sessionId] == signature) return;
+    if (_lastNearbySignature[sessionId] == signature) return false;
     _lastNearbySignature[sessionId] = signature;
 
     sendTo(sessionId, {'type': 'nearby', 'people': payload});
+    return true;
   }
 
   /// Manda a `sessionId` (se connesso) le sue richieste in entrata/uscita

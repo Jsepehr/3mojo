@@ -15,9 +15,13 @@ import 'nearby_remote_data_source.dart';
 ///   (`arrivedAt`), non da quanti tick sono passati: se qualcuno è
 ///   "arrivato" prima che tu iniziassi a guardare, lo vedi già ad alta
 ///   probabilità al primo caricamento;
-/// - **nessuna distanza** verso chi chiama: la lista esce già ordinata
-///   dalla persona più vicina, e la distanza resta interna (ordinamento e
-///   paywall);
+/// - **anche chi guarda dev'essere fermo**: per il primo minuto dopo lo
+///   Start la lista è vuota (il server conta la permanenza anche di chi
+///   guarda; qui la posizione finta non si sposta mai, quindi conta solo
+///   il primo minuto);
+/// - **nessuna distanza** verso chi chiama: la lista esce ordinata per
+///   fasce di distanza di 25 m (dentro una fascia, un ordine fisso per la
+///   sessione), e la distanza resta interna (ordinamento e paywall);
 /// - il **paywall** è deciso qui (`isLocked`), con la stessa regola del
 ///   server — un terzo dei più lontani gratis (minimo 2), gli altri
 ///   bloccati e senza foto — a meno che ci sia un token di sblocco (in
@@ -38,9 +42,11 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   Timer? _timer;
   String _idPrefix = '';
   bool _isUnlocked = false;
+  DateTime _connectedAt = DateTime.now();
 
   static const Duration _tickInterval = Duration(seconds: 3);
   static const int _visibilityThresholdMinutes = 1;
+  static const double _rankBandMeters = 25;
   static const int _mediumChanceThresholdMinutes = 3;
   static const int _highChanceThresholdMinutes = 5;
   static const double _leaveProbability = 0.1;
@@ -110,6 +116,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
 
     unawaited(existing?.close());
     _idPrefix = prefix;
+    _connectedAt = DateTime.now();
     _people = _seedPeople();
     final controller = StreamController<List<NearbyPersonModel>>.broadcast();
     _controller = controller;
@@ -171,16 +178,24 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     if (controller == null || controller.isClosed) return;
 
     final now = DateTime.now();
+    final viewerStayedPut =
+        now.difference(_connectedAt).inMinutes >= _visibilityThresholdMinutes;
+    int band(_FakePresence p) => (p.distanceMeters / _rankBandMeters).floor();
+    int tiebreak(_FakePresence p) => Object.hash(_idPrefix, p.index);
     final visible =
         _people
             .where(
               (person) =>
+                  viewerStayedPut &&
                   person.isPresent &&
                   now.difference(person.arrivedAt).inMinutes >=
                       _visibilityThresholdMinutes,
             )
             .toList()
-          ..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+          ..sort((a, b) {
+            final byBand = band(a).compareTo(band(b));
+            return byBand != 0 ? byBand : tiebreak(a).compareTo(tiebreak(b));
+          });
 
     final freeCount = _isUnlocked
         ? visible.length
@@ -188,8 +203,14 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
             visible.length,
             max((visible.length * _freeFraction).floor(), _minFreeCount),
           );
-    // I più lontani (in fondo alla lista ordinata) sono quelli gratis.
-    final firstFreeIndex = visible.length - freeCount;
+    // I più lontani sono quelli gratis — per distanza esatta, come sul
+    // server, non per posizione nella lista (ordinata per fasce).
+    final freeIndexes =
+        ([...visible]
+              ..sort((a, b) => b.distanceMeters.compareTo(a.distanceMeters)))
+            .take(freeCount)
+            .map((p) => p.index)
+            .toSet();
 
     controller.add([
       for (var i = 0; i < visible.length; i++)
@@ -198,7 +219,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
           meetingChance: _meetingChanceFor(
             now.difference(visible[i].arrivedAt),
           ),
-          isLocked: i < firstFreeIndex,
+          isLocked: !freeIndexes.contains(visible[i].index),
           intent: visible[i].intent,
           languages: visible[i].languages,
           visibleGender: visible[i].visibleGender,

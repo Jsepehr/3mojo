@@ -63,6 +63,14 @@ grazia o 90 s senza messaggi (il client manda un `ping` ogni 20 s) la
 chiudono. A ogni `ping` il server risponde `{"type":"pong"}`: l'app lo usa
 per accorgersi di un socket morto quando torna in primo piano.
 
+**Vicinanze**: raggio 100 m (200 m dentro uno stesso hotspot), matching
+reciproco, ed entrambi fermi da almeno un minuto — **anche chi guarda**: la
+sua lista è vuota per il primo minuto e dopo ogni spostamento confermato. Le
+distanze vanno da **ancora ad ancora** (il punto in cui ognuno è fermo,
+congelato dopo il primo minuto), mai dall'ultima lettura grezza: chi
+falsifica il GPS non può più sondare la posizione altrui a piccoli passi. La
+lista è ordinata per fasce di 25 m, senza distanze (vedi `SessionStore`).
+
 **Selfie nelle richieste**: lo snapshot `encounters` porta il selfie della
 controparte solo la prima volta per ogni richiesta su ogni socket; gli
 snapshot successivi lo omettono e il client riusa quello già ricevuto.
@@ -79,6 +87,8 @@ snapshot successivi lo omettono e il client riusa quello già ricevuto.
 | Testo di chat | 1000 unità UTF-16 (come `SendMessageUseCase` nell'app); oltre → `rejected` `invalidText`, il socket resta aperto. Inoltrato solo con un match attivo | `RealtimeMessageHandler` |
 | Richieste d'incontro pendenti | 5 in uscita, 20 in entrata per sessione | `EncounterStore` |
 | Spostamenti | oltre 50 m/s (+250 m di tolleranza GPS) la presenza è scartata | `SessionStore.upsertPosition` |
+| Posizioni | al più una utile ogni 10 s per sessione; quelle in più sono ignorate in silenzio (`tooSoon`, nessun rifiuto, socket aperto) | `SessionStore.minPositionInterval` |
+| Liste `nearby` | al più una diversa ogni 5 s per osservatore (le modifiche nel frattempo partono alla fine della finestra), oltre al throttle globale di 500 ms | `ConnectionHub.nearbyPushMinInterval` |
 
 ## Simulatore di dispositivi
 
