@@ -17,6 +17,7 @@ import 'package:threemojo_app/features/session/domain/usecases/get_current_sessi
 import 'package:threemojo_app/features/session/domain/usecases/session_teardown_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/start_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/take_selfie_usecase.dart';
+import 'package:threemojo_app/features/session/domain/usecases/update_profile_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/withdraw_profile_usecase.dart';
 import 'package:threemojo_app/features/session/presentation/providers/pro_session.dart';
@@ -150,6 +151,11 @@ void main() {
     final proProfile = ProProfile(
       getProfileUseCase: GetProfileUseCase(profiles),
       saveProfileUseCase: SaveProfileUseCase(profiles),
+      updateProfileUseCase: UpdateProfileUseCase(
+        getCurrentSessionUseCase: GetCurrentSessionUseCase(sessions),
+        endSessionUseCase: EndSessionUseCase(repository: sessions),
+        saveProfileUseCase: SaveProfileUseCase(profiles),
+      ),
       withdrawProfileUseCase: build(sessions),
     );
     await Future<void>.delayed(Duration.zero);

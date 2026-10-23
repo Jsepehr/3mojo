@@ -5,10 +5,10 @@ import 'face_detector_stub.dart'
     if (dart.library.io) 'face_detector_io.dart'
     as detector;
 
-/// Implementazione **reale**: rilevamento nativo (ML Kit su Android, Apple
-/// Vision su iOS), completamente sul dispositivo — nessuna foto lascia il
-/// telefono, nessun dato biometrico salvato da nessuna parte. Dice solo
-/// "c'è un volto sì/no".
+/// Implementazione **reale**: rilevamento nativo (`android.media.FaceDetector`
+/// del sistema su Android, Apple Vision su iOS), completamente sul
+/// dispositivo — nessuna foto lascia il telefono, nessun dato biometrico
+/// salvato da nessuna parte, nessuna rete. Dice solo "c'è un volto sì/no".
 ///
 /// Riceve i byte del selfie (che vive solo in memoria) e non un percorso:
 /// il file temporaneo che serve al canale nativo esiste solo per la durata

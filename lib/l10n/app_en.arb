@@ -372,10 +372,6 @@
   "@delete": {
     "description": "Destructive confirm button"
   },
-  "changes_apply_from_your_next_start": "Changes apply from your next Start.",
-  "@changes_apply_from_your_next_start": {
-    "description": "Shown on the profile page while online. Refers to the Start button by name"
-  },
   "profile_saved": "Profile saved",
   "@profile_saved": {
     "description": "Snackbar after saving"
@@ -1072,5 +1068,404 @@
   "unlock_delivery_delayed": "Payment received: the unlock starts as soon as we can confirm it.",
   "@unlock_delivery_delayed": {
     "description": "Snackbar when the store payment went through but our server could not confirm the unlock yet (no network, server busy). The app retries by itself, nothing is lost"
+  },
+  "privacy_policy": "Privacy policy",
+  "@privacy_policy": {
+    "description": "Title of the in-app privacy policy page, and label of the links to it (menu, About dialog, profile, terms of use)"
+  },
+  "read_the_privacy_policy": "Read the privacy policy",
+  "@read_the_privacy_policy": {
+    "description": "Link button under the consent and terms checkboxes in the profile, and at the bottom of the terms of use page: opens the privacy policy"
+  },
+  "privacy_version_line": "Version {version} · last updated {date}",
+  "@privacy_version_line": {
+    "description": "Line at the top of the privacy policy: version number and date of the last update of the text",
+    "placeholders": {
+      "version": {
+        "type": "int"
+      },
+      "date": {
+        "type": "DateTime",
+        "format": "yMMMMd"
+      }
+    }
+  },
+  "privacy_online_copy": "You can also read it at {url}",
+  "@privacy_online_copy": {
+    "description": "Line at the top of the privacy policy: the public web address where the same policy is published",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_who_title": "Who we are",
+  "@privacy_who_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_who_body": "The data controller is {controller}. For privacy matters write to {privacyEmail}. For safety and reports write to {safetyEmail}.",
+  "@privacy_who_body": {
+    "description": "Privacy policy: data controller and contacts. The values come from the app configuration",
+    "placeholders": {
+      "controller": {
+        "type": "String"
+      },
+      "privacyEmail": {
+        "type": "String"
+      },
+      "safetyEmail": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_who_dpo": "Our Data Protection Officer can be reached at {contact}.",
+  "@privacy_who_dpo": {
+    "description": "Privacy policy: contact of the Data Protection Officer, shown only if one is appointed",
+    "placeholders": {
+      "contact": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_in_short_title": "In short",
+  "@privacy_in_short_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_in_short_no_accounts": "Raen has no accounts: no name, email, phone number or password.",
+  "@privacy_in_short_no_accounts": {
+    "description": "Privacy policy, 'In short' bullet"
+  },
+  "privacy_in_short_visible": "You are visible only while you are online, between Start and End.",
+  "@privacy_in_short_visible": {
+    "description": "Privacy policy, 'In short' bullet. Start and End are the names of the buttons"
+  },
+  "privacy_in_short_memory": "Our server keeps session data in memory only and forgets it when the session ends. The only exception is moderation records (see below), kept for at most 30 days.",
+  "@privacy_in_short_memory": {
+    "description": "Privacy policy, 'In short' bullet"
+  },
+  "privacy_in_short_no_ads": "We don't sell data, show ads or use analytics or tracking tools.",
+  "@privacy_in_short_no_ads": {
+    "description": "Privacy policy, 'In short' bullet"
+  },
+  "privacy_collect_title": "What we collect and why",
+  "@privacy_collect_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_data_location_title": "Precise location, while you're online",
+  "@privacy_data_location_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_location_body": "To show you people within 100 metres (or in the same busy place) and to show you to them. No one sees it: other people never receive your location or how far you are, they only know you're close enough to appear. On Android you stay visible even with the app in the background, until you tap End (a persistent notification shows this). On iPhone your location is only used while Raen is open on screen.",
+  "@privacy_data_location_body": {
+    "description": "Privacy policy, data item: why the location is used and who sees it. Platform behaviour: Android keeps it in the background with a persistent notification, iPhone only with the app on screen"
+  },
+  "privacy_data_selfie_title": "Session selfie",
+  "@privacy_data_selfie_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_selfie_body": "So people can recognise you in person. Seen by compatible people nearby, people you send a request to or receive one from, and your match. We remove the photo's metadata (such as where it was taken).",
+  "@privacy_data_selfie_body": {
+    "description": "Privacy policy, data item: why the selfie is used and who sees it"
+  },
+  "privacy_data_gender_title": "Gender and who you want to meet",
+  "@privacy_data_gender_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_gender_body": "To show you only compatible people, and to show you only to them (both ways). Who you want to meet is never shown to anyone. Your gender only if you turn on \"Show my gender to others\". Note: people who can see you may guess that they fit what you're looking for.",
+  "@privacy_data_gender_body": {
+    "description": "Privacy policy, data item: gender and who you want to meet (sensitive data). Quotes the 'Show my gender to others' switch of the profile"
+  },
+  "privacy_data_intent_title": "Intent and languages (up to 2)",
+  "@privacy_data_intent_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_intent_body": "To say what you're up for tonight and which languages you speak. Seen by compatible people nearby, in requests and by your match.",
+  "@privacy_data_intent_body": {
+    "description": "Privacy policy, data item: intent and languages"
+  },
+  "privacy_data_stay_title": "How long you've stayed put, in three levels",
+  "@privacy_data_stay_title": {
+    "description": "Privacy policy, data item title: the meeting chance shown to others (low, medium, high)"
+  },
+  "privacy_data_stay_body": "Low, medium or high, to show how likely a meeting is. Seen by compatible people nearby.",
+  "@privacy_data_stay_body": {
+    "description": "Privacy policy, data item: the meeting chance (low, medium, high)"
+  },
+  "privacy_data_requests_title": "Meeting requests and replies",
+  "@privacy_data_requests_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_requests_body": "To propose and accept a meeting. Seen by the other person (a \"no\" is visible to whoever asked).",
+  "@privacy_data_requests_body": {
+    "description": "Privacy policy, data item: meeting requests"
+  },
+  "privacy_data_chat_title": "Chat messages",
+  "@privacy_data_chat_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_chat_body": "To talk to your match. Only your match sees them. The server relays them and doesn't keep them. On your phone they disappear when the match ends.",
+  "@privacy_data_chat_body": {
+    "description": "Privacy policy, data item: chat messages"
+  },
+  "privacy_data_blocks_title": "Blocks and reports",
+  "@privacy_data_blocks_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_blocks_body": "For everyone's safety. No one sees them: people you block or report are not told.",
+  "@privacy_data_blocks_body": {
+    "description": "Privacy policy, data item: blocks and reports"
+  },
+  "privacy_data_ip_title": "IP address",
+  "@privacy_data_ip_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_ip_body": "To limit abuse (for example too many sessions from the same network). No one sees it.",
+  "@privacy_data_ip_body": {
+    "description": "Privacy policy, data item: IP address"
+  },
+  "privacy_data_purchase_title": "If you buy the 2-hour unlock",
+  "@privacy_data_purchase_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_purchase_body": "To verify the payment with the App Store or Google Play and activate the unlock. No one sees it. Apple or Google handles the payment: we never see your name, card or account.",
+  "@privacy_data_purchase_body": {
+    "description": "Privacy policy, data item: in-app purchase of the unlock"
+  },
+  "privacy_data_device_title": "Device check",
+  "@privacy_data_device_title": {
+    "description": "Privacy policy, data item title"
+  },
+  "privacy_data_device_body": "When it's turned on, to accept only the genuine app on a real device, against fake automated accounts. Apple (App Attest) or Google (Play Integrity) give a verdict; we keep nothing.",
+  "@privacy_data_device_body": {
+    "description": "Privacy policy, data item: device attestation (App Attest / Play Integrity), when the server turns it on"
+  },
+  "privacy_face_check_body": "The face check on your selfie happens only on your phone: no biometric data is created, saved or sent. It is done by the phone's own operating system (Android's built-in face detector, Apple Vision on iPhone), with no network.",
+  "@privacy_face_check_body": {
+    "description": "Privacy policy: the on-device face check of the selfie (Android's built-in face detector, Apple Vision on iPhone)"
+  },
+  "privacy_profile_on_phone_body": "Your profile (gender, who you want to meet, intent, languages, 18+ confirmation) stays on your phone, encrypted. We only send it to the server while you're online.",
+  "@privacy_profile_on_phone_body": {
+    "description": "Privacy policy: where the profile is kept"
+  },
+  "privacy_bases_title": "Legal bases",
+  "@privacy_bases_title": {
+    "description": "Privacy policy section title (legal bases under GDPR)"
+  },
+  "privacy_basis_contract": "Contract (Art. 6(1)(b) GDPR): location, selfie, profile, requests, chat and purchases are needed to provide the service you ask for when you tap Start.",
+  "@privacy_basis_contract": {
+    "description": "Privacy policy: legal basis 'contract', Art. 6(1)(b) GDPR"
+  },
+  "privacy_basis_consent": "Explicit consent (Art. 9(2)(a)): for gender and who you want to meet, which may reveal your sexual orientation. You give it in your profile. It isn't needed if you choose \"Prefer not to say\" and \"Everyone\". You can withdraw it at any time (see \"Your rights\").",
+  "@privacy_basis_consent": {
+    "description": "Privacy policy: legal basis 'explicit consent', Art. 9(2)(a) GDPR, for gender and who you want to meet. Quotes the 'Prefer not to say' and 'Everyone' options of the profile"
+  },
+  "privacy_basis_legitimate": "Legitimate interests (Art. 6(1)(f)): blocks, reports, moderation records, IP limits and the device check, to protect people using Raen. You can object by writing to us.",
+  "@privacy_basis_legitimate": {
+    "description": "Privacy policy: legal basis 'legitimate interests', Art. 6(1)(f) GDPR"
+  },
+  "privacy_retention_title": "How long we keep it",
+  "@privacy_retention_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_retention_server": "On our server: for the length of the session. Tapping End deletes it immediately. If you lose your connection, the session stays hidden for 45 seconds in case you reconnect, then it is deleted. After 90 seconds with no signal from your phone it is closed.",
+  "@privacy_retention_server": {
+    "description": "Privacy policy, retention: on the server. End is the name of the button"
+  },
+  "privacy_retention_moderation": "Moderation records: at most 30 days (see below).",
+  "@privacy_retention_moderation": {
+    "description": "Privacy policy, retention: moderation records"
+  },
+  "privacy_retention_purchases": "Purchases: the unlock code lasts 2 hours. To stop the same payment from counting twice we keep only a cryptographic fingerprint (unreadable) of the transaction for 8 days.",
+  "@privacy_retention_purchases": {
+    "description": "Privacy policy, retention: purchases of the unlock"
+  },
+  "privacy_retention_ip": "IP address: 1 to 30 minutes, depending on the limit. Hosting provider's technical logs: {retention}.",
+  "@privacy_retention_ip": {
+    "description": "Privacy policy, retention: IP address and the hosting provider's logs. The retention value comes from the app configuration",
+    "placeholders": {
+      "retention": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_retention_phone": "On your phone: the encrypted profile until you delete it or uninstall the app. Selfie, chats and other people's photos in memory only, until End.",
+  "@privacy_retention_phone": {
+    "description": "Privacy policy, retention: on the phone"
+  },
+  "privacy_moderation_title": "Reports and moderation records",
+  "@privacy_moderation_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_moderation_body": "If several different people report the same session, it may be closed automatically, and for a short time (30 minutes) no new sessions can be started from the same network. This also affects other people on the same network, for example a venue's Wi‑Fi. For each reported session we keep an encrypted record for human review: the reported person's photo, the reasons, the number of reports and the time (rounded to the minute). Never location, chats, IP or identifiers. The record is deleted after 30 days, or earlier once reviewed. You can appeal a decision or ask us to delete a record by writing to {safetyEmail}.",
+  "@privacy_moderation_body": {
+    "description": "Privacy policy: what happens after several reports and what the moderation record contains. The email comes from the app configuration",
+    "placeholders": {
+      "safetyEmail": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_sharing_title": "Who we share data with",
+  "@privacy_sharing_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_sharing_users": "Other users: only what is described above.",
+  "@privacy_sharing_users": {
+    "description": "Privacy policy, sharing: other users"
+  },
+  "privacy_sharing_hosting": "{provider}, which runs our servers on our behalf (processor).",
+  "@privacy_sharing_hosting": {
+    "description": "Privacy policy, sharing: the hosting provider (processor). The name comes from the app configuration",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_sharing_apple_google": "Apple and Google, for app distribution, payments and the device check. They may process data in the United States, with the safeguards set out in their terms ({safeguards}).",
+  "@privacy_sharing_apple_google": {
+    "description": "Privacy policy, sharing: Apple and Google. The safeguards text comes from the app configuration",
+    "placeholders": {
+      "safeguards": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_sharing_authorities": "Authorities, only where the law requires it.",
+  "@privacy_sharing_authorities": {
+    "description": "Privacy policy, sharing: authorities"
+  },
+  "privacy_rights_title": "Your rights, and how to use them without an account",
+  "@privacy_rights_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_rights_intro": "You have the right of access, rectification, erasure, restriction, objection and portability, and you can withdraw consent. Because Raen has no accounts and doesn't identify you, you exercise most of these rights yourself, immediately, in the app:",
+  "@privacy_rights_intro": {
+    "description": "Privacy policy, rights: introduction"
+  },
+  "privacy_rights_profile": "See or correct your profile: Menu → My profile.",
+  "@privacy_rights_profile": {
+    "description": "Privacy policy, rights: see or correct the profile (menu path)"
+  },
+  "privacy_rights_server": "Delete your data from the server: tap End. Your session and everything the server knew about you are gone immediately.",
+  "@privacy_rights_server": {
+    "description": "Privacy policy, rights: delete data from the server by tapping End"
+  },
+  "privacy_rights_withdraw": "Withdraw consent: Menu → My profile, then choose \"Prefer not to say\" and \"Everyone\", or Delete profile. If you're online we end your session first, so the server stops using your gender and preferences right away. The same happens if you change your gender, who you want to meet or \"Show my gender to others\" while online. Languages and what you're usually looking for apply from your next Start.",
+  "@privacy_rights_withdraw": {
+    "description": "Privacy policy, rights: withdraw consent. Changing gender, who you want to meet or 'Show my gender' while online ends the session first; languages and usual intent apply from the next Start"
+  },
+  "privacy_rights_phone": "Delete everything from your phone: uninstall the app.",
+  "@privacy_rights_phone": {
+    "description": "Privacy policy, rights: delete everything from the phone"
+  },
+  "privacy_rights_no_copy": "We can't give you a copy of the data from a session that has ended, because we no longer have it. For moderation records we have no way of knowing they're about you: write to {safetyEmail} with the approximate date and time. We may ask for details to find the record (for example a photo to compare), which we'll use only for that and then delete.",
+  "@privacy_rights_no_copy": {
+    "description": "Privacy policy, rights: no copy of ended sessions; how to reach moderation records without an id. The email comes from the app configuration",
+    "placeholders": {
+      "safetyEmail": {
+        "type": "String"
+      }
+    }
+  },
+  "privacy_rights_complaint": "You can also lodge a complaint with a supervisory authority, such as the Italian Garante per la protezione dei dati personali (www.garanteprivacy.it) or the authority in your country.",
+  "@privacy_rights_complaint": {
+    "description": "Privacy policy, rights: complaint to a supervisory authority"
+  },
+  "privacy_age_title": "Age",
+  "@privacy_age_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_age_body": "Raen is only for adults (18+). If you think someone is under 18, report them with the reason \"Seems to be under 18\".",
+  "@privacy_age_body": {
+    "description": "Privacy policy: 18+ only. Quotes the report reason for minors"
+  },
+  "privacy_security_title": "Security",
+  "@privacy_security_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_security_body": "Encrypted connections (TLS), encrypted profile on your phone, encrypted moderation records on the server. On Android the app blocks screenshots and screen recording; on iPhone it hides its content in the app switcher. On iPhone other people could still take a screenshot: only share what you're comfortable showing.",
+  "@privacy_security_body": {
+    "description": "Privacy policy: security measures"
+  },
+  "privacy_changes_title": "Changes",
+  "@privacy_changes_title": {
+    "description": "Privacy policy section title"
+  },
+  "privacy_changes_body": "If we change this policy in a significant way, we'll tell you in the app.",
+  "@privacy_changes_body": {
+    "description": "Privacy policy: how changes are announced"
+  },
+  "location_disclosure_title": "Your location while you're online",
+  "@location_disclosure_title": {
+    "description": "Title of the full-screen notice shown before the system location permission request (Google Play prominent disclosure)"
+  },
+  "location_disclosure_use": "When you tap Start, Raen uses your precise location to show you people within 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are.",
+  "@location_disclosure_use": {
+    "description": "Location notice: what the location is used for. Start is the name of the button"
+  },
+  "location_disclosure_background": "While you're online, your location keeps being used even when the app is in the background or the screen is off, until you tap End: a persistent notification reminds you.",
+  "@location_disclosure_background": {
+    "description": "Location notice, Android only: the location keeps being used in the background (foreground service with a persistent notification) until End. End is the name of the button"
+  },
+  "location_disclosure_foreground_only": "Your location is only used while Raen is open on screen, not in the background: if you leave the app or lock the screen, it stops being updated until you come back.",
+  "@location_disclosure_foreground_only": {
+    "description": "Location notice, iPhone: the location is used only with the app open on screen (no background location on iOS)"
+  },
+  "location_disclosure_offline": "When you're offline your location isn't used, and we don't keep it after your session ends.",
+  "@location_disclosure_offline": {
+    "description": "Location notice: not used offline, not kept after the session"
+  },
+  "location_disclosure_next_step": "Next, your phone will ask for permission to use your location.",
+  "@location_disclosure_next_step": {
+    "description": "Location notice: what happens after Continue"
+  },
+  "location_disclosure_continue": "Continue",
+  "@location_disclosure_continue": {
+    "description": "Button of the location notice: goes on to the system permission request"
+  },
+  "location_disclosure_not_now": "Not now",
+  "@location_disclosure_not_now": {
+    "description": "Button of the location notice: closes it, nothing is asked and you stay offline"
+  },
+  "location_permission_needed_to_go_online": "Without location permission you can't go online. You can allow it in Settings.",
+  "@location_permission_needed_to_go_online": {
+    "description": "Snackbar when the location permission was not granted after the notice: the Start doesn't begin"
+  },
+  "profile_online_changes_hint": "You're online: languages and what you're usually looking for apply from your next Start. If you change your gender, who you want to meet or \"Show my gender to others\", we'll end your session first.",
+  "@profile_online_changes_hint": {
+    "description": "Shown at the top of the profile page while online"
+  },
+  "profile_save_ends_session_title": "End your session and save?",
+  "@profile_save_ends_session_title": {
+    "description": "Title of the confirmation dialog when saving the profile while online would end the session"
+  },
+  "profile_save_ends_session_body": "You changed your gender, who you want to meet or whether your gender is shown. To make it apply right away we'll end your session first, so the server immediately stops using the old values. Requests and any match in progress will end. You can go online again with Start.",
+  "@profile_save_ends_session_body": {
+    "description": "Body of the confirmation dialog when saving the profile while online would end the session (gender, who you want to meet or 'show my gender' changed)"
+  },
+  "profile_save_and_end": "Save and end",
+  "@profile_save_and_end": {
+    "description": "Confirm button of the dialog: ends the session, then saves the profile"
+  },
+  "profile_saved_session_ended": "Profile saved. Your session has ended.",
+  "@profile_saved_session_ended": {
+    "description": "Snackbar after saving a profile change that ended the session"
+  },
+  "start_error_consent_required": "To go online, confirm again that Raen can use your gender and who you want to meet.",
+  "@start_error_consent_required": {
+    "description": "Start error: the consent to gender and who you want to meet must be confirmed again (given for an older version of its text)"
+  },
+  "consent_renewal_title": "Confirm your consent",
+  "@consent_renewal_title": {
+    "description": "Title of the dialog that asks to confirm again the consent to gender and who you want to meet"
+  },
+  "consent_renewal_body": "The consent text has changed since you agreed to it. Read it and confirm it to go online. If you'd rather not, choose \"Prefer not to say\" and \"Everyone\" in your profile: then no consent is needed.",
+  "@consent_renewal_body": {
+    "description": "Body of the consent renewal dialog. Quotes the 'Prefer not to say' and 'Everyone' options of the profile"
+  },
+  "link_copied": "Link copied",
+  "@link_copied": {
+    "description": "Snackbar after tapping the public address of the privacy policy: it was copied to the clipboard"
   }
 }

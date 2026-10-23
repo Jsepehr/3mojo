@@ -153,6 +153,20 @@ class HotspotStore {
     return isMember;
   }
 
+  /// Dimentica [sessionId] da ogni hotspot — alla fine della sessione (via
+  /// `ConnectionHub.forgetSession`, chiamata da `SessionLifecycle.endNow`).
+  /// Senza, l'id interno di chi ha premuto End resterebbe in
+  /// `Hotspot.memberSessionIds` finché l'hotspot vive (anche ore, se la
+  /// zona resta popolata): un dato della sessione che sopravvive alla
+  /// sessione, e una lista che cresce con ogni passante. Non si chiama
+  /// durante il periodo di grazia: chi si riconnette riprende lo stesso id
+  /// e deve ritrovare la propria isteresi d'uscita.
+  void forgetSession(String sessionId) {
+    for (final hotspot in _hotspots) {
+      hotspot.memberSessionIds.remove(sessionId);
+    }
+  }
+
   /// true se un cerchio centrato in (lat,lng) si sovrapporrebbe al cerchio di
   /// un altro hotspot attivo (distanza tra i centri < la somma dei due raggi,
   /// cioè < il doppio di [Hotspot.radiusMeters], visto che tutti gli hotspot

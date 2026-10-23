@@ -7,13 +7,15 @@ import 'package:flutter/services.dart';
 ///
 /// - **Manrope** (font dell'app, `assets/fonts/manrope/`): SIL OFL 1.1.
 /// - **Android**: le librerie native che finiscono nell'APK senza un
-///   pacchetto Dart che ne porti la licenza — ML Kit (aggiunto a mano in
-///   `android/app/build.gradle.kts` per `FaceDetectionChannel.kt`) e le
-///   dipendenze Gradle dirette dei plugin (Google Play services, Tink,
-///   AndroidX, Kotlin). Registrate **solo su Android**: su iOS il volto lo
-///   rileva Apple Vision (framework di sistema) e i plugin arrivano via
-///   Swift Package Manager senza pacchetti esterni — non c'è nulla da
-///   aggiungere.
+///   pacchetto Dart che ne porti la licenza — Play Integrity (aggiunta a
+///   mano in `android/app/build.gradle.kts` per `AttestationChannel.kt`) e
+///   le dipendenze Gradle dirette dei plugin (Google Play services, Google
+///   Play Billing Library, Tink, AndroidX, Kotlin). Il volto lo rileva
+///   `android.media.FaceDetector` del sistema operativo
+///   (`FaceDetectionChannel.kt`): nessuna libreria da elencare. Registrate
+///   **solo su Android**: su iOS il volto lo rileva Apple Vision (framework
+///   di sistema) e i plugin arrivano via Swift Package Manager senza
+///   pacchetti esterni — non c'è nulla da aggiungere.
 ///
 /// I testi sono letti dagli asset solo quando qualcuno apre la pagina delle
 /// licenze (`LicenseRegistry` chiama il collector in modo pigro). Sono in
@@ -38,10 +40,15 @@ Stream<LicenseEntry> appLicenses(
 
   if (platform != TargetPlatform.android) return;
 
-  yield const LicenseEntryWithLineBreaks(['Google ML Kit'], _mlKitTerms);
   yield const LicenseEntryWithLineBreaks([
     'Google Play services',
   ], _playServicesTerms);
+  yield const LicenseEntryWithLineBreaks([
+    'Google Play Billing Library',
+  ], _playBillingTerms);
+  yield const LicenseEntryWithLineBreaks([
+    'Google Play Integrity',
+  ], _playIntegrityTerms);
 
   final apache = await bundle.loadString(apacheLicenseAsset);
   for (final library in _apacheLibraries) {
@@ -57,24 +64,31 @@ const manropeLicenseAsset = 'assets/fonts/manrope/OFL.txt';
 @visibleForTesting
 const apacheLicenseAsset = 'assets/licenses/apache-2.0.txt';
 
-/// ML Kit non è open source: si usa alle condizioni dei termini di Google,
-/// che non sono un testo da copiare qui ma una pagina che Google aggiorna —
-/// la voce rimanda a quella.
-const _mlKitTerms =
-    'com.google.mlkit:face-detection 16.1.7 — on-device face detection, '
-    'used only to check that a selfie contains a face before going online. '
-    'Images never leave the device.\n\n'
-    'Copyright Google LLC. Used under the ML Kit Terms of Service: '
-    'https://developers.google.com/ml-kit/terms\n\n'
-    'ML Kit sends Google diagnostic and usage data about the API (not the '
-    'images): https://developers.google.com/ml-kit/android-data-disclosure';
-
+/// Le librerie Google qui sotto non sono open source: si usano alle
+/// condizioni dei termini di Google, che non sono un testo da copiare qui ma
+/// pagine che Google aggiorna — le voci rimandano a quelle (gli stessi
+/// indirizzi dei POM Maven delle librerie).
 const _playServicesTerms =
     'com.google.android.gms:play-services-location (location for the '
     '"Nearby" list, via the geolocator plugin) and the Google Play services '
-    'components pulled in by ML Kit.\n\n'
+    'components it pulls in (play-services-base, play-services-basement, '
+    'play-services-tasks).\n\n'
     'Copyright Google LLC. Used under the Android Software Development Kit '
     'License Agreement: https://developer.android.com/studio/terms';
+
+const _playBillingTerms =
+    'com.android.billingclient:billing (in-app purchase of the unlock, via '
+    'the in_app_purchase plugin).\n\n'
+    'Copyright Google LLC. Used under the Android Software Development Kit '
+    'License Agreement: https://developer.android.com/studio/terms';
+
+const _playIntegrityTerms =
+    'com.google.android.play:integrity and com.google.android.play:'
+    'core-common (device check, only when the server asks for it).\n\n'
+    'Copyright Google LLC. Used under the Play Integrity API Terms of '
+    'Service: https://developer.android.com/google/play/integrity/overview#tos '
+    'and the Play Core Software Development Kit Terms of Service: '
+    'https://developer.android.com/guide/playcore/license';
 
 /// Librerie Apache 2.0 dirette dei plugin Android (dai loro
 /// `android/build.gradle`): nome e riga di copyright; il testo della

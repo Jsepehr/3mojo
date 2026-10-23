@@ -38,6 +38,12 @@ migrate_working_dir/
 /android/.gradle/
 /android/local.properties
 
+# Firma della release Android: password e keystore non vanno mai in git
+# (modello senza segreti: android/key.properties.example)
+/android/key.properties
+**/*.jks
+**/*.keystore
+
 # iOS
 /ios/Flutter/ephemeral/
 

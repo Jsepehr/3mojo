@@ -13,7 +13,9 @@ import 'package:threemojo_app/features/encounters/presentation/encounter_notice.
 import 'package:threemojo_app/features/encounters/presentation/providers/pro_encounters.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/background_location_notice.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/nearby_person.dart';
+import 'package:threemojo_app/features/nearby/domain/usecases/get_location_disclosure_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/open_app_settings_usecase.dart';
+import 'package:threemojo_app/features/nearby/domain/usecases/request_location_permission_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/open_location_settings_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/watch_nearby_people_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/repositories/location_repository.dart';
@@ -103,6 +105,12 @@ void main() {
               _UnusedLocationRepository(),
             ),
             openAppSettingsUseCase: OpenAppSettingsUseCase(
+              _UnusedLocationRepository(),
+            ),
+            getLocationDisclosureUseCase: GetLocationDisclosureUseCase(
+              _UnusedLocationRepository(),
+            ),
+            requestLocationPermissionUseCase: RequestLocationPermissionUseCase(
               _UnusedLocationRepository(),
             ),
             watchBlockedPeopleUseCase: WatchBlockedPeopleUseCase(

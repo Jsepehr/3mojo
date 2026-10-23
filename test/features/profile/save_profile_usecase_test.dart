@@ -10,7 +10,7 @@ Profile _profile({
   Gender gender = Gender.female,
   Set<Gender> lookingFor = const {Gender.male},
   bool isAdultConfirmed = true,
-  bool sensitiveDataConsent = true,
+  int acceptedSensitiveConsentVersion = Profile.currentSensitiveConsentVersion,
   List<String> languages = const [],
   bool showGender = false,
   int acceptedTermsVersion = Profile.currentTermsVersion,
@@ -18,7 +18,7 @@ Profile _profile({
   gender: gender,
   lookingFor: lookingFor,
   isAdultConfirmed: isAdultConfirmed,
-  sensitiveDataConsent: sensitiveDataConsent,
+  acceptedSensitiveConsentVersion: acceptedSensitiveConsentVersion,
   languages: languages,
   showGender: showGender,
   acceptedTermsVersion: acceptedTermsVersion,
@@ -98,7 +98,7 @@ void main() {
 
   test('requires consent when gender or preference reveal something', () async {
     expect(
-      await rejection(_profile(sensitiveDataConsent: false)),
+      await rejection(_profile(acceptedSensitiveConsentVersion: 0)),
       isA<SensitiveDataConsentRequiredFailure>(),
     );
     // Anche solo il genere dichiarato, cercando "tutti", rivela qualcosa.
@@ -106,7 +106,7 @@ void main() {
       await rejection(
         _profile(
           lookingFor: Profile.searchableGenders,
-          sensitiveDataConsent: false,
+          acceptedSensitiveConsentVersion: 0,
         ),
       ),
       isA<SensitiveDataConsentRequiredFailure>(),
@@ -119,7 +119,7 @@ void main() {
       _profile(
         gender: Gender.unspecified,
         lookingFor: Profile.searchableGenders,
-        sensitiveDataConsent: false,
+        acceptedSensitiveConsentVersion: 0,
       ),
     );
 
@@ -133,13 +133,13 @@ void main() {
       _profile(
         gender: Gender.unspecified,
         lookingFor: Profile.searchableGenders,
-        sensitiveDataConsent: true,
+        acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
       ),
     );
 
     expect(result.isRight(), isTrue);
     expect(repository.saved!.needsSensitiveDataConsent, isFalse);
-    expect(repository.saved!.sensitiveDataConsent, isFalse);
+    expect(repository.saved!.acceptedSensitiveConsentVersion, 0);
   });
 
   test('"show my gender" is switched off for "prefer not to say"', () async {

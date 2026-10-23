@@ -279,6 +279,30 @@ void main() {
       expect(hotspots.sharesAnyActiveHotspot('a', 0, 0, 'p', 1, 1), isFalse);
     });
 
+    test('forgetSession drops the session from every hotspot membership, '
+        'leaving the others and the hotspot itself untouched', () {
+      placeTrio();
+      clock = clock.add(const Duration(minutes: 16));
+      hotspots.detectAndRefresh(sessions.allSessions);
+      expect(
+        hotspots.sharesAnyActiveHotspot('a', 0, 0, 'b', 0.0001, 0),
+        isTrue,
+      );
+      expect(
+        hotspots.sharesAnyActiveHotspot('c', 0, 0.0001, 'b', 0.0001, 0),
+        isTrue,
+      );
+      final hotspot = hotspots.active.single;
+      expect(hotspot.memberSessionIds, {'a', 'b', 'c'});
+
+      hotspots.forgetSession('a');
+
+      expect(hotspots.active.single, same(hotspot));
+      expect(hotspot.memberSessionIds, {'b', 'c'});
+      hotspots.forgetSession('unknown');
+      expect(hotspot.memberSessionIds, {'b', 'c'});
+    });
+
     test('two genuinely separate clusters only ~250m apart do not both '
         'become hotspots -- their circles would overlap', () {
       placeTrio();

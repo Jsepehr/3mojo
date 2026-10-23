@@ -12,6 +12,7 @@ import '/core/widgets/cmp_photo.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
+import '/features/profile/presentation/widgets/cmp_sensitive_consent_renewal_dialog.dart';
 import '/features/safety/presentation/widgets/cmp_terms_acceptance_dialog.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
 import '/features/session/presentation/providers/pro_session.dart';
@@ -121,21 +122,38 @@ class _UiStartSessionState extends State<UiStartSession> {
     await proSession.start(params);
     if (!mounted) return;
 
-    // Profilo salvato prima dei termini d'uso: si chiedono qui, una volta,
-    // e accettati si riprova subito. Rifiutati, resta l'errore che lo dice.
-    if (proSession.failure is TermsNotAcceptedFailure) {
-      // Niente puntini nel bottone mentre si leggono i termini.
-      setState(() => _isStarting = false);
-      final accepted = await showTermsAcceptanceDialog(context);
-      if (!mounted) return;
-      if (accepted) {
-        setState(() => _isStarting = true);
-        if (await proProfile.acceptTerms() && mounted) {
-          await proSession.start(params);
-        }
-        if (!mounted) return;
+    // Profilo salvato prima dei termini d'uso attuali, o con il consenso al
+    // dato sensibile dato per un testo precedente: si chiedono qui, una
+    // volta ciascuno, e confermati si riprova subito. Rifiutati, resta
+    // l'errore che lo dice. Ognuno al più una volta: un secondo rifiuto
+    // dello stesso tipo non riapre lo stesso dialog.
+    var askedTerms = false;
+    var askedConsent = false;
+    while (mounted) {
+      final failure = proSession.failure;
+      final Future<bool> Function() ask;
+      final Future<bool> Function() save;
+      if (failure is TermsNotAcceptedFailure && !askedTerms) {
+        askedTerms = true;
+        ask = () => showTermsAcceptanceDialog(context);
+        save = proProfile.acceptTerms;
+      } else if (failure is SensitiveDataConsentRequiredFailure &&
+          !askedConsent) {
+        askedConsent = true;
+        ask = () => showSensitiveConsentRenewalDialog(context);
+        save = proProfile.renewSensitiveConsent;
+      } else {
+        break;
       }
+      // Niente puntini nel bottone mentre si legge il dialog.
+      setState(() => _isStarting = false);
+      final confirmed = await ask();
+      if (!mounted || !confirmed) break;
+      setState(() => _isStarting = true);
+      if (!await save() || !mounted) break;
+      await proSession.start(params);
     }
+    if (!mounted) return;
 
     if (proSession.isOnline) {
       HapticFeedback.mediumImpact();

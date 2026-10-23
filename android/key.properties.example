@@ -1,0 +1,18 @@
+# Modello per android/key.properties, letto da app/build.gradle.kts per
+# firmare la release (flutter build appbundle / apk --release).
+#
+# 1. Copia questo file in android/key.properties (escluso da git).
+# 2. Sostituisci i segnaposto. Passi per creare il keystore e conservarlo:
+#    docs/privacy/checklist_prima_del_lancio.md, "Firma della release Android".
+# 3. Non mettere mai key.properties né il keystore in git, in chat o in
+#    un'email: chi ha entrambi può pubblicare aggiornamenti al posto tuo.
+#
+# Senza key.properties la build release si ferma con un messaggio;
+# debug e profile continuano a funzionare con le chiavi di debug.
+
+# Percorso del keystore: assoluto, oppure relativo a android/app/.
+# Meglio fuori dal repository, ad es. /Users/<utente>/raen-upload-keystore.jks
+storeFile=/percorso/assoluto/raen-upload-keystore.jks
+storePassword=PASSWORD_DEL_KEYSTORE
+keyAlias=upload
+keyPassword=PASSWORD_DELLA_CHIAVE

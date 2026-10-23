@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/core/usecases/usecase.dart';
+import 'package:threemojo_app/features/safety/presentation/pages/ui_privacy_policy.dart';
 import 'package:threemojo_app/features/safety/presentation/pages/ui_terms_of_use.dart';
 import 'package:threemojo_app/features/settings/domain/entities/app_language.dart';
 import 'package:threemojo_app/features/settings/domain/entities/app_theme_mode.dart';
@@ -137,6 +138,9 @@ void main() {
     testWidgets('shows the fake-data switch, at the bottom, where available', (
       tester,
     ) async {
+      // Alto abbastanza da avere tutte le voci a schermo, anche l'ultima.
+      await tester.binding.setSurfaceSize(const Size(800, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       final l10n = await pumpDrawer(
         tester,
         _proSettings(repository, available: true),
@@ -149,6 +153,21 @@ void main() {
         tester.getTopLeft(fakeSwitch).dy,
         greaterThan(tester.getTopLeft(find.text(l10n.share_app)).dy),
       );
+    });
+
+    testWidgets('"Privacy policy" closes the drawer and opens the in-app '
+        'privacy policy', (tester) async {
+      final l10n = await pumpDrawer(
+        tester,
+        _proSettings(repository, available: false),
+      );
+
+      await tester.tap(find.text(l10n.privacy_policy));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CmpAppDrawer), findsNothing);
+      expect(find.byType(UiPrivacyPolicy), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('"Change language" closes the drawer and still opens the '
@@ -211,6 +230,16 @@ void main() {
       expect(find.byType(UiTermsOfUse), findsOneWidget);
 
       // Indietro: il dialog è ancora lì.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(AboutDialog), findsOneWidget);
+
+      // Anche l'informativa privacy si apre sopra il dialog.
+      await tester.tap(
+        find.descendant(of: dialog, matching: find.text(l10n.privacy_policy)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(UiPrivacyPolicy), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.byType(AboutDialog), findsOneWidget);

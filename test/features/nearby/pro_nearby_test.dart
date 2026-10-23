@@ -8,7 +8,10 @@ import 'package:threemojo_app/features/nearby/domain/entities/background_locatio
 import 'package:threemojo_app/features/nearby/domain/entities/geo_location.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/nearby_person.dart';
 import 'package:threemojo_app/features/nearby/domain/repositories/location_repository.dart';
+import 'package:threemojo_app/features/nearby/domain/entities/location_permission_status.dart';
+import 'package:threemojo_app/features/nearby/domain/usecases/get_location_disclosure_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/open_app_settings_usecase.dart';
+import 'package:threemojo_app/features/nearby/domain/usecases/request_location_permission_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/open_location_settings_usecase.dart';
 import 'package:threemojo_app/features/nearby/domain/usecases/watch_nearby_people_usecase.dart';
 import 'package:threemojo_app/features/nearby/presentation/providers/pro_nearby.dart';
@@ -60,6 +63,17 @@ class _FakeLocationRepository implements LocationRepository {
     openAppSettingsCalls++;
     return const Right(unit);
   }
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> checkPermission() async =>
+      const Right(LocationPermissionStatus.granted);
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> requestPermission() async =>
+      const Right(LocationPermissionStatus.granted);
+
+  @override
+  bool get keepsTrackingInBackground => true;
 }
 
 const _notice = BackgroundLocationNotice(
@@ -85,6 +99,12 @@ void main() {
         locationRepository,
       ),
       openAppSettingsUseCase: OpenAppSettingsUseCase(locationRepository),
+      getLocationDisclosureUseCase: GetLocationDisclosureUseCase(
+        locationRepository,
+      ),
+      requestLocationPermissionUseCase: RequestLocationPermissionUseCase(
+        locationRepository,
+      ),
     )..setBackgroundLocationNotice(_notice);
     await Future<void>.delayed(Duration.zero);
   });
@@ -218,6 +238,12 @@ void main() {
           locationRepository,
         ),
         openAppSettingsUseCase: OpenAppSettingsUseCase(locationRepository),
+        getLocationDisclosureUseCase: GetLocationDisclosureUseCase(
+          locationRepository,
+        ),
+        requestLocationPermissionUseCase: RequestLocationPermissionUseCase(
+          locationRepository,
+        ),
       );
       addTearDown(waiting.dispose);
       final callsBefore = watch.notices.length;

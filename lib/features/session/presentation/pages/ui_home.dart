@@ -13,6 +13,7 @@ import '/features/encounters/presentation/providers/pro_encounters.dart';
 import '/features/encounters/presentation/widgets/cmp_proposal_sheet.dart';
 import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
+import '/features/nearby/presentation/pages/ui_location_disclosure.dart';
 import '/features/nearby/presentation/providers/pro_nearby.dart';
 import '/features/nearby/presentation/widgets/cmp_nearby_person_tile.dart';
 import '/features/paywall/presentation/widgets/cmp_paywalled_nearby_list.dart';
@@ -58,21 +59,28 @@ class UiHome extends StatelessWidget {
   }
 }
 
-/// Apre il wizard di Start. Prima passa a `ProNearby` i testi tradotti
-/// della notifica Android che accompagnerà la posizione in background
-/// durante la sessione (il datasource GPS non ha un `BuildContext`).
-void _openStartSession(BuildContext context) {
-  final l10n = AppLocalizations.of(context)!;
-  context.read<ProNearby>().setBackgroundLocationNotice(
+/// Apre il wizard di Start. Prima, se il permesso di posizione non è ancora
+/// concesso, l'avviso in evidenza e la richiesta di sistema
+/// (`showLocationDisclosureIfNeeded`): con "Non ora" o senza permesso si
+/// resta offline e il wizard non si apre. Poi passa a `ProNearby` i testi
+/// tradotti della notifica Android che accompagnerà la posizione in
+/// background durante la sessione (il datasource GPS non ha un
+/// `BuildContext`).
+Future<void> _openStartSession(BuildContext context) async {
+  final navigator = Navigator.of(context);
+  if (!await showLocationDisclosureIfNeeded(context)) return;
+  if (!navigator.mounted) return;
+  final navigatorContext = navigator.context;
+  if (!navigatorContext.mounted) return;
+  final l10n = AppLocalizations.of(navigatorContext)!;
+  navigatorContext.read<ProNearby>().setBackgroundLocationNotice(
     BackgroundLocationNotice(
       title: l10n.background_location_notification_title,
       body: l10n.background_location_notification_body,
       channelName: l10n.background_location_notification_channel,
     ),
   );
-  Navigator.of(
-    context,
-  ).push(MaterialPageRoute(builder: (_) => const UiStartSession()));
+  navigator.push(MaterialPageRoute(builder: (_) => const UiStartSession()));
 }
 
 /// Stato offline: claim + bottone Start, sfondo radar decorativo. Usa il
@@ -168,7 +176,7 @@ class _OnlineHome extends StatelessWidget {
     HapticFeedback.mediumImpact();
     await proSession.end();
     if (proSession.isOnline || !navigator.mounted) return;
-    _openStartSession(navigator.context);
+    await _openStartSession(navigator.context);
   }
 
   /// Tocco su una persona: si apre la tendina "Cosa vuoi proporre?" e

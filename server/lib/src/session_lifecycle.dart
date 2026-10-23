@@ -59,8 +59,10 @@ class HelloRateLimited extends HelloOutcome {
 /// [endNow] toglie la sessione da `SessionStore`, dimentica la credenziale,
 /// cancella le richieste pendenti, chiude il match attivo (`accepted` →
 /// `ended`) avvisando subito i partner, e infine toglie da `EncounterStore`
-/// ogni richiesta della sessione (prima crescevano per sempre) e da
-/// `BlockStore`/`ModerationStore` ogni blocco e segnalazione in cui compare.
+/// ogni richiesta della sessione (prima crescevano per sempre), da
+/// `BlockStore`/`ModerationStore` ogni blocco e segnalazione in cui compare
+/// e, via `ConnectionHub.forgetSession`, pseudonimi e appartenenza agli
+/// hotspot (`HotspotStore.forgetSession`).
 class SessionLifecycle {
   SessionLifecycle({
     required SessionStore sessions,

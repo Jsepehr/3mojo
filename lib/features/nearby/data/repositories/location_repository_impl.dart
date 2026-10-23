@@ -7,6 +7,7 @@ import '/core/errors/failures.dart';
 import '/features/nearby/data/datasources/location_local_data_source.dart';
 import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
+import '/features/nearby/domain/entities/location_permission_status.dart';
 import '/features/nearby/domain/repositories/location_repository.dart';
 
 /// Traduce le eccezioni del datasource GPS (permesso negato, GPS
@@ -24,6 +25,28 @@ class LocationRepositoryImpl implements LocationRepository {
       return Left(LocationDisabledFailure(e.message));
     } on LocationPermissionDeniedException catch (e) {
       return Left(LocationPermissionFailure(e.message));
+    } catch (e) {
+      return Left(UnexpectedFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> checkPermission() =>
+      _permission(_localDataSource.checkPermission);
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> requestPermission() =>
+      _permission(_localDataSource.requestPermission);
+
+  @override
+  bool get keepsTrackingInBackground =>
+      _localDataSource.keepsTrackingInBackground;
+
+  Future<Either<Failure, LocationPermissionStatus>> _permission(
+    Future<LocationPermissionStatus> Function() read,
+  ) async {
+    try {
+      return Right(await read());
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }

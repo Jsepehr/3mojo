@@ -65,7 +65,7 @@ void main() {
         gender: Gender.male,
         lookingFor: Profile.searchableGenders,
         isAdultConfirmed: true,
-        sensitiveDataConsent: true,
+        acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
       );
 
       final result = await startSession(
@@ -75,6 +75,46 @@ void main() {
       expect(result.getLeft().toNullable(), isA<TermsNotAcceptedFailure>());
       expect(faces.checked, isEmpty);
       expect(sessions.current, isNull);
+    });
+
+    test('a consent to the sensitive data given for an older text (or '
+        'none) is not enough: SensitiveDataConsentRequiredFailure, no face '
+        'check, no session', () async {
+      profiles.saved = const Profile(
+        gender: Gender.male,
+        lookingFor: Profile.searchableGenders,
+        isAdultConfirmed: true,
+        acceptedSensitiveConsentVersion:
+            Profile.currentSensitiveConsentVersion - 1,
+        acceptedTermsVersion: Profile.currentTermsVersion,
+      );
+
+      final result = await startSession(
+        StartSessionParams(selfieBytes: _selfie),
+      );
+
+      expect(
+        result.getLeft().toNullable(),
+        isA<SensitiveDataConsentRequiredFailure>(),
+      );
+      expect(faces.checked, isEmpty);
+      expect(sessions.current, isNull);
+    });
+
+    test('the neutral path goes online without any consent', () async {
+      profiles.saved = const Profile(
+        gender: Gender.unspecified,
+        lookingFor: Profile.searchableGenders,
+        isAdultConfirmed: true,
+        acceptedTermsVersion: Profile.currentTermsVersion,
+      );
+
+      final result = await startSession(
+        StartSessionParams(selfieBytes: _selfie),
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(sessions.current, isNotNull);
     });
 
     test('an unreadable profile keeps its own failure', () async {

@@ -9,10 +9,10 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // FLAG_SECURE su tutta l'app, non per schermata: niente screenshot,
         // niente registrazione schermo/cast, e l'anteprima nel multitasking
-        // resta nera. Quasi ogni pagina mostra selfie di altre persone, la
-        // loro distanza o la chat — e l'app ha una sola Activity Flutter,
-        // quindi "per schermata" vorrebbe dire un canale nativo che accende
-        // e spegne il flag a ogni cambio di rotta: più codice e una finestra
+        // resta nera. Quasi ogni pagina mostra selfie di altre persone, ciò
+        // che mostrano del profilo o la chat — e l'app ha una sola Activity
+        // Flutter, quindi "per schermata" vorrebbe dire un canale nativo che
+        // accende e spegne il flag a ogni cambio di rotta: più codice e una finestra
         // di tempo (tra navigazione e chiamata al canale) in cui lo snapshot
         // del multitasking può già contenere il contenuto da proteggere.
         // Impostato prima di super.onCreate, così vale fin dal primo frame.
@@ -25,7 +25,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        FaceDetectionChannel.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
+        FaceDetectionChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         AttestationChannel.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
     }
 }

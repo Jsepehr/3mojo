@@ -221,9 +221,10 @@ class ConnectionHub {
   }
 
   /// Dimentica tutto ciò che riguarda [sessionId] (pseudonimi in cui
-  /// compare, firme) — alla fine della sessione.
+  /// compare, firme, appartenenza agli hotspot) — alla fine della sessione.
   void forgetSession(String sessionId) {
     pseudonyms.forget(sessionId);
+    _hotspotStore.forgetSession(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
     _forgetNearbyPushCooldown(sessionId);

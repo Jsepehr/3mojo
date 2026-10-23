@@ -1,6 +1,6 @@
 # Raen: risposte per App Store Connect e Google Play Console
 
-> **Bozza tecnica, non consulenza legale.** Sono le risposte che proponiamo ai questionari privacy e di revisione degli store, motivate sul codice al commit `4f7cae1`. Le definizioni degli store cambiano: prima di inviare, rileggere le definizioni attuali sulle pagine ufficiali (App Store Connect → App Privacy; Play Console → Contenuti dell'app). In caso di dubbio abbiamo scelto la risposta **più prudente** (dichiarare di più), spiegando perché.
+> **Bozza tecnica, non consulenza legale.** Sono le risposte che proponiamo ai questionari privacy e di revisione degli store, motivate sul codice al commit `4f7cae1`, aggiornate dopo la rimozione di ML Kit (il volto su Android lo rileva `android.media.FaceDetector` del sistema, senza rete), l'informativa privacy in app e l'avviso in evidenza sulla posizione. Le definizioni degli store cambiano: prima di inviare, rileggere le definizioni attuali sulle pagine ufficiali (App Store Connect → App Privacy; Play Console → Contenuti dell'app). In caso di dubbio abbiamo scelto la risposta **più prudente** (dichiarare di più), spiegando perché.
 >
 > Da tenere allineato con `ios/Runner/PrivacyInfo.xcprivacy` (aggiornato in questa revisione: tutti i tipi "collegati", più la cronologia acquisti) e con [informativa_bozza.md](informativa_bozza.md).
 
@@ -24,7 +24,7 @@
 | Purchases → **Purchase History** | Sì, **quando i pagamenti saranno reali** (vedi la nota 3) | **Sì** | No | App Functionality | Il server riceve la transazione e ne tiene un HMAC per 8 giorni |
 | Identifiers → User ID | No | | | | Nessun account. Il segreto di sessione cambia a ogni Start. Il token di sblocco (casuale, 2 ore) è un attributo dell'acquisto, già coperto da Purchase History |
 | Identifiers → Device ID | No | | | | Nessun IDFA o IDFV, nessun id salvato. App Attest (quando acceso) usa una **chiave nuova a ogni sessione** e il server non conserva `keyId` né la ricevuta: nessun identificativo stabile del dispositivo |
-| Usage Data, Diagnostics | No | | | | Nessun SDK di analytics o crash. ML Kit (che invia telemetria) è solo su Android; su iOS il volto lo controlla Apple Vision, senza rete. I crash report che raccoglie Apple non vanno dichiarati |
+| Usage Data, Diagnostics | No | | | | Nessun SDK di analytics o crash. Su iOS il volto lo controlla Apple Vision, senza rete (e da questa revisione anche su Android non c'è più ML Kit). I crash report che raccoglie Apple non vanno dichiarati |
 | Contact Info, Health & Fitness, Financial Info, Contacts, Browsing/Search History, Other Data | No | | | | — |
 
 **Nota 1: perché il selfie è "collegato", anche senza account.** La lettura ottimistica direbbe "non collegato": non esistono account né id fissi, e la sessione è usa e getta. Ma Apple considera collegato ciò che è riconducibile all'identità di una persona, salvo misure di de-identificazione **prima** della raccolta. Una foto nitida del volto è un identificativo diretto, e viene conservata fino a 30 giorni nel record di moderazione. Sul server posizione, profilo, messaggi inoltrati e token stanno nella stessa sessione del selfie: per coerenza sono tutti "collegati". **Raccomandazione: "Linked to you" per tutti.** È ciò che oggi dichiara il privacy manifest. L'etichetta che ne risulta ("Data Linked to You") è meno attraente, ma non contestabile.
@@ -44,7 +44,7 @@
 | Domanda | Risposta | Motivazione |
 |---|---|---|
 | L'app raccoglie o condivide dati utente dei tipi richiesti? | Sì | |
-| Tutti i dati sono cifrati in transito? | **Sì** | La release accetta solo `https://`/`wss://` (`lib/core/network/api_config.dart`). ML Kit e Play Integrity usano HTTPS |
+| Tutti i dati sono cifrati in transito? | **Sì** | La release accetta solo `https://`/`wss://` (`lib/core/network/api_config.dart`). Play Integrity e Play Billing usano HTTPS |
 | L'app consente di creare un account? | **No** | Quindi non serve il link web per la cancellazione dell'account |
 | Fornite un modo per chiedere la cancellazione dei dati? | **Sì** | End cancella subito la sessione sul server; "Cancella profilo" lo cancella dal telefono (e da online chiude prima la sessione); i record di moderazione si possono far cancellare scrivendo al contatto di sicurezza (**da attivare**) |
 | Revisione di sicurezza indipendente (MASA) | No (facoltativa) | |
@@ -60,13 +60,14 @@
 | Messaggi → **Altri messaggi in-app** | Sì | No | **Sì** | Facoltativo | Funzionalità dell'app | Inoltrati in memoria, mai salvati sul server: rientra nella definizione Play di trattamento effimero |
 | Attività nelle app → **Altre azioni** | Sì | No | No | Facoltativo | Funzionalità dell'app; Prevenzione di frodi, sicurezza e conformità | Richieste d'incontro, blocchi, segnalazioni (i motivi finiscono nel record di moderazione) |
 | Informazioni finanziarie → **Cronologia acquisti** | Sì, **quando i pagamenti saranno reali** | No | No | Facoltativo | Funzionalità dell'app; Prevenzione di frodi | Google gestisce il pagamento; il server tiene un HMAC del `purchaseToken`/ordine per 8 giorni |
-| ID dispositivo o altri ID | **Sì** | No (vedi la nota) | No | Obbligatorio | **Analisi** (diagnostica ML Kit); Prevenzione di frodi e sicurezza (Play Integrity, quando attiva) | **Raccolto dagli SDK di Google, non da noi**: ML Kit invia un identificativo per installazione; Play Integrity un certificato di attestazione della chiave e un token del dispositivo. Play chiede di dichiarare anche ciò che raccolgono gli SDK |
-| Informazioni e prestazioni app → **Diagnostica** | **Sì** | No | No | Obbligatorio | Analisi | Telemetria ML Kit (latenza, configurazione, dimensioni, codici d'errore, modello del dispositivo, versione dell'app) |
+| ID dispositivo o altri ID | **Sì** (per Play Integrity) | No (vedi la nota) | No | Obbligatorio | Prevenzione di frodi e sicurezza (Play Integrity, quando attiva) | **Raccolto dagli SDK di Google, non da noi**: Play Integrity un certificato di attestazione della chiave e un token del dispositivo. Play chiede di dichiarare anche ciò che raccolgono gli SDK. Non c'è più l'identificativo per installazione di ML Kit (tolto: il controllo del volto su Android non contatta più Google). Da ricontrollare se la Play Billing Library ne invia uno (vedi la nota) |
+| Informazioni e prestazioni app → **Diagnostica** | **Da verificare** (prudente: **Sì** finché non è chiarito) | No | No | Obbligatorio | Analisi | Non più per ML Kit, tolto. Resta la possibile diagnostica della **Play Billing Library** (vedi la nota). Se la documentazione di Google esclude che raccolga qualcosa, la risposta diventa **No** |
 | Nome, email, telefono, contatti, calendario, file, salute, audio, cronologia web, app installate | No | | | | | |
 
 **Note e scelte contestabili**
 - **Foto "condivise"?** Google esenta i trasferimenti che l'utente avvia sapendo che i dati saranno mostrati ad altri, come nelle app di messaggistica. **Raccomandazione: "No"**. Se un revisore contestasse, rispondere "Sì, funzionalità dell'app" è innocuo nei fatti, ma fa comparire nella scheda una "condivisione con terze parti" che non c'è.
-- **Telemetria ML Kit "condivisa"?** Secondo la pagina di Google ("ML Kit Android data disclosure") ML Kit non trasferisce i dati a terzi e li usa per diagnostica e statistiche d'uso. La risposta proposta, "raccolto, non condiviso", segue quella guida. Se il consulente qualificasse Google come **titolare autonomo** di quella telemetria, la risposta prudente diventerebbe "condiviso". Decisione legata alla DPIA §8, punto 4. **Per eliminare il problema**: sostituire ML Kit con `android.media.FaceDetector` (on-device, senza rete).
+- **Controllo del volto**: su Android lo fa `android.media.FaceDetector`, parte del sistema operativo: sul telefono, senza rete, senza librerie Google nell'APK. **Non contatta Google** e non va dichiarato. La telemetria di ML Kit (con l'identificativo per installazione) che le versioni precedenti di queste risposte dichiaravano non esiste più: togliere quelle voci se erano già state compilate in Play Console.
+- **Play Billing Library**: la libreria di pagamento di Google (`com.android.billingclient:billing`, nell'APK tramite `in_app_purchase_android` anche con i pagamenti simulati) contiene e usa il trasporto di log di Google (`com.google.android.datatransport`, sorgente `PLAY_BILLING_LIBRARY`). **Da verificare** sulla scheda della libreria nel Play SDK Index e sulla guida di Google per il Data safety: se dichiara raccolta di diagnostica o di identificativi, tenere "Diagnostica" (e se serve "ID dispositivo o altri ID") con finalità "Analisi", "raccolto, non condiviso" se Google la qualifica così. Decisione legata alla DPIA §8, punto 4.
 - **Play Integrity** (solo con `ATTESTATION_MODE` `log` o `enforce`): Google dichiara la raccolta di dati dell'app (pacchetto, versione, certificato), dello stato di licenza Play e del dispositivo (certificato di attestazione della chiave, token del dispositivo) per verificare l'integrità, cifrati e cancellati dopo un periodo di conservazione fisso: **non** effimeri. Dichiararli dalla prima versione in cui l'attestazione può essere chiesta. Visto che la libreria è già nell'APK, è più semplice dichiararli subito.
 - **IP**: Play non lo tratta come tipo a sé, salvo quando se ne ricava la posizione (non è il nostro caso).
 
@@ -85,18 +86,20 @@
 > *Impatto se differito o interrotto*: The user would disappear from the nearby list and stop seeing people nearby as soon as the screen locks, and an ongoing meeting request or match could be lost. The feature cannot be deferred: it only makes sense in real time, while the person is physically there.
 
 **Copione del video** (30-60 s, registrato su un telefono reale; `FLAG_SECURE` rende nera la registrazione dello schermo, quindi va usata una build di test senza flag o va filmato il telefono da fuori):
-1. App aperta offline: "Start" in evidenza.
-2. Tap su Start, selfie, intento → richiesta del permesso di posizione **"Mentre usi l'app"** → concessa.
-3. Richiesta del permesso per le notifiche (Android 13+) → concessa. Compare la notifica "Raen è online".
-4. Lista "Vicinanze" (con un secondo telefono vicino, dopo un minuto fermi).
-5. Tasto Home: la notifica resta. Aprire la tendina delle notifiche e mostrarla.
-6. Riaprire l'app e premere **End**: la notifica sparisce.
+1. App aperta offline, con il permesso di posizione **non ancora concesso** (installazione nuova, o permesso tolto dalle impostazioni: altrimenti l'avviso non compare): "Start" in evidenza.
+2. Tap su Start → **avviso in evidenza** "La tua posizione mentre sei online" (lasciarlo leggere qualche secondo, si vede la riga sul background) → **Continua**.
+3. Richiesta di sistema del permesso di posizione **"Mentre usi l'app"** → concessa.
+4. Selfie, poi intento → online.
+5. Richiesta del permesso per le notifiche (Android 13+) → concessa. Compare la notifica "Raen è online".
+6. Lista "Vicinanze" (con un secondo telefono vicino, dopo un minuto fermi).
+7. Tasto Home: la notifica resta. Aprire la tendina delle notifiche e mostrarla.
+8. Riaprire l'app e premere **End**: la notifica sparisce.
 
-**Informativa in evidenza (prominent disclosure).** **Oggi manca** (DPIA, D6). Va mostrata **prima** della richiesta del permesso di posizione, dentro l'app, staccata da informativa e termini, con un'azione esplicita per accettare. Testo proposto, da aggiungere agli ARB in tutte le lingue:
+**Informativa in evidenza (prominent disclosure).** **Implementata** (DPIA, D6 risolta): `UiLocationDisclosure` (`lib/features/nearby/presentation/pages/ui_location_disclosure.dart`), una pagina a schermo intero che si apre al tap su Start **prima** della richiesta di sistema, staccata da informativa e termini, con un'azione esplicita: **Continua** porta alla richiesta del permesso, **Non ora** lascia offline senza chiedere nulla. Compare a ogni Start finché il permesso non è concesso (`GetLocationDisclosureUseCase`, che legge lo stato senza chiederlo); senza permesso non si va online. C'è **anche su iOS**, con un testo diverso: su iPhone la posizione si usa solo con l'app aperta (niente `UIBackgroundModes` `location`), e la scelta del testo dipende da `LocationDisclosure.continuesInBackground`. Testi negli ARB di tutte le lingue (`location_disclosure_*`); in italiano e inglese:
 
-> **IT**: Quando premi Start, Raen usa la tua posizione precisa per mostrarti chi è entro 100 metri e per mostrare te a loro. **Su Android resti visibile anche con l'app in background o con lo schermo bloccato**, finché non premi End: te lo ricorda una notifica fissa. Non mostriamo mai a nessuno la tua posizione né la distanza da te. [Continua] [Non ora]
+> **IT** — *La tua posizione mentre sei online.* Quando premi Start, Raen usa la tua posizione precisa per mostrarti chi è entro 100 metri (o nello stesso posto affollato) e per mostrare te a loro. Non mostriamo mai a nessuno la tua posizione né la distanza da te. **Android**: Mentre sei online la posizione continua a essere usata anche con l'app in background o lo schermo spento, finché non premi Termina: te lo ricorda una notifica fissa. **iOS**: La posizione si usa solo mentre Raen è aperta sullo schermo, non in background: se esci dall'app o blocchi lo schermo smette di essere aggiornata finché non torni. Da offline la posizione non viene usata, e non la conserviamo dopo la fine della sessione. Subito dopo il telefono ti chiederà il permesso di usare la posizione. [Continua] [Non ora]
 >
-> **EN**: When you tap Start, Raen uses your precise location to show you people within 100 metres and to show you to them. **On Android you stay visible even when the app is in the background or the screen is locked**, until you tap End: a persistent notification reminds you. We never show anyone your location or how far you are. [Continue] [Not now]
+> **EN** — *Your location while you're online.* When you tap Start, Raen uses your precise location to show you people within 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are. **Android**: While you're online, your location keeps being used even when the app is in the background or the screen is off, until you tap End: a persistent notification reminds you. **iOS**: Your location is only used while Raen is open on screen, not in the background: if you leave the app or lock the screen, it stops being updated until you come back. When you're offline your location isn't used, and we don't keep it after your session ends. Next, your phone will ask for permission to use your location. [Continue] [Not now]
 
 **Se un giorno servisse il modulo "background location"** (`ACCESS_BACKGROUND_LOCATION`): funzionalità principale "Mostrare e rendere visibili in tempo reale le persone fisicamente vicine mentre l'utente è online (tra Start ed End)"; perché in background: "Per non sparire dalla lista appena lo schermo si blocca, durante un incontro in corso"; alternative valutate: il foreground service con la notifica (quello che si usa oggi). Nota: con quel permesso Play esige che la funzione sia **principale** e un video che mostri l'informativa in evidenza e la richiesta di runtime.
 
@@ -106,7 +109,7 @@
 
 **Testo proposto per "Notes for review" (EN)**
 
-> **No account needed.** Raen has no sign-up and no login: tap **Start**, take a selfie (front camera; the app checks on-device that there is a face), pick an intent, allow location "While Using the App", and you are online. Tap **End** (red, top right) to go offline: everything about the session is deleted from our server.
+> **No account needed.** Raen has no sign-up and no login: tap **Start**, read the short notice about location and tap **Continue**, allow location "While Using the App", take a selfie (front camera; the app checks on-device that there is a face), pick an intent, and you are online. Tap **End** (red, top right) to go offline: everything about the session is deleted from our server.
 >
 > **How to see other people.** Raen only shows people who are physically within 100 m, online at the same time, compatible both ways (gender / who they want to meet, set once in the profile) and who have **both stayed put for at least one minute**. With a single device the list will stay empty by design. To test: use two devices side by side, with compatible profiles (e.g. both "Everyone"), tap Start on both and wait about one minute without moving. You will then see each other, can send a meeting request (tap the photo → choose a proposal), accept it on the other device and chat. **[If available: a demo video is at <link>, and we can keep test sessions online near Apple Park during the review window — contact <email/phone>.]**
 >
@@ -123,7 +126,7 @@
 - **Guideline 1.2 "filtraggio"**: non c'è un filtro automatico dei contenuti offensivi in foto e chat (solo il controllo del volto). Lo compensano liste chiuse, chat solo dopo un sì reciproco, blocco e segnalazione. Se Apple lo chiede, valutare un controllo on-device della nudità nel selfie (decisione di prodotto).
 - **Guideline 1.1.4** (app di "hookup"): nessuna opzione romantica o sessuale, solo proposte neutre. Tenerlo così anche nelle schermate dello store.
 - **Guideline 5.1.1(v)** (cancellazione dell'account): non si applica, non ci sono account.
-- **Guideline 5.1.1(i)**: link all'informativa in App Store Connect **e** dentro l'app (oggi manca).
+- **Guideline 5.1.1(i)**: link all'informativa in App Store Connect **e** dentro l'app. **In app fatto** (`UiPrivacyPolicy`: menu, "Informazioni", profilo, termini). **Manca ancora l'URL pubblico** da mettere nella scheda di App Store Connect (Privacy Policy URL) e di Play Console, e in `PrivacyPolicyInfo.publicUrl` (oggi il segnaposto `https://raen.example/privacy`).
 - **Attestazione**: se è in `enforce` durante la revisione, i dispositivi di Apple sono reali e App Attest funziona. Il simulatore no.
 - **Google Play**: politica "Contenuti generati dagli utenti" (termini accettati, segnalazione e blocco in app, moderazione); dating app → pubblico di destinazione **solo 18+**; nessun annuncio; dichiarazione "L'app contiene annunci?" → No.
 

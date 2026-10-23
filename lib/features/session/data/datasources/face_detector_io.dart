@@ -4,12 +4,15 @@ import 'package:flutter/services.dart';
 
 /// Canale verso il rilevamento volto **nativo**, tutto sul dispositivo —
 /// nessuna foto lascia il telefono:
-/// - Android: Google ML Kit (`FaceDetectionChannel.kt`)
+/// - Android: `android.media.FaceDetector` del sistema operativo
+///   (`FaceDetectionChannel.kt`), senza librerie esterne né rete
 /// - iOS: Apple Vision (`AppDelegate.swift`)
 ///
 /// Non si usa il plugin `google_mlkit_face_detection`: i suoi Pod iOS
 /// escludono arm64 dal simulatore, quindi bastava averlo tra le dipendenze
 /// per non poter più avviare l'app sul simulatore iOS di un Mac Apple Silicon.
+/// Su Android non si usa più nemmeno Google ML Kit nativo: inviava a Google
+/// telemetria di uso e diagnostica.
 ///
 /// Isolato in un file a parte perché il web non ha questo canale — vedi
 /// l'import condizionale in `face_detection_local_data_source_impl.dart`.
@@ -22,7 +25,7 @@ Future<bool> _detectAtPath(String path) async {
   return hasFace ?? false;
 }
 
-/// Il canale nativo vuole un percorso (così ML Kit/Vision leggono anche
+/// Il canale nativo vuole un percorso (così il lato nativo legge anche
 /// l'orientamento EXIF): i byte vengono scritti in un file temporaneo in
 /// una cartella creata apposta, che viene cancellata **sempre** alla fine
 /// del controllo — anche se il canale fallisce. [detectAtPath] serve ai

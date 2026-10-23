@@ -28,12 +28,17 @@ class StartSessionParams extends Equatable {
 /// cerchi" servono al server per il matching) con i **termini d'uso
 /// attuali accettati** (`Profile.hasAcceptedCurrentTerms`: i profili
 /// salvati prima che esistessero li devono accettare qui, vedi
-/// `AcceptTermsUseCase`) prima di salvare la sessione — è la regola di
-/// business, non un dettaglio della UI.
+/// `AcceptTermsUseCase`) e, se il profilo lo richiede, il **consenso al dato
+/// sensibile per il testo attuale** (`Profile.lacksRequiredSensitiveConsent`:
+/// chi aveva acconsentito a una versione precedente lo riconferma qui, vedi
+/// `RenewSensitiveConsentUseCase`) prima di salvare la sessione — è la
+/// regola di business, non un dettaglio della UI.
 ///
 /// Errori (tipizzati: la UI sceglie il testo dal tipo, vedi
 /// `SessionFailureTexts`): `SelfieMissingFailure`, `ProfileMissingFailure`,
 /// `TermsNotAcceptedFailure` (la UI chiede di accettarli e riprova),
+/// `SensitiveDataConsentRequiredFailure` (la UI chiede di riconfermare il
+/// consenso e riprova),
 /// `NoFaceInSelfieFailure`, `FaceCheckUnavailableFailure`, o quello del
 /// profilo illeggibile (`CacheFailure`).
 class StartSessionUseCase
@@ -66,6 +71,9 @@ class StartSessionUseCase
     }
     if (!profile.hasAcceptedCurrentTerms) {
       return const Left(TermsNotAcceptedFailure());
+    }
+    if (profile.lacksRequiredSensitiveConsent) {
+      return const Left(SensitiveDataConsentRequiredFailure());
     }
 
     final faceResult = await _checkSelfieHasFaceUseCase(params.selfieBytes);

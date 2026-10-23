@@ -10,6 +10,7 @@ import 'package:threemojo_app/features/profile/domain/usecases/get_profile_useca
 import 'package:threemojo_app/features/profile/domain/usecases/save_profile_usecase.dart';
 import 'package:threemojo_app/features/profile/presentation/pages/ui_profile.dart';
 import 'package:threemojo_app/features/profile/presentation/providers/pro_profile.dart';
+import 'package:threemojo_app/features/safety/presentation/pages/ui_privacy_policy.dart';
 import 'package:threemojo_app/features/safety/presentation/pages/ui_terms_of_use.dart';
 import 'package:threemojo_app/features/session/domain/repositories/selfie_repository.dart';
 import 'package:threemojo_app/features/session/domain/usecases/check_selfie_has_face_usecase.dart';
@@ -18,6 +19,7 @@ import 'package:threemojo_app/features/session/domain/usecases/flip_selfie_useca
 import 'package:threemojo_app/features/session/domain/usecases/get_current_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/start_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/take_selfie_usecase.dart';
+import 'package:threemojo_app/features/session/domain/usecases/update_profile_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/withdraw_profile_usecase.dart';
 import 'package:threemojo_app/features/session/presentation/providers/pro_session.dart';
@@ -68,6 +70,11 @@ void main() {
     proProfile = ProProfile(
       getProfileUseCase: GetProfileUseCase(profiles),
       saveProfileUseCase: SaveProfileUseCase(profiles),
+      updateProfileUseCase: UpdateProfileUseCase(
+        getCurrentSessionUseCase: GetCurrentSessionUseCase(sessions),
+        endSessionUseCase: endSession,
+        saveProfileUseCase: SaveProfileUseCase(profiles),
+      ),
       withdrawProfileUseCase: WithdrawProfileUseCase(
         getCurrentSessionUseCase: GetCurrentSessionUseCase(sessions),
         endSessionUseCase: endSession,
@@ -122,6 +129,12 @@ void main() {
     await tapVisible(tester, find.text(l10n.read_the_terms));
     expect(find.byType(UiTermsOfUse), findsOneWidget);
     expect(find.text(l10n.terms_rule_enforcement), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    // Accanto, "Leggi l'informativa privacy".
+    await tapVisible(tester, find.text(l10n.read_the_privacy_policy));
+    expect(find.byType(UiPrivacyPolicy), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
 

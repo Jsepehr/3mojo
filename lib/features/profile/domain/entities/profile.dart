@@ -23,7 +23,7 @@ class Profile extends Equatable {
     required this.gender,
     required this.lookingFor,
     required this.isAdultConfirmed,
-    required this.sensitiveDataConsent,
+    this.acceptedSensitiveConsentVersion = 0,
     this.defaultIntent,
     this.languages = const [],
     this.showGender = false,
@@ -35,6 +35,22 @@ class Profile extends Equatable {
   /// versione precedente deve accettarli di nuovo (al salvataggio del
   /// profilo e allo Start, vedi `SaveProfileUseCase`/`StartSessionUseCase`).
   static const currentTermsVersion = 1;
+
+  /// La versione attuale del testo del **consenso al dato sensibile** (art. 9
+  /// GDPR: genere + "chi cerchi", la casella di `UiProfile`, testo
+  /// `i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet`). Se quel
+  /// testo cambia nella sostanza si alza di uno: chi aveva acconsentito alla
+  /// versione precedente deve riconfermare (al salvataggio del profilo e
+  /// allo Start, vedi `SaveProfileUseCase`/`StartSessionUseCase`). Prova del
+  /// consenso (art. 7(1)): si sa a **quale** testo si è detto sì.
+  static const currentSensitiveConsentVersion = 1;
+
+  /// La versione del consenso a cui corrisponde il vecchio booleano
+  /// `sensitiveDataConsent: true` dei profili salvati prima che il consenso
+  /// fosse versionato (vedi `ProfileModel.fromJson`): il testo di allora è
+  /// la versione 1. Resta fissa anche quando [currentSensitiveConsentVersion]
+  /// sale.
+  static const legacySensitiveConsentVersion = 1;
 
   /// I generi che si possono cercare ("Tutti" = tutti e tre).
   static const searchableGenders = {
@@ -61,7 +77,11 @@ class Profile extends Equatable {
   final Gender gender;
   final Set<Gender> lookingFor;
   final bool isAdultConfirmed;
-  final bool sensitiveDataConsent;
+
+  /// A quale versione del testo del consenso al dato sensibile si è detto sì
+  /// (0 = mai, o non serve: percorso neutro). Sta sull'entity perché lo
+  /// leggono due regole di business: salvataggio e Start.
+  final int acceptedSensitiveConsentVersion;
   final MeetIntent? defaultIntent;
   final List<String> languages;
   final bool showGender;
@@ -74,6 +94,15 @@ class Profile extends Equatable {
 
   bool get hasAcceptedCurrentTerms =>
       acceptedTermsVersion >= currentTermsVersion;
+
+  /// Il consenso dato è quello al testo **attuale**.
+  bool get hasCurrentSensitiveConsent =>
+      acceptedSensitiveConsentVersion >= currentSensitiveConsentVersion;
+
+  /// Serve il consenso e manca quello al testo attuale (mai dato, ritirato
+  /// o dato a una versione precedente).
+  bool get lacksRequiredSensitiveConsent =>
+      needsSensitiveDataConsent && !hasCurrentSensitiveConsent;
 
   bool get looksForEveryone => lookingFor.containsAll(searchableGenders);
 
@@ -89,7 +118,7 @@ class Profile extends Equatable {
     gender,
     lookingFor,
     isAdultConfirmed,
-    sensitiveDataConsent,
+    acceptedSensitiveConsentVersion,
     defaultIntent,
     languages,
     showGender,

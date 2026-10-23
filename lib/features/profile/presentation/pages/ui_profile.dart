@@ -7,6 +7,7 @@ import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/profile_labels.dart';
 import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
+import '/features/safety/presentation/pages/ui_privacy_policy.dart';
 import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -19,7 +20,18 @@ import '/l10n/generated/app_localizations.dart';
 /// Al primo avvio (e finché il profilo salvato non li ha accettati) chiede
 /// anche di accettare i **termini d'uso** attuali: la casella si salva col
 /// profilo cifrato (`Profile.acceptedTermsVersion`), la regola sta in
-/// `SaveProfileUseCase`.
+/// `SaveProfileUseCase`. Accanto, i link ai termini e all'informativa
+/// privacy.
+///
+/// Il consenso al dato sensibile è **versionato**
+/// (`Profile.acceptedSensitiveConsentVersion`): la casella risulta spuntata
+/// solo se il consenso salvato è per il testo attuale, e spuntarla salva la
+/// versione attuale.
+///
+/// Da online, cambiare genere, chi cerchi o "mostra il mio genere" chiude
+/// prima la sessione (`UpdateProfileUseCase`): la pagina lo chiede con una
+/// conferma prima di salvare. Lingue e intento predefinito valgono dal
+/// prossimo Start.
 ///
 /// "Tutti" è la prima scelta di "chi vuoi incontrare" apposta: insieme a
 /// "preferisco non dirlo" è il percorso che non rivela nulla e non richiede
@@ -64,7 +76,7 @@ class _UiProfileState extends State<UiProfile> {
       _defaultIntent = existing.defaultIntent;
       _languages = [...existing.languages];
       _isAdultConfirmed = existing.isAdultConfirmed;
-      _sensitiveDataConsent = existing.sensitiveDataConsent;
+      _sensitiveDataConsent = existing.hasCurrentSensitiveConsent;
       _termsAccepted = existing.hasAcceptedCurrentTerms;
     }
   }
@@ -76,7 +88,9 @@ class _UiProfileState extends State<UiProfile> {
       gender: gender,
       lookingFor: _lookingFor,
       isAdultConfirmed: _isAdultConfirmed,
-      sensitiveDataConsent: _sensitiveDataConsent,
+      acceptedSensitiveConsentVersion: _sensitiveDataConsent
+          ? Profile.currentSensitiveConsentVersion
+          : 0,
       defaultIntent: _defaultIntent,
       languages: _languages,
       showGender: _showGender,
@@ -90,24 +104,60 @@ class _UiProfileState extends State<UiProfile> {
     return draft.lookingFor.isNotEmpty &&
         draft.isAdultConfirmed &&
         draft.hasAcceptedCurrentTerms &&
-        (!draft.needsSensitiveDataConsent || draft.sensitiveDataConsent);
+        !draft.lacksRequiredSensitiveConsent;
   }
 
+  /// Da online, se la modifica tocca il dato sensibile, prima la conferma:
+  /// salvare chiude la sessione (la regola sta in `UpdateProfileUseCase`).
   Future<void> _save(AppLocalizations l10n) async {
     final draft = _draft;
     if (draft == null) return;
+    final proProfile = context.read<ProProfile>();
+    final isOnline = context.read<ProSession>().isOnline;
+
+    // Il controllo è immediato (sessione in memoria): niente puntini nel
+    // bottone mentre si legge la conferma.
+    final endsSession = isOnline && await proProfile.saveEndsSession(draft);
+    if (!mounted) return;
+    if (endsSession && !await _confirmEndingSession(l10n)) return;
+    if (!mounted) return;
 
     setState(() => _isSaving = true);
-    final saved = await context.read<ProProfile>().save(draft);
+    final saved = await proProfile.save(draft);
     if (!mounted) return;
     setState(() => _isSaving = false);
 
     if (saved && !widget.isOnboarding) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.profile_saved)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            endsSession ? l10n.profile_saved_session_ended : l10n.profile_saved,
+          ),
+        ),
+      );
       Navigator.of(context).pop();
     }
+  }
+
+  Future<bool> _confirmEndingSession(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.profile_save_ends_session_title),
+        content: Text(l10n.profile_save_ends_session_body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.profile_save_and_end),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   /// Da online la conferma lo dice: prima si va offline (End), poi il
@@ -212,7 +262,7 @@ class _UiProfileState extends State<UiProfile> {
             if (isOnline && !widget.isOnboarding) ...[
               const SizedBox(height: 8),
               Text(
-                l10n.changes_apply_from_your_next_start,
+                l10n.profile_online_changes_hint,
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -338,6 +388,16 @@ class _UiProfileState extends State<UiProfile> {
                 onPressed: () => Navigator.of(
                   context,
                 ).push(MaterialPageRoute(builder: (_) => const UiTermsOfUse())),
+              ),
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                icon: const Icon(Icons.privacy_tip_outlined),
+                label: Text(l10n.read_the_privacy_policy),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const UiPrivacyPolicy()),
+                ),
               ),
             ),
             if (failure != null) ...[

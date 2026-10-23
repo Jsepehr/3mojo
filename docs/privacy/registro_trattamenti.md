@@ -1,6 +1,6 @@
 # Raen: registro delle attività di trattamento (art. 30 GDPR)
 
-> **Bozza tecnica, non consulenza legale.** I campi tra parentesi quadre li compila il titolare. Le descrizioni tecniche corrispondono al codice al commit `4f7cae1` e alla [DPIA](dpia.md), che riporta anche i file di riferimento.
+> **Bozza tecnica, non consulenza legale.** I campi tra parentesi quadre li compila il titolare. Le descrizioni tecniche corrispondono al codice al commit `4f7cae1` più la rimozione di ML Kit, e alla [DPIA](dpia.md) versione 0.2, che riporta anche i file di riferimento.
 
 ## Dati del titolare
 
@@ -21,7 +21,7 @@
 | **[Fornitore di hosting]** | Server Dart Frog, disco dei record di moderazione, reverse proxy | Responsabile (art. 28) | **[UE raccomandato]** | **[DPA da firmare]** |
 | **[Fornitore email]** | Casella del contatto di sicurezza e della privacy | Responsabile (art. 28) | **[ ]** | **[DPA]** |
 | Apple Inc. / Apple Distribution International | App Store, acquisti in-app (StoreKit), App Attest (quando acceso) | Titolare autonomo per distribuzione e pagamenti; da qualificare per App Attest | USA/Irlanda, DPF o SCC dei termini Apple (da verificare) | Apple Developer Program License Agreement |
-| Google LLC / Google Ireland | Google Play, Play Billing, Play Integrity (quando acceso), telemetria ML Kit (Android) | Titolare autonomo per Play e Billing; da qualificare per Play Integrity e ML Kit (possibile contitolarità per la telemetria) | USA/Irlanda, DPF o SCC dei termini Google (da verificare) | Developer Distribution Agreement, termini Play Integrity e ML Kit |
+| Google LLC / Google Ireland | Google Play, Play Billing (compresa l'eventuale diagnostica della Play Billing Library, da verificare), Play Integrity (quando acceso) | Titolare autonomo per Play e Billing; da qualificare per Play Integrity e per la diagnostica della Billing Library, se confermata (possibile contitolarità) | USA/Irlanda, DPF o SCC dei termini Google (da verificare) | Developer Distribution Agreement, Android SDK License (Billing), termini Play Integrity |
 
 ## Attività di trattamento
 
@@ -107,13 +107,13 @@
 | Conservazione | Nulla dopo la verifica; contatori aggregati e orari per IP per 1 minuto |
 | Stato | Predisposta e **spenta** (`ATTESTATION_MODE=off`) |
 
-### T8. Rilevamento del volto sul telefono (e telemetria SDK)
+### T8. Rilevamento del volto sul telefono
 
 | Campo | Contenuto |
 |---|---|
 | Finalità | Verificare che il selfie contenga un volto prima dello Start |
 | Base giuridica | Art. 6(1)(b). Nessun trattamento biometrico: non c'è identificazione né confronto, e nulla lascia il telefono |
-| Note | Android: Google ML Kit (modello nell'APK) invia a Google telemetria di diagnostica (dispositivo, app, **id per installazione**, prestazioni, errori). iOS: Apple Vision, senza rete. Il titolare non riceve dati |
+| Note | Android: `android.media.FaceDetector`, del sistema operativo, senza rete. iOS: Apple Vision, senza rete. Nessuna libreria di terzi e nessuna telemetria (fino alla DPIA 0.1 c'era Google ML Kit, che inviava a Google diagnostica con un id per installazione: tolto). Il titolare non riceve dati |
 | Conservazione | File temporaneo cancellato sempre a fine controllo |
 
 ### T9. Contatti al supporto, sicurezza e privacy

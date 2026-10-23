@@ -1,6 +1,6 @@
 # Raen: checklist prima del lancio
 
-> **Bozza tecnica, non consulenza legale.** Elenco operativo di ciò che resta da fare prima di pubblicare su App Store e Google Play, ricavato dal codice al commit `4f7cae1` e da [dpia.md](dpia.md). Spuntare ogni voce con data e responsabile. Le voci **[B]** sono bloccanti.
+> **Bozza tecnica, non consulenza legale.** Elenco operativo di ciò che resta da fare prima di pubblicare su App Store e Google Play, ricavato dal codice al commit `4f7cae1` (più la rimozione di ML Kit, la firma della release, l'informativa in app, l'avviso in evidenza sulla posizione, il ritiro del consenso da online e il consenso versionato) e da [dpia.md](dpia.md). Spuntare ogni voce con data e responsabile. Le voci **[B]** sono bloccanti.
 
 ## 1. Legale e organizzazione
 
@@ -8,8 +8,8 @@
 - [ ] **[B]** Far rivedere e approvare la [DPIA](dpia.md) dal consulente legale o dal DPO; decidere sui rischi residui (§6) e, se restano alti, valutare la consultazione preventiva del Garante (art. 36).
 - [ ] Decidere sul **DPO** (art. 37) e, se il titolare non è stabilito nell'UE, sul **rappresentante UE** (art. 27).
 - [ ] **[B]** Scegliere l'**hosting** (raccomandato nell'UE), firmare il **contratto art. 28**, controllare i sub-responsabili e dove finiscono i backup (la cartella dei record di moderazione non deve stare nello stesso backup della `MODERATION_KEY`).
-- [ ] Qualificare il ruolo di **Apple e Google** per servizio (distribuzione, pagamenti, App Attest, Play Integrity, telemetria ML Kit) e i **trasferimenti extra UE** (DPF o clausole tipo).
-- [ ] Valutare l'art. 5(3) ePrivacy / art. 122 Codice privacy per la telemetria ML Kit e per l'attestazione del dispositivo.
+- [ ] Qualificare il ruolo di **Apple e Google** per servizio (distribuzione, pagamenti, App Attest, Play Integrity, eventuale diagnostica della Play Billing Library) e i **trasferimenti extra UE** (DPF o clausole tipo).
+- [ ] Valutare l'art. 5(3) ePrivacy / art. 122 Codice privacy per l'attestazione del dispositivo e per l'eventuale diagnostica della Play Billing Library (la telemetria ML Kit non c'è più).
 - [ ] Valutare gli obblighi del **DSA** (punto di contatto, segnalazioni, motivazione delle restrizioni come la chiusura automatica, reclami) e le esenzioni per micro e piccole imprese.
 - [ ] **[B]** Pubblicare l'**informativa privacy** a un URL stabile (IT ed EN, più le altre lingue dell'app se possibile).
 - [ ] **[B]** Rivedere i **termini d'uso** in app (`CmpTermsOfUse`) con il consulente. Se cambiano nella sostanza, alzare `Profile.currentTermsVersion`.
@@ -23,16 +23,34 @@
 ## 2. App: modifiche prima della release (codice non toccato in questa revisione)
 
 - [ ] **[B]** **Email di sicurezza** vera e presidiata in `lib/core/config/safety_contact.dart:12` (oggi `safety@raen.example`, che non riceve posta).
-- [ ] **[B]** **Link all'informativa privacy** in app: menu laterale ("Informazioni" o "Sicurezza e segnalazioni") e onboarding del profilo, accanto al consenso. Stringhe negli ARB di tutte le lingue, poi `flutter gen-l10n`.
-- [ ] **[B, Android]** **Informativa in evidenza** sulla posizione anche in background, **prima** della richiesta del permesso (testo in [store_privacy.md](store_privacy.md) §C).
-- [ ] Ritiro del consenso immediato: se una modifica del profilo da online ritira il consenso o cambia genere/preferenza, proporre o fare End (DPIA D4; oggi `changes_apply_from_your_next_start`).
-- [ ] Salvare la **versione del consenso** al dato sensibile nel profilo, come `acceptedTermsVersion` (DPIA D5).
-- [ ] Valutare `android.media.FaceDetector` al posto di ML Kit per togliere la telemetria Google (DPIA §6.7).
-- [ ] Facoltativo: commenti sulle "distanze" in `MainActivity.kt:12-13` e `AppDelegate.swift:31`; pulizia di `Hotspot.memberSessionIds` a fine sessione (DPIA D8, D9).
-- [ ] **[B, Android]** **Firma di release**: `android/app/build.gradle.kts` firma la release con le chiavi di **debug** (`signingConfigs.getByName("debug")`). Serve una keystore di upload e Play App Signing.
+- [x] **[B]** **Informativa privacy in app**: `UiPrivacyPolicy` (testi `privacy_*` negli ARB di tutte le lingue), dal menu laterale, da "Informazioni", dal profilo (anche nell'onboarding, accanto a consenso e termini) e dai termini d'uso. Resta da compilare `lib/core/config/privacy_policy_info.dart` (segnaposto `TODO(privacy)`: titolare, email, hosting, garanzie, data) e da pubblicare l'URL (§1).
+- [x] **[B, Android]** **Informativa in evidenza** sulla posizione anche in background, **prima** della richiesta del permesso: `UiLocationDisclosure` al tap su Start, finché il permesso non è concesso; anche su iOS, con il testo "solo con l'app aperta" (testi in [store_privacy.md](store_privacy.md) §C).
+- [x] Ritiro del consenso immediato: una modifica del profilo da online che cambia genere, chi cerchi, "mostra il mio genere" o fa perdere il consenso chiude prima la sessione, con conferma (`UpdateProfileUseCase`, DPIA D4 e §6.9). Lingue e intento predefinito valgono dal prossimo Start.
+- [x] Salvare la **versione del consenso** al dato sensibile nel profilo, come `acceptedTermsVersion` (DPIA D5): `Profile.acceptedSensitiveConsentVersion`, attuale `Profile.currentSensitiveConsentVersion = 1`. Se il testo del consenso cambia nella sostanza, alzarla: va riconfermato al salvataggio e allo Start.
+- [x] `android.media.FaceDetector` al posto di ML Kit: il controllo del volto su Android non contatta più Google (DPIA §6.7). Resta da provare su telefoni veri (§6).
+- [ ] Verificare cosa invia a Google la **Play Billing Library** (trasporto di log `datatransport` nell'APK) e allineare Data safety e informativa (DPIA §6.7).
+- [x] Commenti sulle "distanze" in `MainActivity.kt` e `AppDelegate.swift`; pulizia di `Hotspot.memberSessionIds` a fine sessione (DPIA D8, D9).
+- [x] **Firma di release configurata**: `android/app/build.gradle.kts` firma la release con le chiavi di `android/key.properties` e, se il file manca o è incompleto, la build release **si ferma** (nessun ripiego sulle chiavi di debug). Debug e profile restano con le chiavi di debug.
+- [ ] **[B, Android]** Creare la **chiave di upload** e conservarla come descritto in §2.1.
 - [ ] **[B]** **JDK**: `android/gradle.properties` fissa `org.gradle.java.home` a `C:\Users\sepehrbaradaran\.jdks\azul-17.0.16` (una macchina Windows). Sulla macchina o CI che fa la build di release va adattato (percorsi in `macchine_sviluppo.md`), senza committare un percorso di un'altra macchina.
 - [ ] Build di release con: `--dart-define=API_BASE_URL=https://<server>` (obbligatorio, solo https), `REAL_PAYMENTS=true`, `IOS_UNLOCK_PRODUCT_ID`/`ANDROID_UNLOCK_PRODUCT_ID` (oggi `TODO_REPLACE_…` in `lib/core/config/store_config.dart`), `GOOGLE_CLOUD_PROJECT_NUMBER` (per Play Integrity).
 - [ ] iOS: capability **App Attest** sull'App ID; entitlement `production` già in `ios/Runner/Runner.entitlements`.
+
+### 2.1 Firma della release Android
+
+Con **Play App Signing** (consigliato, e obbligatorio per gli AAB) le chiavi sono due: la **chiave dell'app**, che firma ciò che arriva sui telefoni, la genera e la custodisce Google; la **chiave di upload**, nostra, firma solo gli AAB che carichiamo. Se la chiave di upload si perde o viene rubata, Google la può sostituire (Play Console → Integrità dell'app → Richiedi reimpostazione della chiave di upload); la chiave dell'app no. Per questo conviene lasciare la chiave dell'app a Google e non generarla in casa.
+
+- [ ] **Creare la chiave di upload** su una macchina fidata, fuori dal repository (JDK 17; `keytool` sta in `$JAVA_HOME/bin`):
+  ```sh
+  keytool -genkeypair -v -keystore ~/raen-upload-keystore.jks \
+    -storetype PKCS12 -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+  ```
+  `keytool` chiede la password del keystore e i dati del certificato (nome, organizzazione: non vanno a nessuno salvo che dentro il certificato). Con PKCS12 la password della chiave è la stessa del keystore. Validità di 10000 giorni (circa 27 anni): Play chiede che il certificato scada dopo il 22 ottobre 2033.
+- [ ] **Configurare la build**: copiare `android/key.properties.example` in `android/key.properties` e compilare `storeFile` (percorso assoluto del `.jks`, o relativo a `android/app/`), `storePassword`, `keyAlias=upload`, `keyPassword`. `key.properties`, `*.jks` e `*.keystore` sono esclusi da git (`.gitignore` e `android/.gitignore`): controllare con `git status` che non compaiano mai.
+- [ ] **Provare**: `flutter build appbundle --release` (con le `--dart-define` del §2). Senza `key.properties` la build deve fermarsi con il messaggio "Firma della release mancante". Il certificato usato si vede con `keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab`.
+- [ ] **Attivare Play App Signing** al primo caricamento in Play Console (Configura → Integrità dell'app), lasciando generare a Google la chiave dell'app. Annotare le impronte SHA-256 di entrambe le chiavi (servono, per esempio, per eventuali App Links).
+- [ ] **Conservare** il keystore e le password in **due posti separati** e cifrati (per esempio il gestore di password aziendale per le password e un backup cifrato offline per il `.jks`), con l'elenco delle persone che vi hanno accesso. Mai nel repository, in chat, in email o nei log della CI. In una CI: keystore e password come segreti cifrati, scritti su disco solo durante la build.
+- [ ] Decidere chi può chiedere a Google la **reimpostazione della chiave di upload** (proprietario dell'account sviluppatore) e annotarlo nelle procedure.
 
 ## 3. Traduzioni
 
@@ -70,7 +88,7 @@ Riferimento: tabella delle variabili in `server/README.md`.
 - [ ] Note di revisione (§D) con video o disponibilità a una prova dal vivo; contatto per la revisione.
 
 **Google Play**
-- [ ] **[B]** Data safety come in [store_privacy.md](store_privacy.md) §B (comprese telemetria ML Kit e Play Integrity).
+- [ ] **[B]** Data safety come in [store_privacy.md](store_privacy.md) §B (Play Integrity ed eventuale diagnostica della Play Billing Library; **niente più telemetria ML Kit**: se era già stata dichiarata, toglierla).
 - [ ] **[B]** Dichiarazione dei **servizi in primo piano** (tipo "Posizione") con video (§C).
 - [ ] Verificare sull'AAB finale (Esplora app bundle) l'**assenza** di `ACCESS_BACKGROUND_LOCATION` e la presenza di `com.android.vending.BILLING`. Il manifest unito in `build/` è di una build vecchia e non lo contiene ancora.
 - [ ] Pubblico di destinazione: **solo 18+**. Questionario IARC (§E). Annunci: no.
@@ -82,7 +100,7 @@ Riferimento: tabella delle variabili in `server/README.md`.
 
 Annotare per ciascuno il modello di dispositivo, la versione dell'OS e l'esito.
 
-- [ ] **Face check**: Android (ML Kit) e iPhone (Apple Vision) con selfie normale, senza volto, controluce, foto di uno schermo; il file temporaneo non resta nella cache (`raen_face_check_*`).
+- [ ] **Face check**: Android (`android.media.FaceDetector`, più vecchio e meno tollerante di ML Kit: provarlo su almeno 3-4 marche, Samsung compresa) e iPhone (Apple Vision) con selfie normale, poca luce, controluce, occhiali (anche da sole), volto girato o inclinato, viso parzialmente fuori inquadratura, senza volto, foto di uno schermo; selfie verticale e orizzontale (orientamento EXIF). Annotare i falsi negativi: le soglie si regolano in `FaceDetectionChannel.kt` (`MIN_CONFIDENCE`, `MIN_FACE_WIDTH_RATIO`, `MAX_LONG_SIDE`). Il file temporaneo non resta nella cache (`raen_face_check_*`).
 - [ ] **Selfie**: nessuna copia in galleria su più marche Android (alcune app fotocamera di sistema la salvano); flip; nessun EXIF nella foto ricevuta dall'altro telefono.
 - [ ] **FLAG_SECURE** (Android): screenshot bloccato, registrazione dello schermo nera, cast nero, anteprima nera nei recenti.
 - [ ] **PrivacyCover** (iOS): selettore delle app coperto in blu; i dialoghi di permesso di posizione e fotocamera **non** finiscono su schermo blu; il contenuto torna al rientro.
@@ -93,6 +111,7 @@ Annotare per ciascuno il modello di dispositivo, la versione dell'OS e l'esito.
 - [ ] **Reinstallazione su iOS**: profilo e token cancellati (`WipeDataFromPreviousInstallUseCase`).
 - [ ] **Backup e trasferimento** (Android 12+): profilo e token non passano a un nuovo telefono.
 - [ ] **Blocca e segnala** tra due telefoni; chiusura automatica con 3 telefoni su 2 reti; record creato, visibile da `/admin/reports`, cancellato con `DELETE` e dalla pulizia dopo 30 giorni (orologio simulato nei test del server).
-- [ ] **Profilo**: consenso richiesto salvo il percorso neutro; "Cancella profilo" da online chiude prima la sessione.
+- [ ] **Profilo**: consenso richiesto salvo il percorso neutro; "Cancella profilo" da online chiude prima la sessione; da online, cambiare genere, chi cerchi o "mostra il mio genere" chiede conferma e chiude la sessione (sull'altro telefono la persona sparisce), cambiare lingue o intento predefinito no.
+- [ ] **Avviso sulla posizione**: con il permesso non concesso, Start mostra l'avviso (testo Android con il background, testo iOS "solo con l'app aperta"); "Non ora" lascia offline senza richiesta di sistema; "Continua" e permesso negato lasciano offline con il link alle impostazioni; con il permesso già concesso l'avviso non compare.
 - [ ] **TLS**: l'app in release rifiuta `http://`; il server con TLS a metà non parte.
 - [ ] Prestazioni e batteria con il foreground service acceso per un'ora (Android) e con il wakelock dello schermo.

@@ -20,6 +20,7 @@ import 'package:threemojo_app/features/session/domain/usecases/flip_selfie_useca
 import 'package:threemojo_app/features/session/domain/usecases/get_current_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/start_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/take_selfie_usecase.dart';
+import 'package:threemojo_app/features/session/domain/usecases/update_profile_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/withdraw_profile_usecase.dart';
 import 'package:threemojo_app/features/session/presentation/pages/ui_start_session.dart';
@@ -90,6 +91,11 @@ void main() {
     proProfile = ProProfile(
       getProfileUseCase: GetProfileUseCase(profiles),
       saveProfileUseCase: SaveProfileUseCase(profiles),
+      updateProfileUseCase: UpdateProfileUseCase(
+        getCurrentSessionUseCase: GetCurrentSessionUseCase(sessions),
+        endSessionUseCase: endSession,
+        saveProfileUseCase: SaveProfileUseCase(profiles),
+      ),
       withdrawProfileUseCase: WithdrawProfileUseCase(
         getCurrentSessionUseCase: GetCurrentSessionUseCase(sessions),
         endSessionUseCase: endSession,
@@ -191,7 +197,7 @@ void main() {
       gender: Gender.male,
       lookingFor: Profile.searchableGenders,
       isAdultConfirmed: true,
-      sensitiveDataConsent: true,
+      acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
     );
     await pumpHost(tester);
     await openWizard(tester);
@@ -224,7 +230,7 @@ void main() {
       gender: Gender.male,
       lookingFor: Profile.searchableGenders,
       isAdultConfirmed: true,
-      sensitiveDataConsent: true,
+      acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
     );
     await pumpHost(tester);
     await openWizard(tester);
@@ -238,5 +244,66 @@ void main() {
     expect(proSession.isOnline, isFalse);
     expect(profiles.saved?.hasAcceptedCurrentTerms, isFalse);
     expect(find.text(l10n.start_error_terms_required), findsOneWidget);
+  });
+
+  testWidgets('a consent given for an older text is asked again at Start '
+      '(text + checkbox), and once confirmed goes online', (tester) async {
+    faces.result = const Right(true);
+    profiles.saved = const Profile(
+      gender: Gender.male,
+      lookingFor: Profile.searchableGenders,
+      isAdultConfirmed: true,
+      acceptedSensitiveConsentVersion:
+          Profile.currentSensitiveConsentVersion - 1,
+      acceptedTermsVersion: Profile.currentTermsVersion,
+    );
+    await pumpHost(tester);
+    await openWizard(tester);
+    await shootAndConfirm(tester);
+
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
+    await tester.pumpAndSettle();
+
+    expect(proSession.isOnline, isFalse);
+    expect(find.text(l10n.consent_renewal_body), findsOneWidget);
+    final accept = find.widgetWithText(FilledButton, l10n.accept);
+    expect(tester.widget<FilledButton>(accept).onPressed, isNull);
+
+    await tester.tap(
+      find.text(l10n.i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet),
+    );
+    await tester.pump();
+    await tester.tap(accept);
+    await tester.pumpAndSettle();
+
+    expect(
+      profiles.saved?.acceptedSensitiveConsentVersion,
+      Profile.currentSensitiveConsentVersion,
+    );
+    expect(proSession.isOnline, isTrue);
+    expect(find.byType(UiStartSession), findsNothing);
+  });
+
+  testWidgets('not confirming the consent again keeps you offline, with the '
+      'reason on screen', (tester) async {
+    faces.result = const Right(true);
+    profiles.saved = const Profile(
+      gender: Gender.male,
+      lookingFor: Profile.searchableGenders,
+      isAdultConfirmed: true,
+      acceptedTermsVersion: Profile.currentTermsVersion,
+    );
+    await pumpHost(tester);
+    await openWizard(tester);
+    await shootAndConfirm(tester);
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+
+    expect(proSession.isOnline, isFalse);
+    expect(profiles.saved?.hasCurrentSensitiveConsent, isFalse);
+    expect(find.text(l10n.start_error_consent_required), findsOneWidget);
   });
 }

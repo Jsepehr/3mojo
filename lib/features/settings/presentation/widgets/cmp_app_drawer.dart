@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '/features/profile/presentation/pages/ui_profile.dart';
+import '/features/safety/presentation/pages/ui_privacy_policy.dart';
 import '/features/safety/presentation/pages/ui_safety.dart';
 import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
@@ -12,7 +13,8 @@ import 'cmp_language_picker_dialog.dart';
 
 /// Menu laterale dell'app: il proprio profilo, cambio lingua, tema,
 /// "Sicurezza e segnalazioni" (come bloccare/segnalare, termini d'uso e il
-/// contatto pubblicato), informazioni sull'app, condivisione. Nessuna altra voce di navigazione
+/// contatto pubblicato), l'informativa privacy, informazioni sull'app,
+/// condivisione. Nessuna altra voce di navigazione
 /// qui dentro — è un cassetto di impostazioni, non una seconda barra di
 /// navigazione.
 ///
@@ -38,6 +40,12 @@ class CmpAppDrawer extends StatelessWidget {
       ..push(MaterialPageRoute(builder: (_) => const UiSafety()));
   }
 
+  void _openPrivacyPolicy(BuildContext context) {
+    Navigator.of(context)
+      ..pop()
+      ..push(MaterialPageRoute(builder: (_) => const UiPrivacyPolicy()));
+  }
+
   void _changeLanguage(BuildContext context) {
     final navigator = Navigator.of(context)..pop();
     showDialog<void>(
@@ -47,9 +55,9 @@ class CmpAppDrawer extends StatelessWidget {
   }
 
   /// "Informazioni": versione, copyright (anno corrente), i link a termini
-  /// d'uso e sicurezza, e il bottone "Licenze" di Flutter (pacchetti Dart più
-  /// ciò che aggiunge `registerAppLicenses`: font e librerie native). Termini
-  /// e sicurezza si aprono **sopra** il dialog: tornando indietro si ritrova.
+  /// d'uso, informativa privacy e sicurezza, e il bottone "Licenze" di Flutter (pacchetti Dart più
+  /// ciò che aggiunge `registerAppLicenses`: font e librerie native). Le
+  /// pagine si aprono **sopra** il dialog: tornando indietro si ritrova.
   Future<void> _showAbout(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     final navigator = Navigator.of(context)..pop();
@@ -68,6 +76,11 @@ class CmpAppDrawer extends StatelessWidget {
           icon: Icons.description_outlined,
           label: l10n.terms_of_use,
           page: const UiTermsOfUse(),
+        ),
+        _AboutLink(
+          icon: Icons.privacy_tip_outlined,
+          label: l10n.privacy_policy,
+          page: const UiPrivacyPolicy(),
         ),
         _AboutLink(
           icon: Icons.shield_outlined,
@@ -160,6 +173,11 @@ class CmpAppDrawer extends StatelessWidget {
                   leading: const Icon(Icons.shield_outlined),
                   title: Text(l10n.safety_and_reports),
                   onTap: () => _openSafety(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: Text(l10n.privacy_policy),
+                  onTap: () => _openPrivacyPolicy(context),
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),

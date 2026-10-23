@@ -28,7 +28,7 @@ import Vision
 /// Copre l'app con il colore del brand quando la scena **va in background**
 /// e la scopre quando torna in primo piano. iOS scatta lo snapshot per il
 /// selettore delle app **dopo** `didEnterBackground`: così quella scheda non
-/// contiene selfie altrui, distanze o la chat.
+/// contiene selfie altrui, ciò che mostrano del loro profilo o la chat.
 ///
 /// Non si copre già a `willDeactivate`: la scena diventa inattiva anche
 /// dietro ai dialoghi di sistema (permesso posizione/fotocamera, Face ID,
@@ -90,7 +90,9 @@ enum PrivacyCover {
 
 /// Lato iOS del canale `raen/face_detection` (vedi `face_detector_io.dart`):
 /// Apple Vision sul dispositivo, nessuna foto lascia il telefono. Al posto di
-/// Google ML Kit perché i suoi Pod escludono arm64 dal simulatore iOS.
+/// Google ML Kit perché i suoi Pod escludono arm64 dal simulatore iOS (su
+/// Android il canale usa `android.media.FaceDetector`, vedi
+/// `FaceDetectionChannel.kt`: stesso metodo, argomento e risultato).
 enum FaceDetectionChannel {
   static func register(with messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: "raen/face_detection", binaryMessenger: messenger)

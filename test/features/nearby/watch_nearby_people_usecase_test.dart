@@ -7,6 +7,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/background_location_notice.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/geo_location.dart';
+import 'package:threemojo_app/features/nearby/domain/entities/location_permission_status.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/nearby_person.dart';
 import 'package:threemojo_app/features/nearby/domain/repositories/location_repository.dart';
 import 'package:threemojo_app/features/nearby/domain/repositories/nearby_repository.dart';
@@ -49,6 +50,17 @@ class _FakeLocationRepository implements LocationRepository {
 
   @override
   Future<Either<Failure, Unit>> openAppSettings() async => const Right(unit);
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> checkPermission() async =>
+      const Right(LocationPermissionStatus.granted);
+
+  @override
+  Future<Either<Failure, LocationPermissionStatus>> requestPermission() async =>
+      const Right(LocationPermissionStatus.granted);
+
+  @override
+  bool get keepsTrackingInBackground => true;
 }
 
 class _FakeNearbyRepository implements NearbyRepository {
@@ -222,5 +234,5 @@ const _profile = Profile(
   gender: Gender.male,
   lookingFor: Profile.searchableGenders,
   isAdultConfirmed: true,
-  sensitiveDataConsent: true,
+  acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
 );

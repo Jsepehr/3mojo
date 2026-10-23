@@ -2,16 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
+import '/features/session/domain/usecases/update_profile_usecase.dart';
 import '/features/session/domain/usecases/withdraw_profile_usecase.dart';
 import '../../domain/entities/profile.dart';
 import '../../domain/usecases/accept_terms_usecase.dart';
 import '../../domain/usecases/get_profile_usecase.dart';
+import '../../domain/usecases/renew_sensitive_consent_usecase.dart';
 import '../../domain/usecases/save_profile_usecase.dart';
 
 /// Stato UI del profilo: carica quello salvato all'avvio, salva, cancella.
 /// Nessuna regola qui — validazioni e consenso vivono in
 /// `SaveProfileUseCase`; "da online, prima si chiude la sessione" in
-/// `WithdrawProfileUseCase`.
+/// `UpdateProfileUseCase` (modifiche al dato sensibile) e
+/// `WithdrawProfileUseCase` (cancellazione).
 ///
 /// L'errore è esposto come `Failure` (non come stringa): è la UI
 /// (`ProfileLabels.failure`) a scegliere il testo tradotto dal suo tipo.
@@ -19,14 +22,22 @@ class ProProfile extends ChangeNotifier {
   ProProfile({
     required GetProfileUseCase getProfileUseCase,
     required SaveProfileUseCase saveProfileUseCase,
+    required UpdateProfileUseCase updateProfileUseCase,
     required WithdrawProfileUseCase withdrawProfileUseCase,
     AcceptTermsUseCase? acceptTermsUseCase,
+    RenewSensitiveConsentUseCase? renewSensitiveConsentUseCase,
   }) : _getProfileUseCase = getProfileUseCase,
-       _saveProfileUseCase = saveProfileUseCase,
+       _updateProfileUseCase = updateProfileUseCase,
        _withdrawProfileUseCase = withdrawProfileUseCase,
        _acceptTermsUseCase =
            acceptTermsUseCase ??
            AcceptTermsUseCase(
+             getProfileUseCase: getProfileUseCase,
+             saveProfileUseCase: saveProfileUseCase,
+           ),
+       _renewSensitiveConsentUseCase =
+           renewSensitiveConsentUseCase ??
+           RenewSensitiveConsentUseCase(
              getProfileUseCase: getProfileUseCase,
              saveProfileUseCase: saveProfileUseCase,
            ) {
@@ -34,9 +45,10 @@ class ProProfile extends ChangeNotifier {
   }
 
   final GetProfileUseCase _getProfileUseCase;
-  final SaveProfileUseCase _saveProfileUseCase;
+  final UpdateProfileUseCase _updateProfileUseCase;
   final WithdrawProfileUseCase _withdrawProfileUseCase;
   final AcceptTermsUseCase _acceptTermsUseCase;
+  final RenewSensitiveConsentUseCase _renewSensitiveConsentUseCase;
 
   bool _isLoading = true;
   Profile? _profile;
@@ -66,9 +78,16 @@ class ProProfile extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// `true` se salvato; altrimenti il motivo è in [failure].
+  /// Se salvare [profile] adesso chiuderebbe prima la sessione (modifica al
+  /// dato sensibile da online): la pagina lo chiede prima di salvare.
+  Future<bool> saveEndsSession(Profile profile) =>
+      _updateProfileUseCase.endsSession(profile);
+
+  /// `true` se salvato; altrimenti il motivo è in [failure]. Da online, se
+  /// cambia il dato sensibile, chiude prima la sessione
+  /// (`UpdateProfileUseCase`).
   Future<bool> save(Profile profile) async {
-    final result = await _saveProfileUseCase(profile);
+    final result = await _updateProfileUseCase(profile);
     final saved = result.match((failure) {
       _failure = failure;
       return false;
@@ -100,6 +119,24 @@ class ProProfile extends ChangeNotifier {
     }
     notifyListeners();
     return accepted;
+  }
+
+  /// Riconferma il consenso al dato sensibile per il testo attuale (chiesto
+  /// dallo Start a chi aveva acconsentito a una versione precedente). `true`
+  /// se salvato; altrimenti il motivo è in [failure].
+  Future<bool> renewSensitiveConsent() async {
+    final result = await _renewSensitiveConsentUseCase(const NoParams());
+    final renewed = result.match((failure) {
+      _failure = failure;
+      return false;
+    }, (_) => true);
+    if (renewed) {
+      _failure = null;
+      final reloaded = await _getProfileUseCase(const NoParams());
+      reloaded.match((_) {}, (p) => _profile = p);
+    }
+    notifyListeners();
+    return renewed;
   }
 
   /// Cancella il profilo; da online chiude prima la sessione. `true` se

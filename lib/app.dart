@@ -44,8 +44,10 @@ import 'features/nearby/data/repositories/nearby_repository_impl.dart';
 import 'features/nearby/domain/repositories/location_repository.dart';
 import 'features/nearby/domain/repositories/nearby_repository.dart';
 import 'features/nearby/domain/usecases/get_current_location_usecase.dart';
+import 'features/nearby/domain/usecases/get_location_disclosure_usecase.dart';
 import 'features/nearby/domain/usecases/open_app_settings_usecase.dart';
 import 'features/nearby/domain/usecases/open_location_settings_usecase.dart';
+import 'features/nearby/domain/usecases/request_location_permission_usecase.dart';
 import 'features/nearby/domain/usecases/stop_being_visible_usecase.dart';
 import 'features/nearby/domain/usecases/watch_nearby_people_usecase.dart';
 import 'features/nearby/domain/usecases/watch_position_usecase.dart';
@@ -116,6 +118,7 @@ import 'features/session/domain/usecases/flip_selfie_usecase.dart';
 import 'features/session/domain/usecases/get_current_session_usecase.dart';
 import 'features/session/domain/usecases/start_session_usecase.dart';
 import 'features/session/domain/usecases/take_selfie_usecase.dart';
+import 'features/session/domain/usecases/update_profile_usecase.dart';
 import 'features/session/domain/usecases/watch_connection_status_usecase.dart';
 import 'features/session/domain/usecases/watch_server_session_restarts_usecase.dart';
 import 'features/session/domain/usecases/watch_session_closed_by_server_usecase.dart';
@@ -157,8 +160,8 @@ class App extends StatelessWidget {
   /// End compone i passi di pulizia delle altre feature tramite il
   /// contratto `SessionTeardownUseCase` di `session/`: la dipendenza va solo
   /// da loro verso `session/`, mai al contrario. Condiviso dal bottone End
-  /// (`ProSession`) e dalla cancellazione del profilo da online
-  /// (`ProProfile`).
+  /// (`ProSession`) e dalla cancellazione o dalla modifica del dato sensibile
+  /// del profilo da online (`ProProfile`).
   static EndSessionUseCase _endSessionUseCase(BuildContext context) =>
       EndSessionUseCase(
         repository: context.read(),
@@ -304,6 +307,13 @@ class App extends StatelessWidget {
           create: (context) => ProProfile(
             getProfileUseCase: GetProfileUseCase(context.read()),
             saveProfileUseCase: SaveProfileUseCase(context.read()),
+            updateProfileUseCase: UpdateProfileUseCase(
+              getCurrentSessionUseCase: GetCurrentSessionUseCase(
+                context.read(),
+              ),
+              endSessionUseCase: _endSessionUseCase(context),
+              saveProfileUseCase: SaveProfileUseCase(context.read()),
+            ),
             withdrawProfileUseCase: WithdrawProfileUseCase(
               getCurrentSessionUseCase: GetCurrentSessionUseCase(
                 context.read(),
@@ -362,6 +372,12 @@ class App extends StatelessWidget {
               context.read(),
             ),
             openAppSettingsUseCase: OpenAppSettingsUseCase(context.read()),
+            getLocationDisclosureUseCase: GetLocationDisclosureUseCase(
+              context.read(),
+            ),
+            requestLocationPermissionUseCase: RequestLocationPermissionUseCase(
+              context.read(),
+            ),
             watchBlockedPeopleUseCase: WatchBlockedPeopleUseCase(
               context.read(),
             ),

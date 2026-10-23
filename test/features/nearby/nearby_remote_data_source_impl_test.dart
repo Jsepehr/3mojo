@@ -34,7 +34,7 @@ const _profile = Profile(
   gender: Gender.female,
   lookingFor: {Gender.male},
   isAdultConfirmed: true,
-  sensitiveDataConsent: true,
+  acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
   languages: ['it'],
 );
 

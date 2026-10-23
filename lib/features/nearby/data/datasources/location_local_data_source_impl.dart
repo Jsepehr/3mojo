@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '/core/errors/exceptions.dart';
 import '/features/nearby/domain/entities/background_location_notice.dart';
 import '/features/nearby/domain/entities/geo_location.dart';
+import '/features/nearby/domain/entities/location_permission_status.dart';
 import 'location_local_data_source.dart';
 
 /// Implementazione **reale**: usa il pacchetto `geolocator` per controllare
@@ -17,12 +18,11 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
       throw const LocationDisabledException('Location services are disabled');
     }
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    // Solo controllo, mai la richiesta: quella parte da [requestPermission]
+    // dopo l'avviso in evidenza. Chiederla qui la mostrerebbe senza avviso
+    // (anche a ogni nuovo tentativo di `ProNearby`, se il permesso viene
+    // tolto a sessione aperta).
+    if (await checkPermission() != LocationPermissionStatus.granted) {
       throw const LocationPermissionDeniedException(
         'Location permission denied',
       );
@@ -37,6 +37,28 @@ class LocationLocalDataSourceImpl implements LocationLocalDataSource {
       longitude: position.longitude,
     );
   }
+
+  @override
+  Future<LocationPermissionStatus> checkPermission() async =>
+      _statusOf(await Geolocator.checkPermission());
+
+  @override
+  Future<LocationPermissionStatus> requestPermission() async =>
+      _statusOf(await Geolocator.requestPermission());
+
+  @override
+  bool get keepsTrackingInBackground =>
+      defaultTargetPlatform == TargetPlatform.android;
+
+  static LocationPermissionStatus _statusOf(LocationPermission permission) =>
+      switch (permission) {
+        LocationPermission.whileInUse ||
+        LocationPermission.always => LocationPermissionStatus.granted,
+        LocationPermission.deniedForever =>
+          LocationPermissionStatus.deniedForever,
+        LocationPermission.denied ||
+        LocationPermission.unableToDetermine => LocationPermissionStatus.denied,
+      };
 
   @override
   Stream<GeoLocation> watchPosition({

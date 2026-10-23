@@ -20,6 +20,7 @@ void main() {
           const FaceCheckUnavailableFailure('PlatformException'),
           const SelfieCaptureFailure('Camera unavailable'),
           const ProfileMissingFailure(),
+          const SensitiveDataConsentRequiredFailure(),
           const CacheFailure('Profile unreadable'),
         ];
 

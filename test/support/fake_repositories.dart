@@ -24,7 +24,7 @@ const testProfile = Profile(
   gender: Gender.male,
   lookingFor: Profile.searchableGenders,
   isAdultConfirmed: true,
-  sensitiveDataConsent: true,
+  acceptedSensitiveConsentVersion: Profile.currentSensitiveConsentVersion,
   acceptedTermsVersion: Profile.currentTermsVersion,
 );
 

@@ -1,9 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Firma della release: chiavi in android/key.properties (fuori da git, vedi
+// key.properties.example e docs/privacy/checklist_prima_del_lancio.md).
+// Schema standard di Flutter: storeFile (relativo a android/app/ oppure
+// assoluto), storePassword, keyAlias, keyPassword. Debug e profile restano
+// firmati con le chiavi di debug, come prima.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val releaseSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 
 android {
     namespace = "com.threemojo.app"
@@ -30,13 +45,63 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+    signingConfigs {
+        create("release") {
+            // Letti senza controlli qui, perché la configurazione gira per
+            // ogni build (anche debug): se mancano, fallisce solo la release
+            // (vedi checkReleaseSigning sotto).
+            keystoreProperties.getProperty("storeFile")?.let { storeFile = file(it) }
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
         }
     }
+
+    buildTypes {
+        release {
+            // Mai le chiavi di debug: un APK/AAB firmato così non si può
+            // pubblicare né aggiornare con la chiave vera.
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+// Una build release senza key.properties (o con un campo mancante, o con un
+// keystore che non esiste) si ferma subito con un messaggio chiaro, invece
+// di produrre un APK non firmato o firmato con le chiavi di debug.
+val checkReleaseSigning by tasks.registering {
+    val propertiesFile = keystorePropertiesFile
+    val properties = keystoreProperties
+    val keys = releaseSigningKeys
+    val appDir = project.projectDir
+    doFirst {
+        if (!propertiesFile.exists()) {
+            throw GradleException(
+                "Firma della release mancante: non trovo ${propertiesFile.path}. " +
+                    "Copia android/key.properties.example in android/key.properties " +
+                    "e compila storeFile, storePassword, keyAlias, keyPassword " +
+                    "(passi in docs/privacy/checklist_prima_del_lancio.md). " +
+                    "Per provare l'app usa una build debug o profile.",
+            )
+        }
+        val missing = keys.filter { properties.getProperty(it).isNullOrBlank() }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Firma della release incompleta: in ${propertiesFile.path} " +
+                    "mancano ${missing.joinToString()}.",
+            )
+        }
+        val storeFile = appDir.resolve(properties.getProperty("storeFile"))
+        if (!storeFile.isFile) {
+            throw GradleException(
+                "Firma della release: il keystore ${storeFile.path} (storeFile in " +
+                    "${propertiesFile.path}, relativo a android/app/) non esiste.",
+            )
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(checkReleaseSigning)
 }
 
 flutter {
@@ -44,19 +109,12 @@ flutter {
 }
 
 dependencies {
-    // Rilevamento volto sul dispositivo per il canale `raen/face_detection`
-    // (FaceDetectionChannel.kt): stessa versione che usava il plugin
-    // google_mlkit_face_detection, modello incluso nell'APK.
-    //
-    // Privacy: le immagini non escono dal telefono, ma ML Kit invia a Google
-    // (via com.google.android.datatransport, HTTPS) telemetria di diagnostica
-    // e uso: modello/OS del dispositivo, nome pacchetto e versione app, un
-    // identificativo per installazione, latenza, configurazione dell'API,
-    // dimensione di input/output, codici d'errore. Google non documenta un
-    // modo supportato per disattivarla (togliere a mano datatransport non è
-    // supportato e può rompere il rilevamento): va dichiarata nel Data Safety
-    // di Play — vedi https://developers.google.com/ml-kit/android-data-disclosure
-    implementation("com.google.mlkit:face-detection:16.1.7")
+    // Orientamento EXIF del selfie per il canale `raen/face_detection`
+    // (FaceDetectionChannel.kt, che usa `android.media.FaceDetector` del
+    // sistema: niente librerie di rilevamento, niente rete). È la stessa
+    // versione che image_picker_android porta già nell'APK: dichiararla qui
+    // la rende solo visibile al codice dell'app, non aggiunge nulla.
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
 
     // Verifica del dispositivo per il canale `raen/attestation`
     // (AttestationChannel.kt): Play Integrity API, Standard request. Usata

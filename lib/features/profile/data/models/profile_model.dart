@@ -8,7 +8,7 @@ class ProfileModel extends Profile {
     required super.gender,
     required super.lookingFor,
     required super.isAdultConfirmed,
-    required super.sensitiveDataConsent,
+    super.acceptedSensitiveConsentVersion,
     super.defaultIntent,
     super.languages,
     super.showGender,
@@ -19,7 +19,7 @@ class ProfileModel extends Profile {
     gender: profile.gender,
     lookingFor: profile.lookingFor,
     isAdultConfirmed: profile.isAdultConfirmed,
-    sensitiveDataConsent: profile.sensitiveDataConsent,
+    acceptedSensitiveConsentVersion: profile.acceptedSensitiveConsentVersion,
     defaultIntent: profile.defaultIntent,
     languages: profile.languages,
     showGender: profile.showGender,
@@ -34,7 +34,7 @@ class ProfileModel extends Profile {
           .map((g) => Gender.values.byName(g as String))
           .toSet(),
       isAdultConfirmed: json['isAdultConfirmed'] as bool,
-      sensitiveDataConsent: json['sensitiveDataConsent'] as bool,
+      acceptedSensitiveConsentVersion: _sensitiveConsentVersionFrom(json),
       defaultIntent: intent == null ? null : MeetIntent.values.byName(intent),
       languages: (json['languages'] as List<dynamic>).cast<String>(),
       showGender: json['showGender'] as bool,
@@ -44,11 +44,23 @@ class ProfileModel extends Profile {
     );
   }
 
+  /// Migrazione: i profili salvati prima che il consenso fosse versionato
+  /// hanno solo il booleano `sensitiveDataConsent` — `true` vale la
+  /// versione di allora ([Profile.legacySensitiveConsentVersion]), `false`
+  /// o assente vale 0. Il nuovo campo, se c'è, vince sempre.
+  static int _sensitiveConsentVersionFrom(Map<String, dynamic> json) {
+    final version = json['acceptedSensitiveConsentVersion'];
+    if (version is int) return version;
+    return json['sensitiveDataConsent'] == true
+        ? Profile.legacySensitiveConsentVersion
+        : 0;
+  }
+
   Map<String, dynamic> toJson() => {
     'gender': gender.name,
     'lookingFor': lookingFor.map((g) => g.name).toList(),
     'isAdultConfirmed': isAdultConfirmed,
-    'sensitiveDataConsent': sensitiveDataConsent,
+    'acceptedSensitiveConsentVersion': acceptedSensitiveConsentVersion,
     'defaultIntent': defaultIntent?.name,
     'languages': languages,
     'showGender': showGender,

@@ -10,9 +10,12 @@ import '/features/safety/domain/usecases/watch_blocked_people_usecase.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
 import '../../domain/entities/background_location_notice.dart';
+import '../../domain/entities/location_disclosure.dart';
 import '../../domain/entities/nearby_person.dart';
+import '../../domain/usecases/get_location_disclosure_usecase.dart';
 import '../../domain/usecases/open_app_settings_usecase.dart';
 import '../../domain/usecases/open_location_settings_usecase.dart';
+import '../../domain/usecases/request_location_permission_usecase.dart';
 import '../../domain/usecases/watch_nearby_people_usecase.dart';
 
 /// Stato della pagina "Vicinanze": la lista di persone, se sta caricando,
@@ -54,18 +57,28 @@ import '../../domain/usecases/watch_nearby_people_usecase.dart';
 /// ([setBackgroundLocationNotice]) sono **obbligatori** lungo tutta la
 /// catena fino al datasource GPS (nessun testo di riserva nel data layer):
 /// finché la UI non li ha passati, l'ascolto aspetta.
+///
+/// Prima dello Start, l'avviso in evidenza sulla posizione
+/// ([locationDisclosureToShow], [requestLocationPermission]): quando
+/// mostrarlo e cosa fare dopo lo decidono `GetLocationDisclosureUseCase` e
+/// `RequestLocationPermissionUseCase`; qui si passa solo il risultato alla
+/// UI (`showLocationDisclosureIfNeeded`).
 class ProNearby extends ChangeNotifier {
   ProNearby({
     required WatchSessionUseCase watchSessionUseCase,
     required WatchNearbyPeopleUseCase watchNearbyPeopleUseCase,
     required OpenLocationSettingsUseCase openLocationSettingsUseCase,
     required OpenAppSettingsUseCase openAppSettingsUseCase,
+    required GetLocationDisclosureUseCase getLocationDisclosureUseCase,
+    required RequestLocationPermissionUseCase requestLocationPermissionUseCase,
     WatchBlockedPeopleUseCase? watchBlockedPeopleUseCase,
     HideBlockedPeopleUseCase hideBlockedPeopleUseCase =
         const HideBlockedPeopleUseCase(),
   }) : _watchNearbyPeopleUseCase = watchNearbyPeopleUseCase,
        _openLocationSettingsUseCase = openLocationSettingsUseCase,
        _openAppSettingsUseCase = openAppSettingsUseCase,
+       _getLocationDisclosureUseCase = getLocationDisclosureUseCase,
+       _requestLocationPermissionUseCase = requestLocationPermissionUseCase,
        _hideBlockedPeopleUseCase = hideBlockedPeopleUseCase {
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
     _blockedSubscription = watchBlockedPeopleUseCase?.call().listen((blocked) {
@@ -85,6 +98,8 @@ class ProNearby extends ChangeNotifier {
   final WatchNearbyPeopleUseCase _watchNearbyPeopleUseCase;
   final OpenLocationSettingsUseCase _openLocationSettingsUseCase;
   final OpenAppSettingsUseCase _openAppSettingsUseCase;
+  final GetLocationDisclosureUseCase _getLocationDisclosureUseCase;
+  final RequestLocationPermissionUseCase _requestLocationPermissionUseCase;
   final HideBlockedPeopleUseCase _hideBlockedPeopleUseCase;
   StreamSubscription<Set<String>>? _blockedSubscription;
   Set<String> _blockedPersonIds = const {};
@@ -154,6 +169,25 @@ class ProNearby extends ChangeNotifier {
 
   /// Per `LocationPermissionFailure`: apre le impostazioni di questa app.
   Future<void> openAppSettings() => _openAppSettingsUseCase(const NoParams());
+
+  /// L'avviso sulla posizione da mostrare prima dello Start, o `null` se il
+  /// permesso è già concesso.
+  Future<LocationDisclosure?> locationDisclosureToShow() async {
+    final result = await _getLocationDisclosureUseCase(const NoParams());
+    return result.match(
+      // Nel dubbio si mostra (lo use case non fallisce, ma il tipo lo
+      // permette).
+      (_) => const LocationDisclosure(continuesInBackground: true),
+      (disclosure) => disclosure,
+    );
+  }
+
+  /// Dopo "Continua" sull'avviso: chiede il permesso di sistema. `true` se
+  /// concesso, cioè se lo Start può partire.
+  Future<bool> requestLocationPermission() async {
+    final result = await _requestLocationPermissionUseCase(const NoParams());
+    return result.isRight();
+  }
 
   void _onSession(OnlineSession? session) {
     final sessionId = session?.sessionId;
