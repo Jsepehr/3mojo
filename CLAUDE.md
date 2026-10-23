@@ -74,6 +74,7 @@ Se ti accorgi di dover importare qualcosa da `data/` dentro `domain/`, hai sbagl
 
 - State management: **Provider** (`ChangeNotifier`), niente Riverpod/Bloc.
 - i18n: `flutter gen-l10n` — stringhe utente in `lib/l10n/app_en.arb` (template) e nelle altre lingue (`app_it`, `app_de`, `app_es`, `app_fr`, `app_ar`), mai testo hardcoded nei widget. Rigenerare con `flutter gen-l10n` dopo ogni modifica agli ARB.
+- Privacy e store: DPIA, registro art. 30, bozza di informativa, risposte per App Privacy / Data safety e checklist di lancio in [docs/privacy/](docs/privacy/). Se cambi cosa si raccoglie, si mostra o si conserva, aggiornali insieme a `ios/Runner/PrivacyInfo.xcprivacy`.
 - JDK per build Android: `android/gradle.properties` fissa `org.gradle.java.home` a un percorso assoluto di una macchina Windows (`C:\Users\sepehrbaradaran\.jdks\azul-17.0.16`), valido solo lì: su un'altra macchina la build fallisce finché non lo si adatta (percorsi noti in [macchine_sviluppo.md](macchine_sviluppo.md)). Non cambiarlo nel repository senza motivo.
 
 ## Esempi di riferimento nel codice

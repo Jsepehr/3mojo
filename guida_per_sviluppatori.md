@@ -329,6 +329,8 @@ Gli acquisti rimasti aperti (app chiusa prima della conferma, server muto, pagam
 - iOS: gli screenshot non si possono bloccare; `PrivacyCover` in `AppDelegate.swift` copre la finestra col blu del brand quando la scena va **in background** (`didEnterBackground`, prima dello snapshot del selettore delle app, che così non contiene selfie né chat) e la scopre a `willEnterForeground`/`didActivate` — non già a `willDeactivate`, che scatta anche dietro ai dialoghi di permesso (posizione, fotocamera) e li avrebbe fatti apparire su uno schermo blu pieno;
 - in memoria: selfie solo come byte (§3.1), cache delle immagini svuotata a End, chat mai su disco (§3.4).
 
+**Documenti privacy e store** ([docs/privacy/](docs/privacy/)): valutazione d'impatto (`dpia.md`, con la tabella dato → finalità → base giuridica → conservazione e le divergenze note tra codice e promesse), registro art. 30, bozza di informativa IT/EN, risposte per "App Privacy" di App Store Connect e "Data safety" di Google Play (più la dichiarazione del foreground service di posizione e le note per App Review) e checklist prima del lancio. Una modifica a cosa si raccoglie, si mostra agli altri o si conserva va riportata lì e in `ios/Runner/PrivacyInfo.xcprivacy`.
+
 ### 3.8 `safety/` — Blocca e Segnala
 
 Richiesti da Apple (guideline 1.2, contenuti generati dagli utenti) e necessari per la sicurezza. **Modello ibrido**: l'effetto lo decide e applica il **server**, il telefono nasconde subito per non aspettarlo.

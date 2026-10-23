@@ -2,22 +2,32 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Privacy manifest dell'app (non dei plugin: ogni plugin porta il suo).
-  - Nessun tracking, nessun dominio di tracking.
-  - Dati raccolti, solo per far funzionare l'app, mai collegati a
-    un'identità (niente account, niente identificativo fisso del
-    dispositivo; la sessione esiste solo da online):
+  Da tenere allineato con le "App Privacy" di App Store Connect: risposte e
+  motivazioni in docs/privacy/store_privacy.md (sezione A).
+  - Nessun tracking, nessun dominio di tracking, nessuna pubblicità.
+  - Dati raccolti, tutti solo per far funzionare l'app (AppFunctionality,
+    che per Apple comprende anche sicurezza e prevenzione degli abusi:
+    blocca/segnala, limiti, verifica del dispositivo):
       posizione precisa (presenza, raggio 100 m), selfie della sessione,
       informazioni sensibili (genere + chi vuoi incontrare = possibile
       orientamento, art. 9 GDPR), messaggi della chat (inoltrati, non
-      conservati dal server).
-  - ECCEZIONE alla "nessuna conservazione" (blocca/segnala): se una
-    sessione viene segnalata, il server conserva il selfie di quella
-    persona in un record di moderazione cifrato (con motivi, conteggio e
-    ora al minuto; niente posizione, chat, IP o identificativi) per al più
-    30 giorni, per la revisione umana. DA RIVEDERE nelle dichiarazioni
-    (qui e in App Store Connect / Data safety di Play) nella fase
-    dedicata: la voce "PhotosorVideos" oggi dichiara solo
-    AppFunctionality e non dice della conservazione per la moderazione.
+      conservati dal server), cronologia acquisti (lo sblocco di 2 ore: il
+      server riceve la transazione del negozio e ne tiene un HMAC per 8
+      giorni; dichiarata anche se oggi il pagamento è simulato, perché il
+      codice del pagamento reale è già nell'app e basta un flag di build).
+  - "Linked" = true per tutti, scelta prudente: non esistono account né
+    identificativi fissi del dispositivo, ma il selfie è una foto del volto
+    (identifica la persona) e sul server posizione, profilo, messaggi
+    inoltrati e token di sblocco stanno nella stessa sessione del selfie.
+    In più, se una sessione viene segnalata, il server conserva quel selfie
+    in un record di moderazione cifrato (con motivi, conteggio e ora al
+    minuto; niente posizione, chat, IP o identificativi) per al più 30
+    giorni, per la revisione umana.
+  - Non dichiarati, perché non raccolti da noi: identificativi del
+    dispositivo (App Attest usa una chiave nuova a ogni sessione, mai
+    salvata), diagnostica e crash (nessun SDK di analytics o crash
+    reporting), dati biometrici (il controllo del volto è Apple Vision sul
+    telefono, senza rete).
   - API "required reason": UserDefaults (CA92.1) — shared_preferences,
     usato solo per dati dell'app stessa, letti e scritti solo da lei: le
     impostazioni (lingua, tema, modalità finta in debug), il segno di
@@ -25,7 +35,6 @@
     un'installazione precedente) e la pulizia di vecchie chiavi (token di
     sblocco e chat delle versioni precedenti). Nessun dato condiviso con
     altre app né usato per il tracking.
-  Da tenere allineato con le "App Privacy" di App Store Connect.
 -->
 <plist version="1.0">
 <dict>
@@ -39,7 +48,7 @@
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -51,7 +60,7 @@
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypePhotosorVideos</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -63,7 +72,7 @@
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeSensitiveInfo</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -75,7 +84,19 @@
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeEmailsOrTextMessages</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePurchaseHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
