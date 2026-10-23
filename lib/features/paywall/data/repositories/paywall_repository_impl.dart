@@ -1,7 +1,10 @@
 import 'package:fpdart/fpdart.dart';
 
+import '/core/errors/exceptions.dart';
 import '/core/errors/failures.dart';
+import '../../domain/entities/store_purchase.dart';
 import '../../domain/repositories/paywall_repository.dart';
+import '../models/store_purchase_model.dart';
 import '../datasources/paywall_local_data_source.dart';
 import '../datasources/paywall_remote_data_source.dart';
 
@@ -38,11 +41,21 @@ class PaywallRepositoryImpl implements PaywallRepository {
   }
 
   @override
-  Future<Either<Failure, Duration>> purchaseUnlock() async {
+  Future<Either<Failure, Duration>> redeemPurchase(
+    StorePurchase purchase,
+  ) async {
     try {
-      final grant = await _remoteDataSource.purchase();
+      final grant = await _remoteDataSource.redeemPurchase(
+        StorePurchaseModel.fromEntity(purchase),
+      );
       await _localDataSource.saveUnlockToken(grant.token, grant.remaining);
       return Right(grant.remaining);
+    } on PurchaseRejectedException catch (e) {
+      return Left(PurchaseNotVerifiedFailure(e.code));
+    } on PurchaseAlreadyRedeemedException {
+      return const Left(PurchaseAlreadyRedeemedFailure());
+    } on ServerException catch (e) {
+      return Left(ConnectionFailure(e.message));
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }

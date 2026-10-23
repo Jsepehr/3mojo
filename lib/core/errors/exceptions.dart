@@ -72,3 +72,57 @@ class RateLimitedException implements Exception {
   @override
   String toString() => message;
 }
+
+// --- Acquisti in-app (paywall) ---
+
+/// Il negozio (App Store / Google Play) non è utilizzabile qui: build senza
+/// configurazione, piattaforma senza acquisti in-app, negozio spento o
+/// prodotto non trovato.
+class StoreUnavailableException implements Exception {
+  const StoreUnavailableException([this.message = 'Store unavailable']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// La persona ha chiuso la finestra del negozio senza comprare.
+class PurchaseCanceledException implements Exception {
+  const PurchaseCanceledException([this.message = 'Purchase canceled']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Il negozio ha risposto con un errore (pagamento rifiutato, errore di
+/// rete del negozio, acquisto già in corso…).
+class StorePurchaseException implements Exception {
+  const StorePurchaseException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Il server ha verificato la ricevuta col negozio e l'ha rifiutata (422):
+/// [code] è il motivo (`invalidReceipt`, `wrongProduct`, `refunded`…).
+class PurchaseRejectedException implements Exception {
+  const PurchaseRejectedException(this.code);
+
+  final String code;
+
+  @override
+  String toString() => 'Purchase rejected: $code';
+}
+
+/// La transazione era già stata riscattata e il suo sblocco è finito (409).
+class PurchaseAlreadyRedeemedException implements Exception {
+  const PurchaseAlreadyRedeemedException();
+
+  @override
+  String toString() => 'Purchase already redeemed';
+}

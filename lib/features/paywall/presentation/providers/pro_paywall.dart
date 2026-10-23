@@ -7,11 +7,31 @@ import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/usecases/watch_session_usecase.dart';
+import '../../domain/entities/unlock_offer.dart';
+import '../../domain/entities/unlock_purchase_result.dart';
 import '../../domain/entities/unlock_status.dart';
 import '../../domain/entities/unlock_time_left.dart';
+import '../../domain/usecases/get_unlock_offer_usecase.dart';
 import '../../domain/usecases/get_unlock_status_usecase.dart';
 import '../../domain/usecases/get_unlock_time_left_usecase.dart';
 import '../../domain/usecases/purchase_unlock_usecase.dart';
+import '../../domain/usecases/retry_unfinished_purchases_usecase.dart';
+import '../../domain/usecases/watch_unfinished_purchases_usecase.dart';
+
+/// Un avviso una tantum su uno sblocco arrivato **fuori** dalla finestra
+/// d'acquisto (pagamento in attesa confermato, acquisto rimasto in sospeso
+/// riscattato al riavvio): la UI lo racconta con una snackbar
+/// (`CmpUnlockExpiredListener`).
+enum PaywallNotice {
+  /// Sbloccato per 2 ore.
+  unlocked,
+
+  /// Pagato, ma il server non ha ancora confermato: si riprova da soli.
+  deliveryDelayed,
+}
+
+/// Lo stato dell'offerta del negozio (il prezzo del bottone).
+enum UnlockOfferState { loading, available, unavailable }
 
 /// Stato dello sblocco a pagamento: valido per 2 ore dall'acquisto, anche
 /// attraverso End/Start e la chiusura dell'app. Fino a quando lo dice il
@@ -36,37 +56,62 @@ import '../../domain/usecases/purchase_unlock_usecase.dart';
 /// stato al server: lui toglie il token e ricalcola chi è bloccato. Qui
 /// non si blocca né si sblocca nessuno in contraddizione con lui: le foto
 /// tornano bloccate quando il prossimo snapshot di "Vicinanze" lo dice.
+///
+/// **Acquisto** (`PurchaseUnlockUseCase`): negozio vero (App Store / Google
+/// Play) o simulato nei build di debug, verificato dal server prima di
+/// sbloccare. Il prezzo del bottone è quello del negozio
+/// (`GetUnlockOfferUseCase`, [offer]): senza negozio [offerState] è
+/// `unavailable` e il pagamento non parte. Gli acquisti pagati e non ancora
+/// riscattati (riavvio, pagamento in attesa confermato, server muto) li
+/// riscatta `WatchUnfinishedPurchasesUseCase` **dall'avvio**, e
+/// `RetryUnfinishedPurchasesUseCase` a ogni Start e a ogni controllo
+/// periodico; uno sblocco arrivato così emette un [notices].
 class ProPaywall extends ChangeNotifier with WidgetsBindingObserver {
   ProPaywall({
     required WatchSessionUseCase watchSessionUseCase,
     required GetUnlockStatusUseCase getUnlockStatusUseCase,
     required PurchaseUnlockUseCase purchaseUnlockUseCase,
+    required GetUnlockOfferUseCase getUnlockOfferUseCase,
+    required WatchUnfinishedPurchasesUseCase watchUnfinishedPurchasesUseCase,
+    required RetryUnfinishedPurchasesUseCase retryUnfinishedPurchasesUseCase,
     GetUnlockTimeLeftUseCase? getUnlockTimeLeftUseCase,
-    Duration purchaseFeedbackDelay = const Duration(milliseconds: 800),
   }) : _getUnlockStatusUseCase = getUnlockStatusUseCase,
        _purchaseUnlockUseCase = purchaseUnlockUseCase,
+       _getUnlockOfferUseCase = getUnlockOfferUseCase,
+       _retryUnfinishedPurchasesUseCase = retryUnfinishedPurchasesUseCase,
        _getUnlockTimeLeftUseCase =
-           getUnlockTimeLeftUseCase ?? GetUnlockTimeLeftUseCase(),
-       _purchaseFeedbackDelay = purchaseFeedbackDelay {
+           getUnlockTimeLeftUseCase ?? GetUnlockTimeLeftUseCase() {
     WidgetsBinding.instance.addObserver(this);
     _sessionSubscription = watchSessionUseCase().listen(_onSession);
+    _unfinishedSubscription = watchUnfinishedPurchasesUseCase().listen(
+      _onUnfinishedPurchaseResult,
+    );
+    _loadOffer();
   }
 
   static const Duration _statusCheckInterval = Duration(minutes: 5);
 
   final GetUnlockStatusUseCase _getUnlockStatusUseCase;
   final PurchaseUnlockUseCase _purchaseUnlockUseCase;
+  final GetUnlockOfferUseCase _getUnlockOfferUseCase;
+  final RetryUnfinishedPurchasesUseCase _retryUnfinishedPurchasesUseCase;
   final GetUnlockTimeLeftUseCase _getUnlockTimeLeftUseCase;
-  final Duration _purchaseFeedbackDelay;
 
   late final StreamSubscription<OnlineSession?> _sessionSubscription;
+  late final StreamSubscription<Either<Failure, UnlockStatus>>
+  _unfinishedSubscription;
   final StreamController<void> _expirations = StreamController.broadcast();
+  final StreamController<PaywallNotice> _notices = StreamController.broadcast();
   Timer? _statusCheckTimer;
   Timer? _timeLeftTimer;
   bool _isOnline = false;
   UnlockStatus _status = const UnlockStatus.locked();
   UnlockTimeLeft? _timeLeft;
   bool _isPurchasing = false;
+  bool _isPaymentPending = false;
+  bool _loadingOffer = false;
+  UnlockOffer? _offer;
+  UnlockOfferState _offerState = UnlockOfferState.loading;
   bool _disposed = false;
 
   /// Sblocco attivo adesso (ciò che la lista usa per non mostrare nessuno
@@ -81,7 +126,21 @@ class ProPaywall extends ChangeNotifier with WidgetsBindingObserver {
   /// attivo).
   DateTime? get expiresAt => isUnlocked ? _status.expiresAt : null;
 
+  /// La finestra del negozio è aperta o il server sta verificando.
   bool get isPurchasing => _isPurchasing;
+
+  /// Il negozio aspetta il pagamento (contanti, approvazione di un
+  /// genitore): lo sblocco arriverà da solo.
+  bool get isPaymentPending => _isPaymentPending;
+
+  /// Il prezzo da mostrare (`null` finché non c'è o se non disponibile).
+  UnlockOffer? get offer => _offer;
+
+  UnlockOfferState get offerState => _offerState;
+
+  /// Avvisi una tantum su sblocchi arrivati fuori dalla finestra
+  /// d'acquisto.
+  Stream<PaywallNotice> get notices => _notices.stream;
 
   /// Un evento quando uno sblocco che si stava mostrando è finito: la UI
   /// lo racconta una volta (`CmpUnlockExpiredListener`).
@@ -99,10 +158,12 @@ class ProPaywall extends ChangeNotifier with WidgetsBindingObserver {
       // poi il server.
       _updateTimeLeft();
       _refresh();
-      _statusCheckTimer = Timer.periodic(
-        _statusCheckInterval,
-        (_) => _refresh(),
-      );
+      _retryUnfinishedPurchases();
+      if (_offerState == UnlockOfferState.unavailable) _loadOffer();
+      _statusCheckTimer = Timer.periodic(_statusCheckInterval, (_) {
+        _refresh();
+        _retryUnfinishedPurchases();
+      });
     } else {
       _cancelTimeLeftTimer();
     }
@@ -158,26 +219,91 @@ class ProPaywall extends ChangeNotifier with WidgetsBindingObserver {
     _timeLeftTimer = null;
   }
 
-  /// **Finto per ora**: vedi `PurchaseUnlockUseCase`. Ritorna l'esito
-  /// (`Right` = sbloccato), o `null` se un acquisto era già in corso e
-  /// questa chiamata è stata ignorata (niente doppio acquisto).
-  Future<Either<Failure, Unit>?> purchase() async {
+  /// Il prezzo del negozio; se non c'è il bottone resta "Non disponibile"
+  /// e si riprova al prossimo Start.
+  Future<void> _loadOffer() async {
+    if (_loadingOffer) return;
+    _loadingOffer = true;
+    final result = await _getUnlockOfferUseCase(const NoParams());
+    _loadingOffer = false;
+    if (_disposed) return;
+    result.match(
+      (_) {
+        _offer = null;
+        _offerState = UnlockOfferState.unavailable;
+      },
+      (offer) {
+        _offer = offer;
+        _offerState = UnlockOfferState.available;
+      },
+    );
+    notifyListeners();
+  }
+
+  /// Compra lo sblocco (vedi `PurchaseUnlockUseCase`). Ritorna l'esito, o
+  /// `null` se un acquisto era già in corso e questa chiamata è stata
+  /// ignorata (niente doppio acquisto). Un annullamento è
+  /// `PurchaseCanceledFailure`: la UI non dice nulla.
+  Future<Either<Failure, UnlockPurchaseResult>?> purchase() async {
     if (_isPurchasing) return null;
     _isPurchasing = true;
     notifyListeners();
 
-    // Piccola pausa solo per far sentire che "sta succedendo qualcosa" —
-    // un vero acquisto in-app avrebbe comunque una latenza simile.
-    await Future<void>.delayed(_purchaseFeedbackDelay);
-
     final result = await _purchaseUnlockUseCase(const NoParams());
-    if (_disposed) return result.map((_) => unit);
+    if (_disposed) return result;
 
     _isPurchasing = false;
-    result.match((_) {}, (status) => _status = status);
+    switch (result) {
+      case Right(value: UnlockPurchased(:final status)):
+        _isPaymentPending = false;
+        _status = status;
+      case Right(value: UnlockPurchasePending()):
+        _isPaymentPending = true;
+      case Left(value: StoreUnavailableFailure()):
+        _offer = null;
+        _offerState = UnlockOfferState.unavailable;
+      case Left():
+        break;
+    }
     // Avvisa comunque una volta: anche `isPurchasing` è cambiato.
     if (!_updateTimeLeft()) notifyListeners();
-    return result.map((_) => unit);
+    return result;
+  }
+
+  /// Un acquisto arrivato fuori dalla finestra d'acquisto è stato
+  /// riscattato (o no): lo sblocco si applica e si racconta una volta.
+  void _onUnfinishedPurchaseResult(Either<Failure, UnlockStatus> result) {
+    if (_disposed) return;
+    switch (result) {
+      case Right(value: final status):
+        _applyDelivered(status);
+      case Left(value: UnlockNotDeliveredYetFailure()):
+        _notices.add(PaywallNotice.deliveryDelayed);
+      case Left():
+        // Rifiutato o già usato: nessuno sblocco, niente da raccontare se
+        // non che non è più in attesa.
+        if (_isPaymentPending) {
+          _isPaymentPending = false;
+          notifyListeners();
+        }
+    }
+  }
+
+  /// Riprova in silenzio gli acquisti rimasti in sospeso (server muto):
+  /// avvisa solo se uno sblocco arriva.
+  Future<void> _retryUnfinishedPurchases() async {
+    final results = await _retryUnfinishedPurchasesUseCase();
+    if (_disposed) return;
+    for (final result in results) {
+      result.match((_) {}, _applyDelivered);
+    }
+  }
+
+  void _applyDelivered(UnlockStatus status) {
+    _isPaymentPending = false;
+    _status = status;
+    if (!_updateTimeLeft()) notifyListeners();
+    _notices.add(PaywallNotice.unlocked);
   }
 
   @override
@@ -185,9 +311,11 @@ class ProPaywall extends ChangeNotifier with WidgetsBindingObserver {
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _sessionSubscription.cancel();
+    _unfinishedSubscription.cancel();
     _statusCheckTimer?.cancel();
     _cancelTimeLeftTimer();
     _expirations.close();
+    _notices.close();
     super.dispose();
   }
 }

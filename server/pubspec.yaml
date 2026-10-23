@@ -9,6 +9,9 @@ environment:
 dependencies:
   cryptography: ^2.9.0
   dart_frog: ^1.1.0
+  googleapis_auth: ^2.3.5
+  http: ^1.6.0
+  pointycastle: ^4.0.0
   shelf_web_socket: ^3.0.0
   web_socket_channel: ^3.0.0
 

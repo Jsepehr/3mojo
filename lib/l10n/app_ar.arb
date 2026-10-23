@@ -234,5 +234,14 @@
   "unlock_chip_semantics": "مفتوح، يتبقى {timeLeft}",
   "unlock_details_until": "مفتوح حتى {time}",
   "unlock_details_time_runs": "يستمر الوقت حتى لو خرجت أو أغلقت التطبيق.",
-  "unlock_expired": "انتهت مدة الفتح"
+  "unlock_expired": "انتهت مدة الفتح",
+  "unlock_for_price": "فتح — {price}",
+  "pay_price": "دفع {price}",
+  "unlock_dialog_body_price": "افتح كل الملفات القريبة لمدة الساعتين القادمتين مقابل {price}. عملية شراء لمرة واحدة: لا تتجدد.",
+  "unlock_unavailable": "غير متاح",
+  "unlock_store_unavailable": "عمليات الشراء داخل التطبيق غير متاحة حاليًا.",
+  "payment_pending_confirmation": "الدفع بانتظار التأكيد",
+  "purchase_not_verified": "لم يؤكد المتجر الدفع، لذلك لم يُفتح أي شيء.",
+  "purchase_already_redeemed": "تم استخدام عملية الشراء هذه من قبل.",
+  "unlock_delivery_delayed": "تم استلام الدفع: سيبدأ الفتح بمجرد أن نتمكن من تأكيده."
 }

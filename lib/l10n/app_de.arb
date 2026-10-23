@@ -234,5 +234,14 @@
   "unlock_chip_semantics": "Freigeschaltet, noch {timeLeft}",
   "unlock_details_until": "Freigeschaltet bis {time}",
   "unlock_details_time_runs": "Die Zeit läuft weiter, auch wenn du offline gehst oder die App schließt.",
-  "unlock_expired": "Freischaltung abgelaufen"
+  "unlock_expired": "Freischaltung abgelaufen",
+  "unlock_for_price": "Freischalten – {price}",
+  "pay_price": "{price} bezahlen",
+  "unlock_dialog_body_price": "Schalte für die nächsten 2 Stunden alle Profile in der Nähe für {price} frei. Einmalkauf: verlängert sich nicht.",
+  "unlock_unavailable": "Nicht verfügbar",
+  "unlock_store_unavailable": "In-App-Käufe sind gerade nicht verfügbar.",
+  "payment_pending_confirmation": "Zahlung wartet auf Bestätigung",
+  "purchase_not_verified": "Der Store hat die Zahlung nicht bestätigt, daher wurde nichts freigeschaltet.",
+  "purchase_already_redeemed": "Dieser Kauf wurde bereits verwendet.",
+  "unlock_delivery_delayed": "Zahlung erhalten: Die Freischaltung startet, sobald wir sie bestätigen können."
 }

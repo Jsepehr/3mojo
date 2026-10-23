@@ -3,12 +3,18 @@ import 'package:fpdart/fpdart.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/core/usecases/usecase.dart';
+import 'package:threemojo_app/features/paywall/data/repositories/store_repository_impl.dart';
+import 'package:threemojo_app/features/paywall/domain/entities/store_purchase.dart';
+import 'package:threemojo_app/features/paywall/domain/entities/unlock_purchase_result.dart';
 import 'package:threemojo_app/features/paywall/domain/entities/unlock_status.dart';
 import 'package:threemojo_app/features/paywall/domain/repositories/paywall_repository.dart';
 import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_status_usecase.dart';
 import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_time_left_usecase.dart';
 import 'package:threemojo_app/features/paywall/domain/usecases/purchase_unlock_usecase.dart';
+import 'package:threemojo_app/features/paywall/domain/usecases/redeem_store_purchase_usecase.dart';
 import 'package:threemojo_app/features/paywall/domain/usecases/resolve_unlock_expiry_usecase.dart';
+
+import '../../support/fake_paywall.dart';
 
 class _FakePaywallRepository implements PaywallRepository {
   Either<Failure, Duration> remaining = const Right(Duration.zero);
@@ -18,7 +24,9 @@ class _FakePaywallRepository implements PaywallRepository {
   Future<Either<Failure, Duration>> getUnlockTimeRemaining() async => remaining;
 
   @override
-  Future<Either<Failure, Duration>> purchaseUnlock() async => purchased;
+  Future<Either<Failure, Duration>> redeemPurchase(
+    StorePurchase purchase,
+  ) async => purchased;
 }
 
 void main() {
@@ -69,9 +77,14 @@ void main() {
         repo,
         resolveUnlockExpiryUseCase: resolve,
       )(const NoParams());
+      final store = StoreRepositoryImpl(fakeStore());
       final purchased = await PurchaseUnlockUseCase(
-        repo,
-        resolveUnlockExpiryUseCase: resolve,
+        storeRepository: store,
+        redeemStorePurchaseUseCase: RedeemStorePurchaseUseCase(
+          paywallRepository: repo,
+          storeRepository: store,
+          resolveUnlockExpiryUseCase: resolve,
+        ),
       )(const NoParams());
 
       expect(
@@ -80,7 +93,11 @@ void main() {
       );
       expect(
         purchased,
-        Right(UnlockStatus.until(now.add(const Duration(hours: 2)))),
+        Right<Failure, UnlockPurchaseResult>(
+          UnlockPurchased(
+            UnlockStatus.until(now.add(const Duration(hours: 2))),
+          ),
+        ),
       );
     });
 

@@ -234,5 +234,14 @@
   "unlock_chip_semantics": "Sbloccato, ancora {timeLeft}",
   "unlock_details_until": "Sbloccato fino alle {time}",
   "unlock_details_time_runs": "Il tempo scorre anche se esci o chiudi l'app.",
-  "unlock_expired": "Sblocco scaduto"
+  "unlock_expired": "Sblocco scaduto",
+  "unlock_for_price": "Sblocca — {price}",
+  "pay_price": "Paga {price}",
+  "unlock_dialog_body_price": "Sblocca tutti i profili vicini per le prossime 2 ore a {price}. Acquisto singolo: non si rinnova.",
+  "unlock_unavailable": "Non disponibile",
+  "unlock_store_unavailable": "Gli acquisti in-app non sono disponibili in questo momento.",
+  "payment_pending_confirmation": "Pagamento in attesa di conferma",
+  "purchase_not_verified": "Lo store non ha confermato il pagamento: nessuno sblocco attivato.",
+  "purchase_already_redeemed": "Questo acquisto è già stato usato.",
+  "unlock_delivery_delayed": "Pagamento ricevuto: lo sblocco parte appena riusciamo a confermarlo."
 }

@@ -200,3 +200,53 @@ class TooManyReportsFailure extends ValidationFailure {
   @override
   List<Object?> get props => [message, maxReports];
 }
+
+// --- Acquisti in-app (paywall) ---
+//
+// Come sopra, `message` è solo un dettaglio tecnico: la UI sceglie il testo
+// dal tipo (`PaywallFailureTexts`).
+
+/// Gli acquisti non sono disponibili (build senza configurazione, negozio
+/// spento, prodotto non trovato): il pagamento non parte.
+class StoreUnavailableFailure extends Failure {
+  const StoreUnavailableFailure([
+    super.message = 'In-app purchases are not available',
+  ]);
+}
+
+/// La persona ha annullato nella finestra del negozio: nessun errore da
+/// mostrare.
+class PurchaseCanceledFailure extends Failure {
+  const PurchaseCanceledFailure([super.message = 'Purchase canceled']);
+}
+
+/// Il negozio non ha completato il pagamento (rifiutato, errore).
+class StorePurchaseFailure extends Failure {
+  const StorePurchaseFailure(super.message);
+}
+
+/// Il server ha chiesto al negozio e il pagamento non risulta valido:
+/// nessuno sblocco, e l'acquisto **non** viene completato nel negozio (su
+/// Google Play un acquisto mai confermato viene rimborsato da Google dopo 3
+/// giorni).
+class PurchaseNotVerifiedFailure extends Failure {
+  const PurchaseNotVerifiedFailure([
+    super.message = 'The store did not confirm the payment',
+  ]);
+}
+
+/// L'acquisto era già stato usato per uno sblocco, ormai finito.
+class PurchaseAlreadyRedeemedFailure extends Failure {
+  const PurchaseAlreadyRedeemedFailure([
+    super.message = 'This purchase was already used',
+  ]);
+}
+
+/// Pagato, ma il server non ha ancora confermato lo sblocco (non
+/// raggiungibile, negozio lento): l'acquisto resta aperto nel negozio e
+/// viene riscattato da solo al prossimo tentativo — nulla va perso.
+class UnlockNotDeliveredYetFailure extends Failure {
+  const UnlockNotDeliveredYetFailure([
+    super.message = 'Paid, the unlock is not confirmed yet',
+  ]);
+}

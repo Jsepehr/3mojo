@@ -114,7 +114,7 @@
   },
   "unlock_eur_1": "Unlock — €1",
   "@unlock_eur_1": {
-    "description": "Button that opens the unlock purchase confirmation"
+    "description": "Button that opens the unlock purchase confirmation, with the simulated store (debug builds only, fixed price €1)"
   },
   "unlock_nearby_profiles": "Unlock nearby profiles",
   "@unlock_nearby_profiles": {
@@ -122,7 +122,7 @@
   },
   "unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1": "Unlock every nearby profile for the next 2 hours for €1. This is a mock payment for now — nothing is really charged.",
   "@unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1": {
-    "description": "Body of the unlock purchase confirmation dialog, explaining it's a mock payment"
+    "description": "Body of the unlock purchase confirmation dialog with the simulated store (debug builds only): fixed price €1 and a clear note that nothing is charged"
   },
   "cancel": "Cancel",
   "@cancel": {
@@ -130,11 +130,11 @@
   },
   "pay_eur_1": "Pay €1",
   "@pay_eur_1": {
-    "description": "Confirm button in the unlock purchase confirmation dialog"
+    "description": "Confirm button in the unlock purchase confirmation dialog with the simulated store (debug builds only)"
   },
   "unlocked_for_the_next_2_hours": "Unlocked for the next 2 hours",
   "@unlocked_for_the_next_2_hours": {
-    "description": "Snackbar shown after the (mock) unlock purchase succeeds"
+    "description": "Snackbar shown after the unlock purchase succeeds (also when a pending payment is confirmed later)"
   },
   "requests": "Requests",
   "@requests": {
@@ -1010,5 +1010,59 @@
   "unlock_expired": "Unlock expired",
   "@unlock_expired": {
     "description": "Snackbar shown once when the paid unlock has ended: the chip disappears and the unlock banner comes back"
+  },
+  "unlock_for_price": "Unlock — {price}",
+  "@unlock_for_price": {
+    "description": "Button that opens the unlock purchase confirmation. {price} is the price formatted by the App Store / Google Play (currency and format of the store account)",
+    "placeholders": {
+      "price": {
+        "type": "String",
+        "example": "1,09 €"
+      }
+    }
+  },
+  "pay_price": "Pay {price}",
+  "@pay_price": {
+    "description": "Confirm button in the unlock purchase confirmation dialog, which then opens the App Store / Google Play payment sheet. {price} is formatted by the store",
+    "placeholders": {
+      "price": {
+        "type": "String",
+        "example": "1,09 €"
+      }
+    }
+  },
+  "unlock_dialog_body_price": "Unlock every nearby profile for the next 2 hours for {price}. One-time purchase: it doesn't renew.",
+  "@unlock_dialog_body_price": {
+    "description": "Body of the unlock purchase confirmation dialog with a real in-app purchase. Must not promise meetings or matches, only that the nearby profiles become visible. {price} is formatted by the store",
+    "placeholders": {
+      "price": {
+        "type": "String",
+        "example": "1,09 €"
+      }
+    }
+  },
+  "unlock_unavailable": "Not available",
+  "@unlock_unavailable": {
+    "description": "Disabled unlock button when in-app purchases can't be used on this device or build (no store, product not found)"
+  },
+  "unlock_store_unavailable": "In-app purchases aren't available right now.",
+  "@unlock_store_unavailable": {
+    "description": "Snackbar when the user taps a locked photo or the unlock button but in-app purchases are not available"
+  },
+  "payment_pending_confirmation": "Payment awaiting confirmation",
+  "@payment_pending_confirmation": {
+    "description": "Shown in the unlock banner (and as a snackbar) while the store is waiting for the payment to be completed: e.g. cash payment on Google Play or a parent approving with Ask to Buy. The unlock starts by itself once the store confirms"
+  },
+  "purchase_not_verified": "The store didn't confirm the payment, so nothing was unlocked.",
+  "@purchase_not_verified": {
+    "description": "Snackbar when our server checked the purchase with App Store / Google Play and it is not valid. No unlock was activated"
+  },
+  "purchase_already_redeemed": "This purchase has already been used.",
+  "@purchase_already_redeemed": {
+    "description": "Snackbar when a purchase had already been used for an unlock that has since ended"
+  },
+  "unlock_delivery_delayed": "Payment received: the unlock starts as soon as we can confirm it.",
+  "@unlock_delivery_delayed": {
+    "description": "Snackbar when the store payment went through but our server could not confirm the unlock yet (no network, server busy). The app retries by itself, nothing is lost"
   }
 }

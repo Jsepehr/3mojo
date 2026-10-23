@@ -5,73 +5,30 @@ import 'package:fpdart/fpdart.dart';
 import 'package:provider/provider.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
+import 'package:threemojo_app/features/paywall/data/datasources/store_billing_data_source.dart';
+import 'package:threemojo_app/features/paywall/data/datasources/store_billing_data_source_fake_impl.dart';
+import 'package:threemojo_app/features/paywall/data/datasources/store_billing_data_source_impl.dart';
+import 'package:threemojo_app/features/paywall/domain/entities/unlock_purchase_result.dart';
 import 'package:threemojo_app/features/paywall/domain/repositories/paywall_repository.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_status_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_time_left_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/purchase_unlock_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/resolve_unlock_expiry_usecase.dart';
 import 'package:threemojo_app/features/paywall/presentation/providers/pro_paywall.dart';
 import 'package:threemojo_app/features/paywall/presentation/widgets/cmp_paywall_banner.dart';
-import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
+import 'package:threemojo_app/features/paywall/presentation/widgets/cmp_unlock_chip.dart';
+import 'package:threemojo_app/features/paywall/presentation/widgets/cmp_unlock_expired_listener.dart';
 import 'package:threemojo_app/l10n/generated/app_localizations.dart';
 
+import '../../support/fake_paywall.dart';
 import '../../support/fake_repositories.dart';
 
-/// Il server finto: tiene la scadenza sul **suo** orologio ([now]) e
-/// risponde col residuo, come `PaywallStore`.
-class _FakePaywallRepository implements PaywallRepository {
-  _FakePaywallRepository(this.now);
-
-  final DateTime Function() now;
-  DateTime? serverExpiresAt;
-  Either<Failure, Duration>? purchaseFailure;
-  bool statusFails = false;
-  int statusCalls = 0;
-  int purchaseCalls = 0;
-
-  Duration get _remaining {
-    final expiresAt = serverExpiresAt;
-    if (expiresAt == null) return Duration.zero;
-    final remaining = expiresAt.difference(now());
-    return remaining > Duration.zero ? remaining : Duration.zero;
-  }
-
-  @override
-  Future<Either<Failure, Duration>> getUnlockTimeRemaining() async {
-    statusCalls++;
-    if (statusFails) return const Left(UnexpectedFailure('down'));
-    return Right(_remaining);
-  }
-
-  @override
-  Future<Either<Failure, Duration>> purchaseUnlock() async {
-    purchaseCalls++;
-    final failure = purchaseFailure;
-    if (failure != null) return failure;
-    serverExpiresAt = now().add(const Duration(hours: 2));
-    return Right(_remaining);
-  }
-}
+/// Il server finto: vedi `FakePaywallServer`.
+typedef _FakePaywallRepository = FakePaywallServer;
 
 ProPaywall _build(
   FakeSessionRepository sessions,
   PaywallRepository repo, {
   DateTime Function()? now,
-}) {
-  final resolve = ResolveUnlockExpiryUseCase(now: now);
-  return ProPaywall(
-    watchSessionUseCase: WatchSessionUseCase(sessions),
-    getUnlockStatusUseCase: GetUnlockStatusUseCase(
-      repo,
-      resolveUnlockExpiryUseCase: resolve,
-    ),
-    purchaseUnlockUseCase: PurchaseUnlockUseCase(
-      repo,
-      resolveUnlockExpiryUseCase: resolve,
-    ),
-    getUnlockTimeLeftUseCase: GetUnlockTimeLeftUseCase(now: now),
-  );
-}
+  StoreBillingDataSource? store,
+}) =>
+    buildProPaywall(sessions: sessions, paywall: repo, now: now, store: store);
 
 final _start = DateTime(2026, 10, 22, 21, 0);
 
@@ -82,13 +39,13 @@ void main() {
     fakeAsync((async) {
       DateTime now() => _start.add(async.elapsed);
       final repo = _FakePaywallRepository(now)
-        ..purchaseFailure = const Left(UnexpectedFailure('boom'));
+        ..redeemResult = const Left(UnexpectedFailure('boom'));
       final proPaywall = _build(
         FakeSessionRepository(current: testSession('s1')),
         repo,
         now: now,
       );
-      Either<Failure, Unit>? result;
+      Either<Failure, UnlockPurchaseResult>? result;
 
       proPaywall.purchase().then((value) => result = value);
       async.elapse(const Duration(seconds: 1));
@@ -109,14 +66,16 @@ void main() {
         repo,
         now: now,
       );
-      Either<Failure, Unit>? second = const Right(unit);
+      Either<Failure, UnlockPurchaseResult>? second = const Right(
+        UnlockPurchasePending(),
+      );
 
       proPaywall.purchase();
       proPaywall.purchase().then((value) => second = value);
       async.elapse(const Duration(seconds: 1));
 
       expect(second, isNull);
-      expect(repo.purchaseCalls, 1);
+      expect(repo.redeemCalls, 1);
       expect(proPaywall.isUnlocked, isTrue);
       proPaywall.dispose();
     });
@@ -321,14 +280,10 @@ void main() {
     });
   });
 
-  testWidgets('a failed purchase shows an error, never "unlocked"', (
-    tester,
+  Future<AppLocalizations> pumpBanner(
+    WidgetTester tester,
+    ProPaywall proPaywall,
   ) async {
-    final repo = _FakePaywallRepository(DateTime.now)
-      ..purchaseFailure = const Left(UnexpectedFailure('boom'));
-    // Offline: niente controllo periodico (e nessun timer da attendere).
-    final proPaywall = _build(FakeSessionRepository(), repo);
-
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: proPaywall,
@@ -336,16 +291,44 @@ void main() {
           locale: const Locale('en'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const Scaffold(body: CmpPaywallBanner()),
+          home: const CmpUnlockExpiredListener(
+            child: Scaffold(body: CmpPaywallBanner()),
+          ),
         ),
       ),
     );
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    // Il prezzo del negozio arriva subito dopo.
+    await tester.pump();
+    return AppLocalizations.delegate.load(const Locale('en'));
+  }
 
+  /// Fa scattare i timer a zero del negozio finto e le risposte.
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+  }
+
+  Future<void> buyFromBanner(WidgetTester tester, AppLocalizations l10n) async {
     await tester.tap(find.text(l10n.unlock_eur_1));
     await tester.pumpAndSettle();
     await tester.tap(find.text(l10n.pay_eur_1));
     await tester.pump();
+  }
+
+  testWidgets('a store error shows an error, never "unlocked"', (tester) async {
+    // Offline: niente controllo periodico (e nessun timer da attendere).
+    final proPaywall = _build(
+      FakeSessionRepository(),
+      _FakePaywallRepository(),
+      store: fakeStore(
+        outcome: FakeStoreOutcome.error,
+        sheetDelay: const Duration(milliseconds: 800),
+      ),
+    );
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    await buyFromBanner(tester, l10n);
     // Durante l'acquisto il bottone è disattivato, con un indicatore.
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
@@ -354,6 +337,185 @@ void main() {
     expect(find.text(l10n.purchase_failed), findsOneWidget);
     expect(find.text(l10n.unlocked_for_the_next_2_hours), findsNothing);
 
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('the simulated store says so: price 1 € and "nothing is '
+      'charged"', (tester) async {
+    final proPaywall = _build(
+      FakeSessionRepository(),
+      _FakePaywallRepository(),
+    );
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    await tester.tap(find.text(l10n.unlock_eur_1));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        l10n.unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.pay_eur_1), findsOneWidget);
+    await tester.tap(find.text(l10n.cancel));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('canceled in the store: no error, nothing unlocked', (
+    tester,
+  ) async {
+    final repo = _FakePaywallRepository();
+    final proPaywall = _build(
+      FakeSessionRepository(),
+      repo,
+      store: fakeStore(outcome: FakeStoreOutcome.canceled),
+    );
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    await buyFromBanner(tester, l10n);
+    await settle(tester);
+
+    expect(find.byType(SnackBar), findsNothing);
+    expect(proPaywall.isUnlocked, isFalse);
+    expect(proPaywall.isPurchasing, isFalse);
+    expect(repo.redeemCalls, 0);
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('a pending payment says "awaiting confirmation", then unlocks '
+      'by itself when the store confirms', (tester) async {
+    final proPaywall = _build(
+      FakeSessionRepository(),
+      _FakePaywallRepository(),
+      store: fakeStore(
+        outcome: FakeStoreOutcome.pending,
+        approvalDelay: const Duration(seconds: 5),
+      ),
+    );
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    await buyFromBanner(tester, l10n);
+    await settle(tester);
+
+    expect(proPaywall.isPaymentPending, isTrue);
+    expect(find.text(l10n.payment_pending_confirmation), findsWidgets);
+    expect(proPaywall.isUnlocked, isFalse);
+
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+
+    expect(proPaywall.isUnlocked, isTrue);
+    expect(proPaywall.isPaymentPending, isFalse);
+    // Dopo la snackbar "in attesa" (in coda), quella dello sblocco.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(l10n.unlocked_for_the_next_2_hours), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('paid but the server is unreachable: "payment received", the '
+      'purchase stays open and unlocks at the next Start', (tester) async {
+    final sessions = FakeSessionRepository();
+    final repo = _FakePaywallRepository()
+      ..redeemResult = const Left(ConnectionFailure('down'));
+    final store = fakeStore();
+    final proPaywall = _build(sessions, repo, store: store);
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    await buyFromBanner(tester, l10n);
+    await settle(tester);
+
+    expect(find.text(l10n.unlock_delivery_delayed), findsOneWidget);
+    expect(store.knownUnfinishedPurchases, hasLength(1));
+    expect(store.completed, isEmpty);
+
+    repo.redeemResult = null;
+    sessions.start(testSession('s1'));
+    await settle(tester);
+
+    expect(proPaywall.isUnlocked, isTrue);
+    expect(store.completed, hasLength(1));
+    sessions.end();
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('without a store (release without configuration) the button '
+      'is "Not available" and payment cannot start', (tester) async {
+    final repo = _FakePaywallRepository();
+    final proPaywall = _build(
+      FakeSessionRepository(),
+      repo,
+      store: StoreBillingDataSourceImpl(productId: null),
+    );
+    final l10n = await pumpBanner(tester, proPaywall);
+
+    expect(proPaywall.offerState, UnlockOfferState.unavailable);
+    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(button.onPressed, isNull);
+    expect(find.text(l10n.unlock_unavailable), findsOneWidget);
+    expect(find.text(l10n.unlock_eur_1), findsNothing);
+
+    // Anche da una foto bloccata: nessuna finestra, solo il perché.
+    showPaywallConfirmDialog(tester.element(find.byType(CmpPaywallBanner)));
+    await tester.pump();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text(l10n.unlock_store_unavailable), findsOneWidget);
+    expect(repo.redeemCalls, 0);
+
+    await tester.pumpWidget(const SizedBox());
+    proPaywall.dispose();
+  });
+
+  testWidgets('as today with the simulated store: banner → pay → "Sbloccato" '
+      'chip, and the store purchase is completed', (tester) async {
+    final sessions = FakeSessionRepository(current: testSession('s1'));
+    final store = fakeStore(sheetDelay: const Duration(milliseconds: 800));
+    final proPaywall = _build(sessions, _FakePaywallRepository(), store: store);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: proPaywall,
+        child: MaterialApp(
+          locale: const Locale('it'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Consumer<ProPaywall>(
+              builder: (context, paywall, _) => Column(
+                children: [
+                  const CmpUnlockChip(),
+                  if (!paywall.isUnlocked) const CmpPaywallBanner(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final l10n = await AppLocalizations.delegate.load(const Locale('it'));
+
+    await tester.tap(find.text(l10n.unlock_eur_1));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('pagamento finto'), findsOneWidget);
+    await tester.tap(find.text(l10n.pay_eur_1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Sbloccato · ancora 1 h 59 min'), findsOneWidget);
+    expect(find.byType(CmpPaywallBanner), findsNothing);
+    expect(find.text(l10n.unlocked_for_the_next_2_hours), findsOneWidget);
+    expect(store.completed, hasLength(1));
+
+    sessions.end();
     await tester.pumpWidget(const SizedBox());
     proPaywall.dispose();
   });

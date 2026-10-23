@@ -42,6 +42,11 @@ class PaywallStore {
     return token;
   }
 
+  /// Toglie subito lo sblocco rappresentato da [token] (es. acquisto
+  /// rimborsato, `StoreNotifications`; o riscatto annullato perché il
+  /// negozio non ha confermato, `UnlockPurchaseService`). `true` se valeva.
+  bool revoke(String token) => _unlockedAtByToken.remove(token) != null;
+
   /// Il token rappresenta uno sblocco ancora valido (entro le 2 ore)?
   bool isUnlocked(String token) => remainingFor(token) != null;
 

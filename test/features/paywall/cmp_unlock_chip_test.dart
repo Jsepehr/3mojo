@@ -5,17 +5,14 @@ import 'package:provider/provider.dart';
 
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/core/theme/app_theme.dart';
+import 'package:threemojo_app/features/paywall/domain/entities/store_purchase.dart';
 import 'package:threemojo_app/features/paywall/domain/repositories/paywall_repository.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_status_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/get_unlock_time_left_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/purchase_unlock_usecase.dart';
-import 'package:threemojo_app/features/paywall/domain/usecases/resolve_unlock_expiry_usecase.dart';
 import 'package:threemojo_app/features/paywall/presentation/providers/pro_paywall.dart';
 import 'package:threemojo_app/features/paywall/presentation/widgets/cmp_unlock_chip.dart';
 import 'package:threemojo_app/features/paywall/presentation/widgets/cmp_unlock_expired_listener.dart';
-import 'package:threemojo_app/features/session/domain/usecases/watch_session_usecase.dart';
 import 'package:threemojo_app/l10n/generated/app_localizations.dart';
 
+import '../../support/fake_paywall.dart';
 import '../../support/fake_repositories.dart';
 
 /// Server finto con la scadenza sul suo orologio ([now]).
@@ -32,8 +29,9 @@ class _ServerPaywall implements PaywallRepository {
   }
 
   @override
-  Future<Either<Failure, Duration>> purchaseUnlock() async =>
-      const Left(UnexpectedFailure('not used'));
+  Future<Either<Failure, Duration>> redeemPurchase(
+    StorePurchase purchase,
+  ) async => const Left(UnexpectedFailure('not used'));
 }
 
 void main() {
@@ -51,20 +49,10 @@ void main() {
       now,
       start.add(const Duration(hours: 1, minutes: 42, seconds: 30)),
     );
-    final resolve = ResolveUnlockExpiryUseCase(now: now);
-    proPaywall = ProPaywall(
-      watchSessionUseCase: WatchSessionUseCase(
-        FakeSessionRepository(current: testSession('s1')),
-      ),
-      getUnlockStatusUseCase: GetUnlockStatusUseCase(
-        repo,
-        resolveUnlockExpiryUseCase: resolve,
-      ),
-      purchaseUnlockUseCase: PurchaseUnlockUseCase(
-        repo,
-        resolveUnlockExpiryUseCase: resolve,
-      ),
-      getUnlockTimeLeftUseCase: GetUnlockTimeLeftUseCase(now: now),
+    proPaywall = buildProPaywall(
+      sessions: FakeSessionRepository(current: testSession('s1')),
+      paywall: repo,
+      now: now,
     );
   }
 

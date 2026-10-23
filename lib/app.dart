@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/config/store_config.dart';
 import 'core/theme/app_theme.dart';
 import 'features/chat/data/datasources/chat_remote_data_source.dart';
 import 'features/chat/data/datasources/chat_remote_data_source_fake_impl.dart';
@@ -54,10 +55,19 @@ import 'features/paywall/data/datasources/paywall_local_data_source_impl.dart';
 import 'features/paywall/data/datasources/paywall_remote_data_source.dart';
 import 'features/paywall/data/datasources/paywall_remote_data_source_fake_impl.dart';
 import 'features/paywall/data/datasources/paywall_remote_data_source_impl.dart';
+import 'features/paywall/data/datasources/store_billing_data_source.dart';
+import 'features/paywall/data/datasources/store_billing_data_source_fake_impl.dart';
+import 'features/paywall/data/datasources/store_billing_data_source_impl.dart';
 import 'features/paywall/data/repositories/paywall_repository_impl.dart';
+import 'features/paywall/data/repositories/store_repository_impl.dart';
 import 'features/paywall/domain/repositories/paywall_repository.dart';
+import 'features/paywall/domain/repositories/store_repository.dart';
+import 'features/paywall/domain/usecases/get_unlock_offer_usecase.dart';
 import 'features/paywall/domain/usecases/get_unlock_status_usecase.dart';
 import 'features/paywall/domain/usecases/purchase_unlock_usecase.dart';
+import 'features/paywall/domain/usecases/redeem_store_purchase_usecase.dart';
+import 'features/paywall/domain/usecases/retry_unfinished_purchases_usecase.dart';
+import 'features/paywall/domain/usecases/watch_unfinished_purchases_usecase.dart';
 import 'features/paywall/presentation/providers/pro_paywall.dart';
 import 'features/paywall/presentation/widgets/cmp_unlock_expired_listener.dart';
 import 'features/profile/data/datasources/profile_local_data_source.dart';
@@ -226,6 +236,35 @@ class App extends StatelessWidget {
           create: (context) =>
               PaywallRepositoryImpl(context.read(), context.read()),
         ),
+        // Il negozio (acquisti in-app dello sblocco) non dipende da
+        // `fakeMode` ma da `StoreConfig.mode`: simulato in debug finché i
+        // pagamenti veri sono spenti, "non disponibile" in release senza
+        // configurazione — mai uno sblocco gratuito. Creato **subito**
+        // (`lazy: false`): il negozio ripresenta all'avvio gli acquisti non
+        // completati, e il plugin vuole che lo si ascolti da subito.
+        Provider<StoreBillingDataSource>(
+          lazy: false,
+          create: (_) => switch (StoreConfig.mode) {
+            StoreMode.fake => StoreBillingDataSourceFakeImpl(),
+            StoreMode.real => StoreBillingDataSourceImpl(
+              productId: StoreConfig.unlockProductIdFor(defaultTargetPlatform),
+            ),
+            StoreMode.unavailable => StoreBillingDataSourceImpl(
+              productId: null,
+            ),
+          },
+        ),
+        Provider<StoreRepository>(
+          create: (context) => StoreRepositoryImpl(context.read()),
+        ),
+        // Uno solo, condiviso dai tre use case d'acquisto: così lo stesso
+        // acquisto non viene mai riscattato due volte in parallelo.
+        Provider<RedeemStorePurchaseUseCase>(
+          create: (context) => RedeemStorePurchaseUseCase(
+            paywallRepository: context.read(),
+            storeRepository: context.read(),
+          ),
+        ),
         Provider<EncounterRemoteDataSource>(
           create: (_) => fakeMode
               ? EncounterRemoteDataSourceFakeImpl()
@@ -332,7 +371,19 @@ class App extends StatelessWidget {
           create: (context) => ProPaywall(
             watchSessionUseCase: WatchSessionUseCase(context.read()),
             getUnlockStatusUseCase: GetUnlockStatusUseCase(context.read()),
-            purchaseUnlockUseCase: PurchaseUnlockUseCase(context.read()),
+            purchaseUnlockUseCase: PurchaseUnlockUseCase(
+              storeRepository: context.read(),
+              redeemStorePurchaseUseCase: context.read(),
+            ),
+            getUnlockOfferUseCase: GetUnlockOfferUseCase(context.read()),
+            watchUnfinishedPurchasesUseCase: WatchUnfinishedPurchasesUseCase(
+              storeRepository: context.read(),
+              redeemStorePurchaseUseCase: context.read(),
+            ),
+            retryUnfinishedPurchasesUseCase: RetryUnfinishedPurchasesUseCase(
+              storeRepository: context.read(),
+              redeemStorePurchaseUseCase: context.read(),
+            ),
           ),
         ),
         ChangeNotifierProvider<ProEncounters>(

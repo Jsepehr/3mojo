@@ -234,5 +234,14 @@
   "unlock_chip_semantics": "Débloqué, encore {timeLeft}",
   "unlock_details_until": "Débloqué jusqu’à {time}",
   "unlock_details_time_runs": "Le temps continue de s’écouler même si tu te déconnectes ou fermes l’app.",
-  "unlock_expired": "Le déblocage a expiré"
+  "unlock_expired": "Le déblocage a expiré",
+  "unlock_for_price": "Débloquer — {price}",
+  "pay_price": "Payer {price}",
+  "unlock_dialog_body_price": "Débloque tous les profils à proximité pendant les 2 prochaines heures pour {price}. Achat unique : il ne se renouvelle pas.",
+  "unlock_unavailable": "Indisponible",
+  "unlock_store_unavailable": "Les achats intégrés ne sont pas disponibles pour le moment.",
+  "payment_pending_confirmation": "Paiement en attente de confirmation",
+  "purchase_not_verified": "Le store n’a pas confirmé le paiement : rien n’a été débloqué.",
+  "purchase_already_redeemed": "Cet achat a déjà été utilisé.",
+  "unlock_delivery_delayed": "Paiement reçu : le déblocage démarre dès que nous pouvons le confirmer."
 }

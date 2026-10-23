@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/admin_reports_api.dart';
 import 'package:threemojo_server/src/moderation_records.dart';
+import 'package:threemojo_server/src/payments/payments.dart';
 
 /// Entrypoint personalizzato di Dart Frog: decide se servire HTTPS/WSS o
 /// HTTP/WS in chiaro.
@@ -26,6 +27,10 @@ import 'package:threemojo_server/src/moderation_records.dart';
 /// nel log se non verranno salvati (manca `MODERATION_KEY`) o se gli
 /// endpoint admin sono spenti (manca `ADMIN_TOKEN`), cancella subito i
 /// record più vecchi di 30 giorni e avvia la pulizia periodica.
+///
+/// E monta i **pagamenti** (`Payments`, da `PAYMENTS_MODE` e credenziali):
+/// scrive nel log la modalità (finta = nessun pagamento vero) e ogni
+/// piattaforma rimasta spenta per configurazione incompleta.
 Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
   final certPath = Platform.environment['TLS_CERT_PATH'] ?? '';
   final keyPath = Platform.environment['TLS_KEY_PATH'] ?? '';
@@ -36,6 +41,7 @@ Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
   }
 
   await _startModeration();
+  _reportPayments();
 
   if (certPath.isEmpty) return serve(handler, ip, port);
   final securityContext = SecurityContext()
@@ -54,4 +60,19 @@ Future<void> _startModeration() async {
   if (adminProblem != null) stderr.writeln('[moderazione] $adminProblem');
   await records.purgeSafely();
   records.startPeriodicPurge();
+}
+
+void _reportPayments() {
+  final payments = Payments.instance;
+  for (final problem in payments.config.problems) {
+    stderr.writeln('[pagamenti] $problem');
+  }
+  final config = payments.config;
+  stderr.writeln(
+    '[pagamenti] modalità ${config.mode.name}'
+    '${config.apple != null ? ', iOS attivo' : ''}'
+    '${config.google != null ? ', Android attivo' : ''}'
+    '${payments.appleNotifications != null ? ', notifiche Apple attive' : ''}'
+    '${payments.googleNotifications != null ? ', notifiche Google attive' : ''}',
+  );
 }
