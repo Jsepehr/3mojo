@@ -6,9 +6,9 @@ import 'der.dart';
 import 'ecdsa.dart';
 
 /// Un certificato X.509 letto quanto basta per verificare una catena di
-/// certificati **EC** (quella di Apple per le transazioni firmate): chi
-/// l'ha emesso, chi è, quando vale, la chiave pubblica, le estensioni e la
-/// firma dell'emittente.
+/// certificati **EC** (quelle di Apple per le transazioni firmate e per App
+/// Attest): chi l'ha emesso, chi è, quando vale, la chiave pubblica, le
+/// estensioni (con il loro valore grezzo) e la firma dell'emittente.
 ///
 /// Non è una libreria X.509 generale: certificati con chiavi non EC, nomi
 /// o estensioni insoliti vengono letti ma **non** saranno mai considerati
@@ -25,6 +25,7 @@ class X509Certificate {
     required this.notAfter,
     required this.publicKey,
     required this.extensionOids,
+    required this.extensionValues,
     required this.isCertificateAuthority,
   });
 
@@ -50,6 +51,7 @@ class X509Certificate {
     final spki = fields[index++].expectTag(DerNode.tagSequence).children;
 
     final extensionOids = <String>{};
+    final extensionValues = <String, Uint8List>{};
     var isCa = false;
     for (final field in fields.skip(index)) {
       if (field.tag != DerNode.contextTag(3)) continue;
@@ -61,6 +63,14 @@ class X509Certificate {
         if (items.length < 2) throw const FormatException('X.509: estensione');
         final oid = items[0].asOid;
         extensionOids.add(oid);
+        // Un'estensione ripetuta è vietata (RFC 5280): non si sceglie quale
+        // delle due credere.
+        if (extensionValues.containsKey(oid)) {
+          throw const FormatException('X.509: estensione ripetuta');
+        }
+        extensionValues[oid] = items.last
+            .expectTag(DerNode.tagOctetString)
+            .content;
         if (oid == _basicConstraintsOid) {
           final value = DerNode.parse(
             items.last.expectTag(DerNode.tagOctetString).content,
@@ -84,6 +94,7 @@ class X509Certificate {
       notAfter: validity[1].asTime,
       publicKey: _readEcPublicKey(spki),
       extensionOids: extensionOids,
+      extensionValues: extensionValues,
       isCertificateAuthority: isCa,
     );
   }
@@ -119,6 +130,10 @@ class X509Certificate {
   /// `null` se la chiave non è EC P-256/P-384.
   final EcPublicKey? publicKey;
   final Set<String> extensionOids;
+
+  /// Il valore di ogni estensione (il contenuto dell'`extnValue`, cioè il
+  /// DER dentro l'OCTET STRING), per OID — es. il nonce di App Attest.
+  final Map<String, Uint8List> extensionValues;
 
   /// `basicConstraints` con `cA = true`.
   final bool isCertificateAuthority;

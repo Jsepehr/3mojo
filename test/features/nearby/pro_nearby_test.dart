@@ -271,4 +271,18 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(proNearby.failure, isNull);
   });
+
+  test('"device not verified" is not replaced by the connection drop that '
+      'follows it', () async {
+    watch.last.add(const Left(DeviceNotVerifiedFailure()));
+    await Future<void>.delayed(Duration.zero);
+    watch.last.add(const Left(ConnectionFailure('socket closed')));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(proNearby.failure, isA<DeviceNotVerifiedFailure>());
+
+    watch.last.add(const Right([]));
+    await Future<void>.delayed(Duration.zero);
+    expect(proNearby.failure, isNull);
+  });
 }

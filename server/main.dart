@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/admin_reports_api.dart';
+import 'package:threemojo_server/src/attestation/attestation_gate.dart';
 import 'package:threemojo_server/src/moderation_records.dart';
 import 'package:threemojo_server/src/payments/payments.dart';
 
@@ -31,6 +32,12 @@ import 'package:threemojo_server/src/payments/payments.dart';
 /// E monta i **pagamenti** (`Payments`, da `PAYMENTS_MODE` e credenziali):
 /// scrive nel log la modalità (finta = nessun pagamento vero) e ogni
 /// piattaforma rimasta spenta per configurazione incompleta.
+///
+/// E la **verifica del dispositivo** (`AttestationGate`, da
+/// `ATTESTATION_MODE`, spenta di default): scrive modalità e piattaforme
+/// verificabili, e **non parte** con una configurazione che renderebbe
+/// `enforce` un rifiuto silenzioso per tutti (o un `ATTESTATION_MODE`
+/// scritto male), come per il TLS a metà.
 Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
   final certPath = Platform.environment['TLS_CERT_PATH'] ?? '';
   final keyPath = Platform.environment['TLS_KEY_PATH'] ?? '';
@@ -40,6 +47,7 @@ Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
     );
   }
 
+  _checkAttestation();
   await _startModeration();
   _reportPayments();
 
@@ -74,5 +82,27 @@ void _reportPayments() {
     '${config.google != null ? ', Android attivo' : ''}'
     '${payments.appleNotifications != null ? ', notifiche Apple attive' : ''}'
     '${payments.googleNotifications != null ? ', notifiche Google attive' : ''}',
+  );
+}
+
+void _checkAttestation() {
+  final gate = AttestationGate.instance;
+  final config = gate.config;
+  final fatal = config?.fatalProblem;
+  if (fatal != null) throw StateError('[attestazione] $fatal');
+  if (!gate.isActive) {
+    stderr.writeln(
+      '[attestazione] modalità off: nessuna verifica del '
+      'dispositivo.',
+    );
+    return;
+  }
+  for (final problem in config?.problems ?? const <String>[]) {
+    stderr.writeln('[attestazione] $problem');
+  }
+  final platforms = gate.platforms.map((p) => p.name).join(', ');
+  stderr.writeln(
+    '[attestazione] modalità ${gate.mode.name}, piattaforme verificabili: '
+    '${platforms.isEmpty ? 'nessuna' : platforms}',
   );
 }

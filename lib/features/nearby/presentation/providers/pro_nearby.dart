@@ -42,13 +42,13 @@ import '../../domain/usecases/watch_nearby_people_usecase.dart';
 ///
 /// L'errore è esposto come `Failure` (non come stringa): è la UI
 /// (`CmpNearbyErrorState`) a scegliere icona e testi tradotti dal suo tipo.
-/// Tre errori riguardano lo Start stesso e **restano** finché la sessione
-/// non cambia: `SelfieRejectedByServerFailure` (il server non ha accettato
-/// il selfie: gli altri non ti vedono, nemmeno se poi arriva una lista),
-/// `SelfieNotUsableFailure` (il selfie non si è potuto preparare per
-/// l'invio: nessuna presenza parte) e
-/// `TooManyStartsFailure` (la caduta di connessione che lo segue non lo
-/// sostituisce con un generico "sei offline").
+/// Quattro errori riguardano lo Start stesso e **restano** finché la
+/// sessione non cambia: `SelfieRejectedByServerFailure` (il server non ha
+/// accettato il selfie: gli altri non ti vedono, nemmeno se poi arriva una
+/// lista), `SelfieNotUsableFailure` (il selfie non si è potuto preparare
+/// per l'invio: nessuna presenza parte), `TooManyStartsFailure` e
+/// `DeviceNotVerifiedFailure` (per questi due la caduta di connessione che
+/// li segue non li sostituisce con un generico "sei offline").
 ///
 /// I testi della notifica Android della posizione in background
 /// ([setBackgroundLocationNotice]) sono **obbligatori** lungo tutta la
@@ -214,7 +214,8 @@ class ProNearby extends ChangeNotifier {
         // riconnessione è automatica (vedi `CmpConnectionBanner`).
         break;
       case Left(value: ConnectionFailure())
-          when _failure is TooManyStartsFailure:
+          when _failure is TooManyStartsFailure ||
+              _failure is DeviceNotVerifiedFailure:
         // Il server chiude il socket subito dopo `rateLimited`: resta la
         // spiegazione vera, non un generico "sei offline".
         break;

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import '/core/attestation/attestation_data_source.dart';
+import '/core/attestation/default_attestation_data_source.dart';
 import '/core/errors/exceptions.dart';
 import 'api_config.dart';
 import 'realtime_socket.dart';
@@ -59,6 +61,19 @@ enum RealtimeStatus {
 /// riconnettersi sarebbe un nuovo Start (rifiutato per un po' da quella
 /// rete). Si avvisa chi ascolta [sessionClosures] e non si riprova più:
 /// tocca a chi ascolta chiudere la sessione locale (End).
+///
+/// **Verifica del dispositivo** (spenta sul server di default): se dopo
+/// l'`hello` di una sessione nuova il server manda `{"type": "challenge",
+/// "nonce": ...}`, si risponde con `{"type": "attestation", ...}` prodotta
+/// da [AttestationDataSource] per quel nonce (App Attest / Play Integrity,
+/// la finta nei build di debug) — o senza attestazione se sul telefono non
+/// riesce entro [attestationTimeout]: decide il server. Le riconnessioni di
+/// una sessione viva non ricevono challenge. Se il server rifiuta
+/// (`{"type": "error", "code": "attestationRequired"}`, chiusura 4011) **non
+/// si riprova da soli**: ogni tentativo costerebbe un'altra verifica ad
+/// Apple/Google per lo stesso risultato. Riprova ([connect] con la stessa
+/// sessione) o End; l'errore arriva alle feature dallo stesso stream (vedi
+/// `NearbyRemoteDataSourceImpl`).
 class RealtimeConnection {
   RealtimeConnection({
     RealtimeSocketFactory? socketFactory,
@@ -66,8 +81,11 @@ class RealtimeConnection {
     this.pingInterval = const Duration(seconds: 20),
     this.probeTimeout = const Duration(seconds: 5),
     this.farewellTimeout = const Duration(seconds: 5),
+    this.attestationTimeout = const Duration(seconds: 15),
     Uri Function()? endpoint,
+    AttestationDataSource? attestation,
   }) : _socketFactory = socketFactory ?? platform.connectRealtimeSocket,
+       _attestation = attestation ?? defaultAttestationDataSource(),
        _backoff = backoff ?? ReconnectBackoff(),
        _endpoint = endpoint ?? (() => Uri.parse('${ApiConfig.wsBaseUrl}/ws'));
 
@@ -77,7 +95,15 @@ class RealtimeConnection {
   /// nuovi Start per IP: inutile riprovare subito.
   static const closeCodeRateLimited = 4008;
 
+  /// Codice con cui il server chiude un socket di una sessione nuova senza
+  /// un'attestazione valida del dispositivo.
+  static const closeCodeAttestationRequired = 4011;
+
+  /// Oltre questa lunghezza un `nonce` non viene dal nostro server.
+  static const maxNonceLength = 256;
+
   final RealtimeSocketFactory _socketFactory;
+  final AttestationDataSource _attestation;
   final ReconnectBackoff _backoff;
   final Uri Function() _endpoint;
   final Duration pingInterval;
@@ -90,6 +116,11 @@ class RealtimeConnection {
   /// un [disconnect] arrivato mentre si era in riconnessione.
   final Duration farewellTimeout;
 
+  /// Quanto può durare al massimo l'attestazione sul telefono (generare la
+  /// chiave e chiedere ad Apple/Google): poi si risponde senza. Sotto i
+  /// 20 s di validità del challenge sul server.
+  final Duration attestationTimeout;
+
   final StreamController<RealtimeStatus> _statusChanges =
       StreamController.broadcast();
   final StreamController<bool> _readyEvents = StreamController.broadcast();
@@ -98,6 +129,11 @@ class RealtimeConnection {
   /// Il server ha chiuso la sessione attuale (`sessionClosed`): da qui in
   /// poi non si riconnette più.
   bool _closedByServer = false;
+
+  /// Il server ha rifiutato la sessione per la verifica del dispositivo
+  /// (`attestationRequired`): niente riconnessioni automatiche finché non
+  /// si richiama [connect] (Riprova).
+  bool _attestationRefused = false;
 
   String? _sessionId;
   StreamController<Map<String, dynamic>>? _messages;
@@ -146,6 +182,7 @@ class RealtimeConnection {
     if (_sessionId == sessionId && current != null && !current.isClosed) {
       if (_socket == null && !_closedByServer) {
         _reconnectTimer?.cancel();
+        _attestationRefused = false;
         _openSocket();
       }
       return current.stream;
@@ -155,6 +192,7 @@ class RealtimeConnection {
 
     final messages = StreamController<Map<String, dynamic>>.broadcast();
     _closedByServer = false;
+    _attestationRefused = false;
     _sessionId = sessionId;
     _messages = messages;
     _backoff.reset();
@@ -220,6 +258,15 @@ class RealtimeConnection {
     }
     if (decoded is! Map<String, dynamic>) return;
 
+    if (decoded['type'] == 'challenge') {
+      // Riguarda solo il saluto: le feature non lo vedono.
+      unawaited(_answerChallenge(socket, decoded['nonce']));
+      return;
+    }
+    if (decoded['type'] == 'error' &&
+        decoded['code'] == 'attestationRequired') {
+      _attestationRefused = true;
+    }
     if (decoded['type'] == 'welcome') {
       final graceSeconds = decoded['graceSeconds'];
       if (graceSeconds is int && graceSeconds > 0) {
@@ -240,6 +287,30 @@ class RealtimeConnection {
       _sessionClosures.add(null);
     }
     if (!messages.isClosed) messages.add(decoded);
+  }
+
+  /// Risponde al `challenge` del server: con l'attestazione per [nonce] se
+  /// sul telefono riesce entro [attestationTimeout], altrimenti senza (il
+  /// server decide in base alla sua modalità). Nulla viene conservato.
+  Future<void> _answerChallenge(RealtimeSocket socket, Object? nonce) async {
+    var answer = <String, dynamic>{'type': 'attestation'};
+    if (nonce is String && nonce.isNotEmpty && nonce.length <= maxNonceLength) {
+      try {
+        final attestation = await _attestation
+            .attest(nonce)
+            .timeout(attestationTimeout);
+        answer = {'type': 'attestation', ...attestation.toJson()};
+      } catch (_) {
+        // Simulatore, web, Play Services assenti, Apple/Google non
+        // raggiungibili: si risponde senza attestazione.
+      }
+    }
+    if (!identical(_socket, socket)) return;
+    try {
+      socket.add(jsonEncode(answer));
+    } catch (_) {
+      // Il socket si è chiuso nel frattempo: ci pensa `onDone`.
+    }
   }
 
   void _onSocketGone(
@@ -275,6 +346,17 @@ class RealtimeConnection {
       _serverGraceTimer = Timer(_serverGrace, () => _serverGraceTimer = null);
     }
     if (!messages.isClosed) messages.addError(error);
+
+    // La verifica del dispositivo non è passata: riprovare da soli
+    // costerebbe un'altra verifica per lo stesso esito. Si aspetta Riprova.
+    if (_attestationRefused ||
+        socket?.closeCode == closeCodeAttestationRequired) {
+      _attestationRefused = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _setStatus(RealtimeStatus.offline);
+      return;
+    }
     if (socket?.closeCode == closeCodeRateLimited) _backoff.jumpToMax();
     _setStatus(RealtimeStatus.reconnecting);
     _reconnectTimer?.cancel();
@@ -293,7 +375,7 @@ class RealtimeConnection {
   void checkAlive() {
     final messages = _messages;
     if (_sessionId == null || messages == null || messages.isClosed) return;
-    if (_closedByServer) return;
+    if (_closedByServer || _attestationRefused) return;
 
     final socket = _socket;
     if (socket == null) {
@@ -397,6 +479,7 @@ class RealtimeConnection {
     _socketSubscription = null;
     _ready = false;
     _closedByServer = false;
+    _attestationRefused = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _stopPing();

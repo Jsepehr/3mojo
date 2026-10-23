@@ -4,10 +4,10 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:threemojo_server/src/payments/apple_jws_verifier.dart';
 import 'package:threemojo_server/src/payments/apple_root_certificates.dart';
-import 'package:threemojo_server/src/payments/der.dart';
-import 'package:threemojo_server/src/payments/ecdsa.dart';
+import 'package:threemojo_server/src/crypto/der.dart';
+import 'package:threemojo_server/src/crypto/ecdsa.dart';
 import 'package:threemojo_server/src/payments/receipt_verifier.dart';
-import 'package:threemojo_server/src/payments/x509_certificate.dart';
+import 'package:threemojo_server/src/crypto/x509_certificate.dart';
 
 import 'test_pki.dart';
 

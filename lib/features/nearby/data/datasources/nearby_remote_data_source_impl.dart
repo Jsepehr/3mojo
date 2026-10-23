@@ -39,7 +39,11 @@ import 'nearby_remote_data_source.dart';
 ///   → [SelfieRejectedException]. Da lì non si manda più nessuna presenza
 ///   per questa sessione: il server la accetterebbe senza foto;
 /// - `{"type": "error", "code": "rateLimited"}` (troppi Start dalla stessa
-///   rete; poi il server chiude il socket) → [RateLimitedException].
+///   rete; poi il server chiude il socket) → [RateLimitedException];
+/// - `{"type": "error", "code": "attestationRequired"}` (il server non ha
+///   potuto verificare l'app su questo dispositivo, solo con la verifica in
+///   `enforce`; poi chiude il socket e `RealtimeConnection` non riprova da
+///   sola) → [DeviceNotVerifiedException].
 class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   NearbyRemoteDataSourceImpl({
     RealtimeConnection? connection,
@@ -164,6 +168,8 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
               sink.addError(const SelfieRejectedException());
             case 'error' when decoded['code'] == 'rateLimited':
               sink.addError(const RateLimitedException());
+            case 'error' when decoded['code'] == 'attestationRequired':
+              sink.addError(const DeviceNotVerifiedException());
           }
         },
       ),

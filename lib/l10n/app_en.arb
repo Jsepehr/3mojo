@@ -545,6 +545,14 @@
   "@too_many_starts_body": {
     "description": "Body on the online home when the server refuses new sessions from this network for a while (rate limit)"
   },
+  "device_not_verified_title": "We can't verify this app on this device",
+  "@device_not_verified_title": {
+    "description": "Title on the online home when the server refuses the new session because it could not verify (App Attest / Play Integrity) that this is the genuine app on a genuine device"
+  },
+  "device_not_verified_body": "To protect the people around you, Raen checks that it's the original app on a real device. The check didn't pass here — for example on an emulator, a modified device or an app not installed from the store. Try again, or end the session.",
+  "@device_not_verified_body": {
+    "description": "Body for the same error: why the check exists, typical causes, and the two ways out (Retry button, End session button)"
+  },
   "end_and_retake_selfie": "End and retake selfie",
   "@end_and_retake_selfie": {
     "description": "Button when the server rejected the selfie: ends the session and reopens the Start flow"

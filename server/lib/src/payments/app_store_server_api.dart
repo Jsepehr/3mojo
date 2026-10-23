@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import 'ecdsa.dart';
+import '../crypto/ecdsa.dart';
 import 'payments_config.dart';
 import 'receipt_verifier.dart';
 

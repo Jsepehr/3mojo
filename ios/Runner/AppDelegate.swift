@@ -1,3 +1,4 @@
+import DeviceCheck
 import Flutter
 import ImageIO
 import UIKit
@@ -17,6 +18,9 @@ import Vision
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "FaceDetection") {
       FaceDetectionChannel.register(with: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "Attestation") {
+      AttestationChannel.register(with: registrar.messenger())
     }
   }
 }
@@ -127,5 +131,65 @@ enum FaceDetectionChannel {
     let request = VNDetectFaceRectanglesRequest()
     try VNImageRequestHandler(cgImage: image, orientation: orientation).perform([request])
     return !(request.results ?? []).isEmpty
+  }
+}
+
+/// Lato iOS del canale `raen/attestation` (vedi
+/// `attestation_data_source_impl.dart`): **App Attest**. A ogni richiesta
+/// genera una chiave **nuova** nel Secure Enclave (`generateKey`) e la fa
+/// attestare da Apple con il `clientDataHash` ricevuto (`SHA-256(utf8(nonce))`
+/// del challenge del server, calcolato in Dart). Il `keyId` non viene salvato
+/// da nessuna parte: niente assertion successive, niente identificativo
+/// stabile tra una sessione e l'altra (le chiavi restano nel portachiavi di
+/// sistema dell'app, inutilizzate, e spariscono con la disinstallazione).
+///
+/// Sul simulatore App Attest non esiste (`isSupported == false`): errore
+/// `UNSUPPORTED`, e l'app risponde al server senza attestazione.
+///
+/// TODO(attestation): funziona su un dispositivo solo con la capability App
+/// Attest sull'App ID e l'entitlement `appattest-environment`
+/// (`Runner.entitlements`, configurazioni Release/Profile).
+enum AttestationChannel {
+  static func register(with messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "raen/attestation", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "appAttest" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let args = call.arguments as? [String: Any],
+            let hash = args["clientDataHash"] as? FlutterStandardTypedData,
+            hash.data.count == 32 else {
+        result(FlutterError(code: "BAD_ARGS", message: "clientDataHash mancante", details: nil))
+        return
+      }
+      let service = DCAppAttestService.shared
+      guard service.isSupported else {
+        result(FlutterError(code: "UNSUPPORTED", message: "App Attest non disponibile qui", details: nil))
+        return
+      }
+      service.generateKey { keyId, error in
+        guard let keyId = keyId, error == nil else {
+          DispatchQueue.main.async {
+            result(FlutterError(code: "GENERATE_KEY_FAILED",
+                                message: error?.localizedDescription, details: nil))
+          }
+          return
+        }
+        service.attestKey(keyId, clientDataHash: hash.data) { attestation, error in
+          DispatchQueue.main.async {
+            guard let attestation = attestation, error == nil else {
+              result(FlutterError(code: "ATTEST_FAILED",
+                                  message: error?.localizedDescription, details: nil))
+              return
+            }
+            result([
+              "keyId": keyId,
+              "attestationObject": FlutterStandardTypedData(bytes: attestation),
+            ])
+          }
+        }
+      }
+    }
   }
 }

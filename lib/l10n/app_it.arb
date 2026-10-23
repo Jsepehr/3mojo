@@ -135,6 +135,8 @@
   "selfie_rejected_by_server_body": "Il server non ha accettato il tuo selfie, quindi chi è vicino non ti vede. Termina la sessione e scattane uno nuovo.",
   "too_many_starts_title": "Troppi Start",
   "too_many_starts_body": "Da questa rete sono partite troppe sessioni in poco tempo. Tra poco riproviamo da soli, oppure termina la sessione e riprova più tardi.",
+  "device_not_verified_title": "Non riusciamo a verificare questa app su questo dispositivo",
+  "device_not_verified_body": "Per proteggere chi ti sta vicino, Raen controlla che sia l'app originale su un dispositivo vero. Qui il controllo non è passato — per esempio su un emulatore, un dispositivo modificato o un'app non installata dallo store. Riprova, oppure termina la sessione.",
   "end_and_retake_selfie": "Termina e rifai il selfie",
   "background_location_notification_title": "Raen è online",
   "background_location_notification_body": "Stai comparendo a chi ti è vicino, anche con l'app in background.",

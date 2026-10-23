@@ -139,6 +139,18 @@ class TooManyStartsFailure extends Failure {
   ]);
 }
 
+/// Il server non ha accettato la sessione perché non è riuscito a
+/// verificare che questa sia l'app vera su un dispositivo vero
+/// (`error`, code `attestationRequired`): simulatore, dispositivo
+/// modificato, app non installata dallo store, o la verifica non è riuscita.
+/// Nessun nuovo tentativo automatico (costerebbe una verifica ogni volta):
+/// Riprova o End.
+class DeviceNotVerifiedFailure extends Failure {
+  const DeviceNotVerifiedFailure([
+    super.message = 'The server could not verify this app on this device',
+  ]);
+}
+
 // --- Profilo ---
 
 /// Maggiore età non confermata.

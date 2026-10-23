@@ -19,6 +19,9 @@ import '/l10n/generated/app_localizations.dart';
 ///   l'invio sul telefono; stessa via d'uscita ([onRetakeSelfie]).
 /// - `TooManyStartsFailure`: troppi Start dalla stessa rete; l'app riprova
 ///   da sola più avanti, oppure si chiude la sessione ([onEndSession]).
+/// - `DeviceNotVerifiedFailure`: il server non è riuscito a verificare
+///   l'app su questo dispositivo; nessun nuovo tentativo da soli: Riprova o
+///   si chiude la sessione ([onEndSession]).
 /// - qualsiasi altro: errore generico, solo Riprova.
 ///
 /// Senza stato e senza provider: riceve tutto da chi lo usa
@@ -117,6 +120,20 @@ class CmpNearbyErrorState extends StatelessWidget {
         message: l10n.too_many_starts_body,
         pulse: true,
         primaryAction: onEndSession == null
+            ? null
+            : CmpStatusMessageAction(
+                label: l10n.end_session,
+                icon: Icons.stop_circle_outlined,
+                onPressed: onEndSession!,
+              ),
+      ),
+      DeviceNotVerifiedFailure() => CmpStatusMessage(
+        icon: Icons.gpp_maybe_outlined,
+        title: l10n.device_not_verified_title,
+        message: l10n.device_not_verified_body,
+        tone: CmpStatusMessageTone.error,
+        primaryAction: retry,
+        secondaryAction: onEndSession == null
             ? null
             : CmpStatusMessageAction(
                 label: l10n.end_session,

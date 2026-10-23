@@ -57,4 +57,16 @@ dependencies {
     // supportato e può rompere il rilevamento): va dichiarata nel Data Safety
     // di Play — vedi https://developers.google.com/ml-kit/android-data-disclosure
     implementation("com.google.mlkit:face-detection:16.1.7")
+
+    // Verifica del dispositivo per il canale `raen/attestation`
+    // (AttestationChannel.kt): Play Integrity API, Standard request. Usata
+    // solo se il server la chiede (`ATTESTATION_MODE=log|enforce`).
+    //
+    // Privacy: il token va dal Play Store ai server di Google e poi al nostro
+    // server, che lo fa decodificare a Google e tiene solo l'esito (niente
+    // id del dispositivo né dell'account). Google raccoglie e tratta dati del
+    // dispositivo per calcolare il verdetto: va dichiarato nel Data Safety di
+    // Play — vedi https://developer.android.com/google/play/integrity/overview
+    // e la guida per sviluppatori ("Per attivare la verifica del dispositivo").
+    implementation("com.google.android.play:integrity:1.6.0")
 }

@@ -135,6 +135,8 @@
   "selfie_rejected_by_server_body": "Der Server hat dein Selfie nicht akzeptiert, deshalb sehen dich Leute in der Nähe nicht. Beende die Sitzung und mach ein neues.",
   "too_many_starts_title": "Zu viele Starts",
   "too_many_starts_body": "Von diesem Netzwerk wurden in kurzer Zeit zu viele Sitzungen gestartet. Wir versuchen es gleich von selbst erneut – oder beende die Sitzung und versuch es später noch einmal.",
+  "device_not_verified_title": "Wir können diese App auf diesem Gerät nicht überprüfen",
+  "device_not_verified_body": "Um die Menschen in deiner Nähe zu schützen, prüft Raen, ob es die originale App auf einem echten Gerät ist. Hier hat die Prüfung nicht geklappt – zum Beispiel auf einem Emulator, einem veränderten Gerät oder bei einer App, die nicht aus dem Store installiert wurde. Versuch es noch einmal oder beende die Sitzung.",
   "end_and_retake_selfie": "Beenden und Selfie neu machen",
   "background_location_notification_title": "Raen ist online",
   "background_location_notification_body": "Leute in deiner Nähe sehen dich, auch wenn die App im Hintergrund ist.",

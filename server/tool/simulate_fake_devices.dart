@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:threemojo_server/src/attestation/fake_attestation_verifier.dart';
 import 'package:threemojo_server/src/new_session_rate_limiter.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -15,6 +16,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// Uso: `dart run tool/simulate_fake_devices.dart [wsBaseUrl]`
 /// (default `ws://localhost:8080`, lo stesso host/porta di `dart_frog dev`).
 /// Il server deve già essere acceso in un altro terminale.
+///
+/// Con la verifica del dispositivo accesa (`ATTESTATION_MODE=log|enforce`)
+/// ogni dispositivo risponde al `challenge` con l'attestazione **finta**:
+/// in `enforce` passa solo se il server ha anche `ATTESTATION_ALLOW_FAKE=true`.
 ///
 /// Disposizione dei 20 dispositivi (vedi [_seedDevices]):
 /// - **Gruppo A** (`a1`..`a4` nucleo stretto, `a5` sul bordo): i primi 4 sono
@@ -183,8 +188,8 @@ List<_DeviceSeed> _seedDevices() {
 
 class _FakeDevice {
   _FakeDevice(this.seed, this._channel, this._startedAt) {
-    _sendPresence();
-    _resendTimer = Timer.periodic(_presenceInterval, (_) => _sendPresence());
+    // La presenza parte dopo il `welcome` (prima, con la verifica del
+    // dispositivo accesa, il server aspetta solo l'attestazione).
     _subscription = _channel.stream.listen(_onMessage);
   }
 
@@ -193,7 +198,7 @@ class _FakeDevice {
   final _DeviceSeed seed;
   final WebSocketChannel _channel;
   final DateTime _startedAt;
-  late final Timer _resendTimer;
+  Timer? _resendTimer;
   late final StreamSubscription<dynamic> _subscription;
   List<String> _lastNearbyIds = const [];
 
@@ -238,8 +243,34 @@ class _FakeDevice {
     } catch (_) {
       return;
     }
-    if (decoded is! Map<String, dynamic> || decoded['type'] != 'nearby') {
-      return;
+    if (decoded is! Map<String, dynamic>) return;
+    switch (decoded['type']) {
+      case 'challenge':
+        _channel.sink.add(
+          jsonEncode({
+            'type': 'attestation',
+            'platform': 'fake',
+            'token': FakeAttestationVerifier.tokenFor(
+              decoded['nonce'] as String,
+            ),
+          }),
+        );
+        return;
+      case 'welcome':
+        _sendPresence();
+        _resendTimer?.cancel();
+        _resendTimer = Timer.periodic(
+          _presenceInterval,
+          (_) => _sendPresence(),
+        );
+        return;
+      case 'error':
+        stdout.writeln('${seed.id} rifiutato dal server: ${decoded['code']}');
+        return;
+      case 'nearby':
+        break;
+      default:
+        return;
     }
 
     final people = (decoded['people'] as List).cast<Map<String, dynamic>>();
@@ -260,7 +291,7 @@ class _FakeDevice {
   }
 
   Future<void> close() async {
-    _resendTimer.cancel();
+    _resendTimer?.cancel();
     _channel.sink.add(jsonEncode({'type': 'end'}));
     await _subscription.cancel();
     await _channel.sink.close();

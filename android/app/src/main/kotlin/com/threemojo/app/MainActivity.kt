@@ -26,5 +26,6 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         FaceDetectionChannel.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
+        AttestationChannel.register(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
     }
 }

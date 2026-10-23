@@ -70,6 +70,11 @@ per i client già usciti.
 | `GOOGLE_RTDN_TOKEN` | Almeno 32 caratteri (`openssl rand -hex 32`): accende `POST /paywall/notifications/google?token=<valore>` (Real-time Developer Notifications via push di Pub/Sub: un acquisto rimborsato/annullato revoca lo sblocco). Senza, o token sbagliato: 404. |
 | `PAYMENTS_TRANSACTION_HASH_KEY` | Opzionale, 32 byte in base64: chiave HMAC degli hash delle transazioni riscattate. Senza, una casuale per processo (va benissimo finché il registro è in RAM; serve fissa solo per renderlo persistente). |
 | `MODERATION_COOLDOWN_MINUTES` | Dopo una chiusura automatica, per quanti minuti gli IP della sessione chiusa non possono fare nuovi Start (risposta `rateLimited`). Default 30, `0` = spento; un valore non intero è ignorato. |
+| `ATTESTATION_MODE` | Verifica del dispositivo (App Attest / Play Integrity) per le sessioni **nuove**, vedi [sotto](#verifica-del-dispositivo). `off` (default) = nessun challenge, protocollo invariato. `log` = challenge e verifica, esito solo nel log (`[attestazione] …`), nessun rifiuto. `enforce` = senza attestazione valida `error` `attestationRequired` e chiusura 4011. Un valore diverso, o `enforce` senza **entrambe** le piattaforme configurate, e il server **non parte** (mai un rifiuto silenzioso di tutti, mai una piattaforma lasciata aperta). |
+| `GOOGLE_PACKAGE_NAME` + `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_PATH` | Con `ATTESTATION_MODE` `log`/`enforce`, accendono la verifica Android (Play Integrity, `decodeIntegrityToken`). Il service account deve stare nel progetto Google Cloud **collegato all'app in Play Console** con la Play Integrity API abilitata. Senza `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_PATH` si usa `GOOGLE_SERVICE_ACCOUNT_JSON_PATH` dei pagamenti. Il numero del progetto Google Cloud serve solo all'app (`--dart-define=GOOGLE_CLOUD_PROJECT_NUMBER`), non al server. |
+| `APPLE_TEAM_ID`, `APPLE_BUNDLE_ID`, `APPLE_APP_ATTEST_ENVIRONMENT` | Con `ATTESTATION_MODE` `log`/`enforce`, accendono la verifica iOS (App Attest): Team ID (10 caratteri), bundle id (lo stesso dei pagamenti), `development` o `production` — deve corrispondere all'entitlement dell'app (`ios/Runner/Runner.entitlements`, oggi `production`; App Store e TestFlight usano sempre `production`). La radice Apple App Attestation Root CA è inclusa nel codice. |
+| `ATTESTATION_MAX_PER_IP_PER_MINUTE` | Quante attestazioni si verificano per IP al minuto (default 10; oltre: `rateLimited`, in `log` solo non verificate). |
+| `ATTESTATION_ALLOW_FAKE` | `true` = accetta l'attestazione **finta** dei build di debug (`platform: "fake"`), per provare `log`/`enforce` in locale. Ignorato (e scritto nel log) se il server ha TLS o `TRUSTED_PROXY`. Con questa, `enforce` parte anche senza Apple/Google. **Mai in produzione.** |
 
 Senza `TLS_*` il server resta in chiaro: va bene in sviluppo locale, in
 produzione **solo** dietro un reverse proxy che termina TLS. L'app in release
@@ -84,7 +89,9 @@ Il protocollo completo (messaggi e campi) è documentato in testa a
 (`{"type":"hello","secret":...}`, entro 10 s), mai nell'URL. Il server lo
 traduce in un id interno casuale (`SessionCredentials`) che non esce mai dal
 server, e risponde `welcome` oppure `error` (`invalidSecret`/`rateLimited`)
-chiudendo il socket. Agli altri utenti arrivano solo **pseudonimi per
+chiudendo il socket. Con la verifica del dispositivo accesa
+(`ATTESTATION_MODE`), un hello che aprirebbe una sessione **nuova** riceve prima
+un `challenge` (vedi [sotto](#verifica-del-dispositivo)). Agli altri utenti arrivano solo **pseudonimi per
 osservatore** (`Pseudonyms`): la stessa persona ha un id diverso per ognuno
 che la vede. Nessuna distanza viene mai mandata ai client.
 
@@ -157,6 +164,61 @@ La lista risponde `{"recordsEnabled", "retentionDays", "reports": [{"id",
 record cancellato) o 404. Codici: 404 spenti o id inesistente/malformato,
 429 troppe richieste, 403 senza TLS, 401 token mancante o sbagliato.
 
+## Verifica del dispositivo
+
+Predisposta e **spenta** (`ATTESTATION_MODE=off`). Serve a rendere costose le
+sessioni parallele da script — usate per ricostruire le preferenze altrui
+rifacendo Start con generi diversi, o per localizzare qualcuno con GPS falsi
+da più punti: ogni sessione **nuova** deve venire dall'app vera su un
+dispositivo vero.
+
+```
+client                                server
+  hello {secret}  ───────────────────▶  sessione nuova? (non una riconnessione)
+                  ◀───────────────────  challenge {nonce, expiresInSeconds: 20}
+  App Attest / Play Integrity
+  legati al nonce
+  attestation {platform, …}  ────────▶  AttestationGate: verifica (Apple/Google)
+                  ◀───────────────────  welcome  |  error attestationRequired (4011)
+```
+
+- **Challenge nel socket**, non un `GET /attest/challenge`: il nonce (32 byte
+  casuali) vive solo nel `SocketSession` che l'ha emesso, vale una volta e
+  per 20 s; un'attestazione fatta per un socket non vale su un altro e non
+  serve nessuna tabella di nonce condivisa. Lo manda il server **dopo**
+  l'hello perché solo lui sa se è una sessione nuova o una riconnessione
+  (che non si riattesta: niente costo per ogni caduta di rete). Con `off`
+  non arriva mai: protocollo identico a prima.
+- **Android** (`PlayIntegrityVerifier`): Standard API, `requestHash =
+  hex(SHA-256(utf8(nonce)))`; si controllano package, `requestHash`, età del
+  verdetto (≤ 2 min), `PLAY_RECOGNIZED`, `MEETS_DEVICE_INTEGRITY`.
+- **iOS** (`AppAttestVerifier`): una **chiave nuova a ogni sessione**,
+  attestata con `clientDataHash = SHA-256(utf8(nonce))`; catena `x5c` fino ad
+  Apple App Attestation Root CA (inclusa, impronta SHA-256
+  `1cb9823b…6242c932`), nonce nell'estensione `1.2.840.113635.100.8.2`, RP ID
+  hash di `APPLE_TEAM_ID.APPLE_BUNDLE_ID`, contatore 0, AAGUID dell'ambiente,
+  `keyId`. **Niente assertion**: richiederebbero di ricordare la chiave tra
+  una sessione e l'altra, cioè un id stabile del dispositivo.
+- **Privacy**: nessun dato dell'attestazione viene salvato (token, keyId,
+  receipt, verdetto vivono solo durante la verifica); in RAM restano i
+  contatori per esito e, per un minuto, gli orari delle attestazioni per IP.
+  Il log scrive solo modalità, piattaforma, esito e motivo — mai IP, token,
+  nonce o keyId.
+- **`enforce` è fail closed**: anche "Google non risponde" (rete, quota
+  esaurita, credenziali) è un rifiuto, altrimenti esaurire la nostra quota
+  aprirebbe la porta a tutti. L'app non riprova da sola dopo un rifiuto
+  (Riprova o End).
+- **Metriche** per passare da `log` a `enforce`: ogni esito finisce nel log
+  con i totali da quando il server è partito (`valid`, `invalid` col motivo,
+  `missing`, `timeout`, `unavailable`, `unsupportedPlatform`, `rateLimited`,
+  `expiredChallenge`). Passi completi in `guida_per_sviluppatori.md` ("Per
+  attivare la verifica del dispositivo").
+
+```
+# Prova in locale del giro completo con l'app di debug (attestazione finta)
+ATTESTATION_MODE=enforce ATTESTATION_ALLOW_FAKE=true dart_frog dev
+```
+
 ## Limiti
 
 | Cosa | Limite | Dove |
@@ -164,7 +226,8 @@ record cancellato) o 404. Codici: 404 spenti o id inesistente/malformato,
 | Nuovi Start (hello con un segreto nuovo) | 20 per IP ogni 10 minuti (configurabile, `MAX_NEW_SESSIONS_PER_IP`); le riconnessioni non contano | `NewSessionRateLimiter` |
 | `POST /paywall/purchase` | 10 per IP ogni 10 minuti; un token **una volta per transazione** verificata (la stessa ridà lo stesso token finché vale, poi 409); acquisti Apple più vecchi di 7 giorni rifiutati (`tooOld`) | `purchaseRateLimiter` in `rate_limiters.dart`, `UnlockPurchaseService` |
 | Messaggi per connessione | 20 di fila, poi 5 al secondo; oltre si scartano, dopo 50 scarti di fila il socket si chiude (4029) | `ConnectionRateLimiter` |
-| Dimensione di un messaggio | 320 KB `presence`, 16 KB `chatMessage`, 1 KB il resto (oltre, il socket si chiude con 4009) | `RealtimeMessageHandler.maxCharsFor` |
+| Dimensione di un messaggio | 320 KB `presence`, 40 KB `attestation`, 16 KB `chatMessage`, 1 KB il resto (oltre, il socket si chiude con 4009) | `RealtimeMessageHandler.maxCharsFor` |
+| Verifica del dispositivo | risposta al `challenge` entro 25 s (nonce valido 20 s, una volta); 10 attestazioni verificate per IP al minuto (`ATTESTATION_MAX_PER_IP_PER_MINUTE`); al più 32 verifiche in corso, 10 s ciascuna | `SocketSession`, `AttestationGate` |
 | Selfie | solo JPEG, ≤ ~230 KB, metadati tolti | `SelfieValidator` |
 | Testo di chat | 1000 unità UTF-16 (come `SendMessageUseCase` nell'app); oltre → `rejected` `invalidText`, il socket resta aperto. Inoltrato solo con un match attivo | `RealtimeMessageHandler` |
 | Richieste d'incontro pendenti | 5 in uscita, 20 in entrata per sessione | `EncounterStore` |
@@ -229,7 +292,9 @@ dart run tool/simulate_fake_devices.dart [wsBaseUrl]   # default ws://localhost:
 ```
 
 Col server già acceso, apre 20 connessioni WebSocket vere (stesso protocollo
-dell'app: `hello`, `presence` ogni 20 s, `end` alla chiusura) disposte per far
+dell'app: `hello`, `presence` ogni 20 s dopo il `welcome`, `end` alla
+chiusura; al `challenge` risponde con l'attestazione finta, che in `enforce`
+passa solo con `ATTESTATION_ALLOW_FAKE=true`) disposte per far
 vedere visibilità normale e hotspot (che si formano dopo 15 minuti). Dettagli
 nel commento del file. Venti Start dallo stesso IP sono esattamente il tetto
 di `NewSessionRateLimiter`: rilanciarlo entro 10 minuti può essere rifiutato

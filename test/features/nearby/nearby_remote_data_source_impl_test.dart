@@ -317,6 +317,19 @@ void main() {
     await subscription.cancel();
   });
 
+  test('"attestationRequired" from the server becomes its own error, not a '
+      'generic connection drop', () async {
+    final errors = <Object>[];
+    final subscription = connect().listen((_) {}, onError: errors.add);
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'error', 'code': 'attestationRequired'});
+    await pumpEvents();
+
+    expect(errors.first, isA<DeviceNotVerifiedException>());
+    await subscription.cancel();
+  });
+
   test('other rejections (e.g. a request) are not presence errors', () async {
     final errors = <Object>[];
     final subscription = connect().listen((_) {}, onError: errors.add);

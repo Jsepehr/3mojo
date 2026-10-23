@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 import 'package:threemojo_server/src/payments/app_store_server_api.dart';
 import 'package:threemojo_server/src/payments/apple_jws_verifier.dart';
 import 'package:threemojo_server/src/payments/apple_receipt_verifier.dart';
-import 'package:threemojo_server/src/payments/ecdsa.dart';
+import 'package:threemojo_server/src/crypto/ecdsa.dart';
 import 'package:threemojo_server/src/payments/payments_config.dart';
 import 'package:threemojo_server/src/payments/receipt_verifier.dart';
 

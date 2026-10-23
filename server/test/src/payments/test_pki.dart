@@ -3,11 +3,12 @@ import 'dart:typed_data';
 
 import 'package:pointycastle/export.dart';
 import 'package:threemojo_server/src/payments/apple_jws_verifier.dart';
-import 'package:threemojo_server/src/payments/ecdsa.dart';
+import 'package:threemojo_server/src/crypto/ecdsa.dart';
 
 /// Una piccola PKI **di test** con la stessa forma di quella di Apple
 /// (radice P-384 → intermedio → foglia P-256, OID Apple sulle estensioni),
-/// per verificare `AppleJwsVerifier` senza account né certificati veri.
+/// per verificare `AppleJwsVerifier` e `AppAttestVerifier` senza account né
+/// certificati veri.
 
 // --- DER (solo scrittura, per costruire i certificati) ---
 
@@ -130,6 +131,7 @@ Uint8List buildCertificate({
   required TestKey issuerKey,
   required bool isCa,
   Set<String> markerOids = const {},
+  Map<String, Uint8List> extensionValues = const {},
   DateTime? notBefore,
   DateTime? notAfter,
   int serial = 1,
@@ -149,6 +151,8 @@ Uint8List buildCertificate({
       ),
     ]),
     for (final oid in markerOids) seq([derOid(oid), derOctets(tlv(0x05, []))]),
+    for (final entry in extensionValues.entries)
+      seq([derOid(entry.key), derOctets(entry.value)]),
   ]);
   final tbs = seq([
     explicit(0, derInt(BigInt.two)),

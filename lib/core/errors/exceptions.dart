@@ -73,6 +73,34 @@ class RateLimitedException implements Exception {
   String toString() => message;
 }
 
+// --- Verifica del dispositivo ---
+
+/// L'attestazione del dispositivo (App Attest / Play Integrity) non si è
+/// potuta produrre sul telefono: simulatore iOS, web, Play Services assenti,
+/// configurazione mancante, errore di Apple o Google. Non arriva mai a
+/// domain/: la connessione risponde al challenge senza attestazione e
+/// decide il server.
+class AttestationUnavailableException implements Exception {
+  const AttestationUnavailableException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Il server ha rifiutato la sessione nuova perché manca un'attestazione
+/// valida del dispositivo (`error`, code `attestationRequired`, solo con
+/// `ATTESTATION_MODE=enforce`).
+class DeviceNotVerifiedException implements Exception {
+  const DeviceNotVerifiedException([this.message = 'Device not verified']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 // --- Acquisti in-app (paywall) ---
 
 /// Il negozio (App Store / Google Play) non è utilizzabile qui: build senza

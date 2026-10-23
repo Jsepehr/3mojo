@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:threemojo_app/core/attestation/attestation_data_source.dart';
 import 'package:threemojo_app/core/network/realtime_connection.dart';
 import 'package:threemojo_app/core/network/realtime_socket.dart';
 import 'package:threemojo_app/core/network/reconnect_backoff.dart';
@@ -70,8 +71,9 @@ class FakeRealtimeSocket implements RealtimeSocket {
 /// Una `RealtimeConnection` che apre solo socket finti (uno nuovo a ogni
 /// tentativo) e riprova subito, senza attese.
 class FakeRealtimeServer {
-  FakeRealtimeServer() {
+  FakeRealtimeServer({AttestationDataSource? attestation}) {
     connection = RealtimeConnection(
+      attestation: attestation,
       socketFactory: (uri) {
         uris.add(uri);
         final socket = nextSocketConnects

@@ -1,5 +1,6 @@
 import 'package:dart_frog/dart_frog.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:threemojo_server/src/attestation/attestation_gate.dart';
 import 'package:threemojo_server/src/client_ip.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/session_lifecycle.dart';
@@ -16,7 +17,23 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   entro 10 s, altrimenti il socket viene chiuso (codice 4001) senza aver
 ///   registrato nulla. Risposta: `welcome` (sotto), oppure
 ///   `{"type": "error", "code": "invalidSecret" | "rateLimited"}` e chiusura
-///   (4002 / 4008);
+///   (4002 / 4008) — oppure, con la verifica del dispositivo accesa e un
+///   hello che aprirebbe una sessione **nuova**, prima un `challenge`
+///   (sotto);
+/// - `{"type": "attestation", "platform": "android", "token": ...}` /
+///   `{"type": "attestation", "platform": "ios", "keyId": ...,
+///   "attestationObject": ...}` (base64) / `{"type": "attestation"}` (sul
+///   telefono l'attestazione non è riuscita) — **solo** come risposta a un
+///   `challenge`, entro 25 s, e niente altro prima del `welcome`. Il token
+///   Play Integrity (Standard API) va chiesto con `requestHash =
+///   hex(SHA-256(utf8(nonce)))`; la chiave App Attest va **generata nuova**
+///   e attestata con `clientDataHash = SHA-256(utf8(nonce))`. Esito:
+///   `welcome`, oppure `{"type": "error", "code": "attestationRequired"}` e
+///   chiusura 4011 (solo con `ATTESTATION_MODE=enforce`; con `log` si passa
+///   sempre), oppure `rateLimited` e 4008 (troppe attestazioni dallo stesso
+///   IP). Un'attestazione vale una volta sola, solo su questo socket;
+///   le riconnessioni di una sessione viva non la richiedono. Nulla
+///   dell'attestazione viene conservato (vedi `AttestationGate`);
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
 ///   "lookingFor": [...], "intent": ..., "languages": [...],
 ///   "showGender": bool, "selfieBase64": ..., "unlockToken": ...}` — dopo
@@ -62,6 +79,11 @@ import 'package:threemojo_server/src/socket_session.dart';
 /// - `{"type": "end"}` — End esplicito: la sessione finisce subito.
 ///
 /// Messaggi dal server:
+/// - `{"type": "challenge", "nonce": ..., "expiresInSeconds": 20}` — solo
+///   con `ATTESTATION_MODE` `log` o `enforce`, dopo un `hello` che
+///   aprirebbe una sessione nuova: il nonce (32 byte casuali, base64url)
+///   vale una volta, per questo socket, per `expiresInSeconds` secondi. Con
+///   `off` (default) non arriva mai e dopo `hello` c'è subito `welcome`;
 /// - `{"type": "welcome", "resumed": bool, "graceSeconds": 45}` — dopo un
 ///   hello valido; `resumed: true` = stessa sessione di prima (stessa
 ///   permanenza, richieste e match), `false` = sessione nuova;
@@ -125,6 +147,7 @@ Future<Response> onRequest(RequestContext context) async {
         incoming: webSocket.stream,
         outgoing: webSocket.sink,
         clientIp: clientIp,
+        attestation: AttestationGate.instance,
       ).start();
     }, pingInterval: pingInterval),
   );

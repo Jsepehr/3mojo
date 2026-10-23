@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	App Attest (verifica del dispositivo, canale `raen/attestation` in
+	AppDelegate.swift). Usato solo dalle configurazioni Release e Profile
+	(CODE_SIGN_ENTITLEMENTS nel progetto): i build di debug usano
+	l'attestazione finta e non ne hanno bisogno.
+
+	"production": le chiavi generate valgono per l'ambiente di produzione di
+	App Attest; il server deve avere APPLE_APP_ATTEST_ENVIRONMENT=production.
+	Le app distribuite da App Store e TestFlight usano comunque production.
+
+	TODO(attestation): la firma richiede la capability "App Attest" sull'App
+	ID (Developer portal → Identifiers → com.threemojo.app). Con la firma
+	automatica Xcode la aggiunge da sé al primo build firmato con il team;
+	con profili manuali vanno rigenerati dopo averla accesa.
+	-->
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>production</string>
+</dict>
+</plist>

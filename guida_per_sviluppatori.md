@@ -345,11 +345,60 @@ Richiesti da Apple (guideline 1.2, contenuti generati dagli utenti) e necessari 
 
 **Contatti e termini**: dal drawer "Sicurezza e segnalazioni" (`UiSafety`): come bloccare/segnalare, quanto dura un blocco, cosa fare in pericolo, i termini d'uso e il contatto pubblicato `SafetyContact.email` (`lib/core/config/safety_contact.dart`, **segnaposto `.example` da sostituire** prima della pubblicazione), mostrato e copiato negli appunti (l'app non include `url_launcher`). I termini: §3.7.
 
+### 3.9 Verifica del dispositivo (predisposta, **spenta**)
+
+**Perché**: gli abusi che restano dopo pseudonimi, ancore e limiti per IP richiedono **molte sessioni in parallelo** da script — rifare Start con generi diversi per scoprire chi cerca chi, o aprire sessioni con GPS falsi da più punti per localizzare qualcuno. L'attestazione rende ogni sessione **nuova** costosa: deve venire dall'app vera (firmata da noi, installata dallo store) su un dispositivo vero (non un emulatore, non un sistema modificato). Non dice **chi** è la persona e non la riconosce tra una sessione e l'altra.
+
+**Flusso** (protocollo in [server/routes/ws.dart](server/routes/ws.dart)): `hello` → se il server ha `ATTESTATION_MODE` `log`/`enforce` **e** l'hello aprirebbe una sessione nuova (non una riconnessione nella grazia), il server risponde `{"type":"challenge","nonce":...}` (32 byte casuali, una volta, 20 s, solo su quel socket) → il client risponde `{"type":"attestation", ...}` legata al nonce, o `{"type":"attestation"}` senza se sul telefono non riesce → `welcome`, oppure `{"type":"error","code":"attestationRequired"}` e chiusura 4011 (solo `enforce`). Con `off` (default) il challenge non arriva mai.
+
+**Client** (`lib/core/attestation/`, accanto a `RealtimeConnection`, l'unica che la usa):
+- `AttestationDataSource` → `AttestationDataSourceImpl` (canale nativo **nostro** `raen/attestation`, come `raen/face_detection`: nessun plugin che possa rompere il simulatore iOS su Apple Silicon) e `AttestationDataSourceFakeImpl` (token `raen-fake-attestation:<nonce>`, solo debug). La scelta in `defaultAttestationDataSource()` / `AttestationConfig.useFake`: finta in debug, vera in release; `--dart-define=ATTESTATION_NATIVE=true` forza la vera anche in debug.
+- **Android** (`AttestationChannel.kt`): Play Integrity **Standard** request con `requestHash = hex(SHA-256(utf8(nonce)))`. Standard e non Classic perché Google la consiglia per richieste frequenti (verdetto preparato dal Play Store, meno latenza allo Start, meno chiamate) e `requestHash` lega il token al challenge come farebbe il `nonce` della Classic. Il provider di token resta in memoria finché vale. Dipendenza `com.google.android.play:integrity:1.6.0`.
+- **iOS** (`AttestationChannel` in `AppDelegate.swift`): `DCAppAttestService.generateKey` (chiave **nuova a ogni sessione**) + `attestKey` con `clientDataHash = SHA-256(utf8(nonce))`. Sul simulatore `isSupported` è falso → `UNSUPPORTED` → risposta senza attestazione, l'app continua (con `enforce` il server rifiuterebbe: sul simulatore si prova con `ATTESTATION_ALLOW_FAKE`).
+- Gli hash si calcolano in Dart (`DeviceAttestation.requestHash`/`clientDataHash`), uguali al server (`AttestationChallenge`).
+- `RealtimeConnection` risponde al challenge (al più 15 s per attestare, poi risponde senza), non lo passa alle feature, e dopo `attestationRequired` **non riprova da sola** (ogni tentativo costerebbe un'altra verifica): status `offline`, Riprova (`connect` con la stessa sessione) o End. L'errore arriva come `DeviceNotVerifiedException` (`NearbyRemoteDataSourceImpl`) → `DeviceNotVerifiedFailure` → `CmpNearbyErrorState` ("Non riusciamo a verificare questa app su questo dispositivo", Riprova + Termina), che `ProNearby` tiene a schermo anche dopo la caduta di connessione che lo segue.
+
+**Server** (`server/lib/src/attestation/`): `AttestationConfig` (variabili d'ambiente), `AttestationChallenge`, `AttestationGate` (la regola delle modalità, limite per IP, esiti e contatori), `PlayIntegrityVerifier` + `PlayIntegrityApi` (`decodeIntegrityToken` con service account via `googleapis_auth`), `AppAttestVerifier` (CBOR con `crypto/cbor.dart`, catena X.509 con `crypto/x509_certificate.dart` fino ad `AppleAppAttestRoot`), `FakeAttestationVerifier`. Le utility crittografiche comuni ai pagamenti stanno in `server/lib/src/crypto/`. I test usano anche l'attestazione d'esempio pubblicata da Apple e una vera di un iPhone (`server/test/src/attestation/fixtures/`).
+
+**Perché solo attestazione, niente assertion (iOS)**: le assertion servono a riusare la stessa chiave nel tempo, e richiedono che il server ricordi chiave pubblica e contatore per `keyId` — un identificativo stabile del dispositivo tra le sessioni, ciò che Raen evita. Con una chiave nuova per sessione e una sola verifica all'`hello` della sessione nuova il server non conserva nulla; le riconnessioni della stessa sessione non si riattestano. Il prezzo: sul telefono restano chiavi App Attest inutilizzate (nel portachiavi di sistema dell'app, cancellate con la disinstallazione), e ogni Start è una chiamata ad Apple (Apple limita il volume di `attestKey` per app: attivare per gradi).
+
+**Privacy**:
+- nessun id permanente: niente `keyId` salvato (né sul telefono né sul server), niente token conservati; il token Play Integrity non contiene identificativi del dispositivo o dell'account; del verdetto si leggono solo package, `requestHash`, orario, `appRecognitionVerdict`, `deviceRecognitionVerdict`;
+- sul server in RAM restano solo contatori per esito e, per un minuto, gli orari delle attestazioni per IP (limite); il log scrive modalità, piattaforma, esito e motivo, mai IP/token/nonce/keyId;
+- terze parti: Apple (App Attest) e Google (Play Integrity) trattano dati del dispositivo per dare il verdetto e sanno che quel dispositivo ha chiesto un'attestazione per Raen. Va scritto nell'informativa privacy e, per Google, nel Data Safety di Play; nessun nuovo dato raccolto da noi.
+
+#### Per attivare la verifica del dispositivo
+
+Ogni punto del codice che dipende da questi passi è marcato `TODO(attestation)`.
+
+*Google (Android)*
+1. Google Cloud: nel progetto collegato all'app (lo stesso dei pagamenti va bene) **abilitare la Play Integrity API** (API e servizi → Libreria).
+2. Play Console → Test e rilascio → **Integrità dell'app** → Play Integrity API → **collega il progetto Google Cloud**. Annotare il **numero** del progetto (non l'id testuale: Google Cloud → Impostazioni progetto).
+3. Service account nel progetto collegato (quello dei pagamenti va bene, o uno dedicato) con la sua chiave JSON; la documentazione di Google non chiede ruoli IAM per `decodeIntegrityToken` nel progetto collegato (verificarlo alla prima prova: un 401/403 finisce nel log come `unavailable`).
+4. App: `--dart-define=GOOGLE_CLOUD_PROJECT_NUMBER=<numero>` nei build di release (o il valore in `lib/core/config/attestation_config.dart`). La verifica passa solo per l'app installata **da Google Play** (anche un canale di test interno): un APK installato a mano dà `UNRECOGNIZED_VERSION`.
+5. Facoltativo: in Play Console → Integrità dell'app → impostazioni delle risposte, lasciare spenti i verdetti facoltativi (non servono e non si leggono).
+6. Data Safety di Play: dichiarare l'uso della Play Integrity API (dati del dispositivo trattati da Google per la sicurezza / prevenzione frodi).
+
+*Apple (iOS)*
+1. Developer portal → Certificates, Identifiers & Profiles → Identifiers → `com.threemojo.app` → spuntare **App Attest** (con la firma automatica Xcode lo fa da sé al primo build firmato; con profili manuali rigenerarli).
+2. Entitlement `com.apple.developer.devicecheck.appattest-environment`: già in `ios/Runner/Runner.entitlements` (`production`) e collegato alle configurazioni **Release e Profile** (`CODE_SIGN_ENTITLEMENTS`). Debug non lo ha (usa l'attestazione finta): per provare App Attest vero in debug su un iPhone, aggiungere `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements` anche alla configurazione Debug (o un file a parte con `development`) e lanciare con `--dart-define=ATTESTATION_NATIVE=true`.
+3. Annotare il **Team ID** (Membership details).
+4. Ambiente: le build App Store / TestFlight usano sempre `production`; il server va configurato con lo stesso ambiente dell'entitlement.
+
+*Server*
+1. Variabili: `GOOGLE_PACKAGE_NAME`, `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_PATH` (o `GOOGLE_SERVICE_ACCOUNT_JSON_PATH`), `APPLE_TEAM_ID`, `APPLE_BUNDLE_ID`, `APPLE_APP_ATTEST_ENVIRONMENT=production`; facoltativa `ATTESTATION_MAX_PER_IP_PER_MINUTE` (tabella in [server/README.md](server/README.md)).
+2. **`ATTESTATION_MODE=log`** per almeno una o due settimane con le build vere: nessuno viene rifiutato, e il log dice per ogni sessione nuova l'esito con i totali.
+3. Metriche da guardare prima di passare a `enforce`: quota di `valid` sul totale (deve essere quasi tutto), `invalid` per motivo (`deviceNotTrusted`/`unrecognizedApp` = dispositivi o build che `enforce` lascerebbe fuori — se sono utenti veri, capire perché prima di bloccarli), `missing` (simulatori, app vecchie, Play Services assenti), `timeout`/`unavailable` (rete o quota Google: se sono tanti, alzare la quota Play Integrity in Google Cloud prima di `enforce`), `rateLimited` (Wi-Fi molto affollati: alzare il limite per IP).
+4. **`ATTESTATION_MODE=enforce`** quando i numeri tornano. Con una piattaforma non configurata il server **non parte** (lo scrive): meglio un deploy fallito che tutti gli utenti di una piattaforma rifiutati in silenzio, o una piattaforma lasciata aperta agli script. Per tornare indietro basta `log` o `off`.
+5. Prova in locale del giro completo senza account: `ATTESTATION_MODE=enforce ATTESTATION_ALLOW_FAKE=true` e l'app in debug (attestazione finta); `ATTESTATION_ALLOW_FAKE` è ignorato su un server con TLS o `TRUSTED_PROXY`.
+
+**Cosa non risolve** (rischi residui): un'attestazione dice "app vera su dispositivo vero", non "posizione vera" — chi ha più telefoni veri (o una farm) può ancora aprire più sessioni, a un costo molto più alto, e un'app di posizione fittizia su un telefono integro non viene vista (le difese restano ancore, raggio discreto, limiti per IP e niente distanze). App Attest non rileva da sola un jailbreak; il "risk metric" di Apple (quante chiavi ha attestato lo stesso dispositivo) richiederebbe di conservare e rinnovare le receipt, e qui non si usa.
+
 ---
 
 ## 4. Il server (`server/`, Dart Frog)
 
-Routing basato su file (convenzione Dart Frog): il path della cartella/file sotto `routes/` diventa l'URL. Variabili d'ambiente (`TLS_CERT_PATH`/`TLS_KEY_PATH`, `PAYMENTS_MODE` e credenziali dei negozi, `DEBUG_ENDPOINTS_TOKEN`, `TRUSTED_PROXY`, `MODERATION_KEY`/`MODERATION_DIR`, `ADMIN_TOKEN`, soglie e cooldown della moderazione) e riepilogo dei limiti: [server/README.md](server/README.md).
+Routing basato su file (convenzione Dart Frog): il path della cartella/file sotto `routes/` diventa l'URL. Variabili d'ambiente (`TLS_CERT_PATH`/`TLS_KEY_PATH`, `PAYMENTS_MODE` e credenziali dei negozi, `ATTESTATION_MODE` e credenziali della verifica del dispositivo, `DEBUG_ENDPOINTS_TOKEN`, `TRUSTED_PROXY`, `MODERATION_KEY`/`MODERATION_DIR`, `ADMIN_TOKEN`, soglie e cooldown della moderazione) e riepilogo dei limiti: [server/README.md](server/README.md).
 
 ```
 server/
@@ -365,15 +414,19 @@ server/
     admin/reports/…       → GET /admin/reports, GET /admin/reports/<id>/selfie, DELETE /admin/reports/<id>
                             (spenti senza ADMIN_TOKEN, solo TLS, vedi AdminReportsApi)
   lib/src/
-    socket_session.dart   ← SocketSession: un socket dall'apertura alla chiusura (hello, limiti, end)
+    socket_session.dart   ← SocketSession: un socket dall'apertura alla chiusura (hello, challenge, limiti, end)
     session_lifecycle.dart ← SessionLifecycle: nascita, grazia di 45 s, fine (endNow), purge per silenzio
     realtime_message_handler.dart ← RealtimeMessageHandler: messaggi di un client autenticato, regole, `rejected`
     session_store.dart    ← SessionStore: Map<sessionId, Session> in RAM, nearbyPeople, paywall
     encounter_store.dart  ← EncounterStore: richieste d'incontro in RAM, esclusività
     paywall_store.dart    ← PaywallStore: Map<token, unlockedAt>, revoke
     payments/             ← acquisti in-app (§3.6): PaymentsConfig (env), ReceiptVerifier (Apple/Google/Fake),
-                            AppleJwsVerifier + X509Certificate + der/ecdsa (pointycastle), AppStoreServerApi,
+                            AppleJwsVerifier, AppStoreServerApi,
                             GooglePlayApi, UnlockPurchaseService, RedeemedTransactions, StoreNotifications
+    attestation/          ← verifica del dispositivo (§3.9, spenta di default): AttestationConfig (env),
+                            AttestationChallenge, AttestationGate, PlayIntegrityVerifier + PlayIntegrityApi,
+                            AppAttestVerifier + AppleAppAttestRoot, FakeAttestationVerifier
+    crypto/               ← der, ecdsa (pointycastle), x509_certificate, cbor: comuni a payments/ e attestation/
     hotspot_store.dart    ← HotspotStore: zone d'incontro in RAM
     connection_hub.dart   ← ConnectionHub: canali connessi, push di vicinanze/richieste/chat
     pseudonyms.dart       ← Pseudonyms: id per osservatore
@@ -447,7 +500,7 @@ Il rilevamento **ignora genere/preferenza** (un fatto fisico, non una preferenza
 
 **`GET /debug/sessions`** → `debugSnapshot()`: per ogni sessione in memoria solo id interno, `connected`, `dwellSeconds`, `lastSeenSecondsAgo` — niente posizioni, distanze, selfie, genere né preferenza (con le distanze a coppie chiunque avesse il token potrebbe triangolare tutti). **Spento di default**: risponde solo se il server è avviato con `DEBUG_ENDPOINTS_TOKEN` e la richiesta manda lo stesso valore nell'header `X-Debug-Token` (confronto a tempo costante); altrimenti 404, come se non esistesse.
 
-**Provare hotspot/vicinanze senza dispositivi reali** ([tool/simulate_fake_devices.dart](server/tool/simulate_fake_devices.dart), `dart run tool/simulate_fake_devices.dart [wsBaseUrl]` col server già acceso): apre 20 vere connessioni WebSocket con lo stesso protocollo dell'app (`hello`, `presence` ogni 20 s, `end` alla chiusura), ognuna con una posizione finta. Disposizione: due gruppi da 4+1 (i 4 si vedono dopo il primo minuto con la regola normale; il quinto è oltre i 100 m dal nucleo ma dentro i 200 m dell'hotspot — è quello da guardare dopo 15 minuti), più 5 coppie isolate per la sola visibilità a due. Stampa la lista di ogni dispositivo solo quando cambia composizione. Attenzione: 20 connessioni dallo stesso IP sono esattamente il tetto predefinito di `NewSessionRateLimiter` (20 nuovi Start ogni 10 minuti): rilanciarlo subito dopo può essere rifiutato con `rateLimited`, e il simulatore lo ricorda all'avvio. Per le prove avvia il server con `MAX_NEW_SESSIONS_PER_IP=200`.
+**Provare hotspot/vicinanze senza dispositivi reali** ([tool/simulate_fake_devices.dart](server/tool/simulate_fake_devices.dart), `dart run tool/simulate_fake_devices.dart [wsBaseUrl]` col server già acceso): apre 20 vere connessioni WebSocket con lo stesso protocollo dell'app (`hello`, `presence` ogni 20 s dopo il `welcome`, `end` alla chiusura; al `challenge` della verifica del dispositivo risponde con l'attestazione finta), ognuna con una posizione finta. Disposizione: due gruppi da 4+1 (i 4 si vedono dopo il primo minuto con la regola normale; il quinto è oltre i 100 m dal nucleo ma dentro i 200 m dell'hotspot — è quello da guardare dopo 15 minuti), più 5 coppie isolate per la sola visibilità a due. Stampa la lista di ogni dispositivo solo quando cambia composizione. Attenzione: 20 connessioni dallo stesso IP sono esattamente il tetto predefinito di `NewSessionRateLimiter` (20 nuovi Start ogni 10 minuti): rilanciarlo subito dopo può essere rifiutato con `rateLimited`, e il simulatore lo ricorda all'avvio. Per le prove avvia il server con `MAX_NEW_SESSIONS_PER_IP=200`.
 
 ---
 

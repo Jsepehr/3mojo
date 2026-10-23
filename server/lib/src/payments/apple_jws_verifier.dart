@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../crypto/ecdsa.dart';
+import '../crypto/x509_certificate.dart';
 import 'apple_root_certificates.dart';
-import 'ecdsa.dart';
 import 'receipt_verifier.dart';
-import 'x509_certificate.dart';
 
 /// Verifica un **JWS firmato dall'App Store** — una transazione
 /// (`signedTransactionInfo`, il `jwsRepresentation` di StoreKit 2) o una

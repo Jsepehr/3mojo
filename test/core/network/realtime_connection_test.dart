@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:threemojo_app/core/attestation/attestation_data_source.dart';
+import 'package:threemojo_app/core/attestation/attestation_data_source_fake_impl.dart';
+import 'package:threemojo_app/core/attestation/device_attestation.dart';
+import 'package:threemojo_app/core/config/attestation_config.dart';
 import 'package:threemojo_app/core/errors/exceptions.dart';
 import 'package:threemojo_app/core/network/realtime_connection.dart';
 import 'package:threemojo_app/core/network/reconnect_backoff.dart';
@@ -15,6 +21,8 @@ void main() {
 
   setUp(() => server = FakeRealtimeServer());
   tearDown(() => server.connection.disconnect());
+
+  group('device attestation (challenge)', _attestationTests);
 
   test('the secret travels in the first message, never in the URL', () async {
     server.connection.connect(_secret);
@@ -339,6 +347,143 @@ void main() {
         expect(sockets.last.closedByClient, isTrue);
         expect(sockets.last.sentTypes, isNot(contains('end')));
       });
+    });
+  });
+}
+
+/// Un'attestazione che si può far fallire o rallentare.
+class _ScriptedAttestation implements AttestationDataSource {
+  Future<DeviceAttestation> Function(String nonce) answer = (nonce) async =>
+      DeviceAttestation.android('token-for-$nonce');
+  final nonces = <String>[];
+
+  @override
+  Future<DeviceAttestation> attest(String nonce) {
+    nonces.add(nonce);
+    return answer(nonce);
+  }
+}
+
+void _attestationTests() {
+  late _ScriptedAttestation attestation;
+  late FakeRealtimeServer server;
+
+  setUp(() {
+    attestation = _ScriptedAttestation();
+    server = FakeRealtimeServer(attestation: attestation);
+  });
+  tearDown(() => server.connection.disconnect());
+
+  test('a challenge is answered with the attestation for its nonce, and is '
+      'not passed on to the features', () async {
+    final events = <Object>[];
+    server.connection.connect(_secret).listen(events.add, onError: events.add);
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'challenge', 'nonce': 'n-1'});
+    await pumpEvents();
+
+    expect(attestation.nonces, ['n-1']);
+    expect(server.last.sent, [
+      {'type': 'hello', 'secret': _secret},
+      {'type': 'attestation', 'platform': 'android', 'token': 'token-for-n-1'},
+    ]);
+    expect(events, isEmpty);
+
+    server.last.welcome();
+    await pumpEvents();
+    expect(server.connection.status, RealtimeStatus.online);
+  });
+
+  test('an attestation that fails on the device is answered without one: '
+      'the server decides', () async {
+    attestation.answer = (_) async =>
+        throw const AttestationUnavailableException('UNSUPPORTED');
+    server.connection.connect(_secret);
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'challenge', 'nonce': 'n-1'});
+    await pumpEvents();
+
+    expect(server.last.sent.last, {'type': 'attestation'});
+  });
+
+  test('an attestation that never ends is given up after the timeout', () {
+    fakeAsync((async) {
+      final slow = FakeRealtimeServer(attestation: attestation);
+      attestation.answer = (_) => Completer<DeviceAttestation>().future;
+      slow.connection.connect(_secret);
+      async.flushMicrotasks();
+      slow.last.serverSends({'type': 'challenge', 'nonce': 'n-1'});
+      async.elapse(slow.connection.attestationTimeout);
+      async.flushMicrotasks();
+
+      expect(slow.last.sent.last, {'type': 'attestation'});
+      slow.connection.disconnect();
+      async.flushMicrotasks();
+    });
+  });
+
+  test('a nonce that is not a short string is not attested', () async {
+    server.connection.connect(_secret);
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'challenge', 'nonce': 'x' * 1000});
+    await pumpEvents();
+
+    expect(attestation.nonces, isEmpty);
+    expect(server.last.sent.last, {'type': 'attestation'});
+  });
+
+  test('"attestationRequired" reaches the features and stops the automatic '
+      'retries; Retry (connect again) tries once more', () async {
+    final events = <Object>[];
+    server.connection.connect(_secret).listen(events.add, onError: events.add);
+    await pumpEvents();
+    server.last.serverSends({'type': 'challenge', 'nonce': 'n-1'});
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'error', 'code': 'attestationRequired'});
+    await server.last.serverCloses(
+      code: RealtimeConnection.closeCodeAttestationRequired,
+    );
+    await pumpEvents();
+
+    expect(
+      events.whereType<Map<String, dynamic>>().single['code'],
+      'attestationRequired',
+    );
+    expect(events.whereType<ServerException>(), hasLength(1));
+    expect(server.sockets, hasLength(1));
+    expect(server.connection.status, RealtimeStatus.offline);
+
+    // Tornare in primo piano non riprova da solo.
+    server.connection.checkAlive();
+    await pumpEvents();
+    expect(server.sockets, hasLength(1));
+
+    // Riprova: un nuovo tentativo, con un nuovo challenge.
+    server.connection.connect(_secret);
+    await pumpEvents();
+    expect(server.sockets, hasLength(2));
+    server.last.serverSends({'type': 'challenge', 'nonce': 'n-2'});
+    await pumpEvents();
+    expect(attestation.nonces, ['n-1', 'n-2']);
+  });
+
+  test('in debug builds the attestation is the fake one, bound to the '
+      'nonce', () async {
+    expect(AttestationConfig.useFake(debugBuild: true, native: false), isTrue);
+    expect(AttestationConfig.useFake(debugBuild: true, native: true), isFalse);
+    expect(
+      AttestationConfig.useFake(debugBuild: false, native: false),
+      isFalse,
+    );
+
+    final fake = await const AttestationDataSourceFakeImpl().attest('n-9');
+    expect(fake.toJson(), {
+      'platform': 'fake',
+      'token': '${AttestationConfig.fakeTokenPrefix}n-9',
     });
   });
 }

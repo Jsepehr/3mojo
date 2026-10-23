@@ -80,6 +80,11 @@ class RealtimeMessageHandler {
   /// (4009).
   static const maxChatMessageChars = 16 * 1024;
 
+  /// La risposta al challenge della verifica del dispositivo
+  /// (`attestation`): un attestation object App Attest è ~8 KB in base64, un
+  /// token Play Integrity qualche KB (vedi `AttestationEvidence`).
+  static const maxAttestationChars = 40 * 1024;
+
   /// Qualsiasi altro messaggio (hello, richieste, ping, end).
   static const maxOtherMessageChars = 1024;
 
@@ -96,6 +101,7 @@ class RealtimeMessageHandler {
   static int maxCharsFor(Object? type) => switch (type) {
     'presence' => maxPresenceChars,
     'chatMessage' => maxChatMessageChars,
+    'attestation' => maxAttestationChars,
     _ => maxOtherMessageChars,
   };
 

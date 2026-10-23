@@ -130,6 +130,13 @@ class SessionLifecycle {
   /// `true` se [sessionId] è nel periodo di grazia.
   bool isInGrace(String sessionId) => _graceTimers.containsKey(sessionId);
 
+  /// `true` se [secret] è valido e appartiene a una sessione ancora viva:
+  /// un `hello` con questo segreto **riprende** quella sessione invece di
+  /// aprirne una nuova. Per `SocketSession`, che chiede la verifica del
+  /// dispositivo solo alle sessioni nuove.
+  bool wouldResume(String? secret) =>
+      SessionCredentials.isValidSecret(secret) && _credentials.knows(secret!);
+
   /// Verifica il segreto del primo messaggio del socket. Un segreto ancora
   /// legato a una sessione viva (connessa o nel periodo di grazia) è una
   /// **riconnessione**: non conta per il limite ai nuovi Start.

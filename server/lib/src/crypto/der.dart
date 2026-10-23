@@ -2,7 +2,8 @@ import 'dart:typed_data';
 
 /// Lettore **DER** minimale (il sottoinsieme di ASN.1 usato da certificati
 /// X.509, chiavi PKCS#8 e firme ECDSA): quanto basta per verificare le
-/// transazioni firmate da Apple senza una libreria X.509 completa.
+/// transazioni firmate da Apple (`payments/`) e le attestazioni App Attest
+/// (`attestation/`) senza una libreria X.509 completa.
 ///
 /// Rifiuta tutto ciò che il DER vieta o che qui non serve: lunghezze
 /// indefinite, tag in forma estesa, lunghezze oltre 4 byte, byte avanzati.

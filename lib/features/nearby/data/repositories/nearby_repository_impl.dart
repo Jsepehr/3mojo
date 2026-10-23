@@ -53,6 +53,7 @@ class NearbyRepositoryImpl implements NearbyRepository {
             SelfieRejectedException() => const SelfieRejectedByServerFailure(),
             SelfiePreparationException() => const SelfieNotUsableFailure(),
             RateLimitedException() => const TooManyStartsFailure(),
+            DeviceNotVerifiedException() => const DeviceNotVerifiedFailure(),
             _ => UnexpectedFailure(error.toString()),
           }),
         ),
