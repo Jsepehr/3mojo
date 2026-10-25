@@ -220,7 +220,7 @@ class App extends StatelessWidget {
         ),
         Provider<NearbyRemoteDataSource>(
           create: (_) => fakeMode
-              ? NearbyRemoteDataSourceFakeImpl()
+              ? NearbyRemoteDataSourceFakeImpl(crowded: true)
               : NearbyRemoteDataSourceImpl(),
         ),
         Provider<LocationRepository>(

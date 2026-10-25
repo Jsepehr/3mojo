@@ -14,7 +14,13 @@ import 'paywall_remote_data_source.dart';
 /// l'orologio del dispositivo — qui va bene, dato che in modalità finta
 /// non c'è nessun vero pagamento da proteggere.
 class PaywallRemoteDataSourceFakeImpl implements PaywallRemoteDataSource {
-  static const _unlockDuration = Duration(hours: 2);
+  /// 2 ore come quello vero; per provare il timer e la scadenza senza
+  /// aspettare, `flutter run --dart-define=FAKE_UNLOCK_MINUTES=3` lo
+  /// accorcia (vale solo per questo finto: modalità finta e demo).
+  static const _unlockDuration = _fakeUnlockMinutes > 0
+      ? Duration(minutes: _fakeUnlockMinutes)
+      : Duration(hours: 2);
+  static const _fakeUnlockMinutes = int.fromEnvironment('FAKE_UNLOCK_MINUTES');
 
   final Map<String, DateTime> _unlockedAtByToken = {};
   final Map<String, String> _tokenByTransaction = {};

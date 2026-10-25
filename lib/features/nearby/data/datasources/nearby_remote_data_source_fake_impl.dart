@@ -46,6 +46,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     this.viewerMustStayPut = true,
     this.peopleComeAndGo = true,
     this.idPrefix,
+    this.crowded = false,
   }) : _unlockTokenStore = unlockTokenStore ?? UnlockTokenStore.instance;
 
   /// Come sul server: per il primo minuto dopo lo Start la lista è vuota.
@@ -60,6 +61,12 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   /// Prefisso fisso degli id (`<idPrefix>-<n>`, n da 1 a 5) al posto di uno
   /// nuovo a ogni sessione: [personId] dice l'id che avrà la persona `n`.
   final String? idPrefix;
+
+  /// Con `true` (modalità finta di sviluppo) alle 5 persone di base se ne
+  /// aggiungono altre 7: con 12 persone il paywall ne blocca sempre
+  /// parecchie, così si provano lo sblocco finto e il timer. La demo resta
+  /// a 5 (le sue richieste finte in entrata citano le persone 1–5).
+  final bool crowded;
 
   /// L'id della persona seminata numero [index] (1–5) con il prefisso
   /// fisso [idPrefix].
@@ -89,7 +96,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   static const double _freeFraction = 1 / 3;
   static const int _minFreeCount = 2;
 
-  static List<_FakePresence> _seedPeople() {
+  static List<_FakePresence> _seedPeople({required bool crowded}) {
     final now = DateTime.now();
     return [
       _FakePresence(
@@ -130,6 +137,24 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
         intent: MeetIntent.meetPeople,
         languages: const ['fr'],
       ),
+      if (crowded) ...[
+        for (final (index, meters, minutes, intent, languages) in const [
+          (6, 8.0, 7, MeetIntent.friendship, ['it', 'de']),
+          (7, 15.0, 3, MeetIntent.chat, ['en']),
+          (8, 27.0, 5, null, ['it']),
+          (9, 33.0, 2, MeetIntent.openToAnything, ['ar', 'en']),
+          (10, 52.0, 8, MeetIntent.meetPeople, ['es']),
+          (11, 66.0, 4, MeetIntent.chat, ['it', 'fr']),
+          (12, 91.0, 1, MeetIntent.friendship, <String>[]),
+        ])
+          _FakePresence(
+            index: index,
+            distanceMeters: meters,
+            arrivedAt: now.subtract(Duration(minutes: minutes, seconds: 20)),
+            intent: intent,
+            languages: languages,
+          ),
+      ],
     ];
   }
 
@@ -152,7 +177,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     unawaited(existing?.close());
     _idPrefix = prefix;
     _connectedAt = DateTime.now();
-    _people = _seedPeople();
+    _people = _seedPeople(crowded: crowded);
     final controller = StreamController<List<NearbyPersonModel>>.broadcast();
     _controller = controller;
     _timer?.cancel();
