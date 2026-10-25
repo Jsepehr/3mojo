@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_demo_badge.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/core/widgets/cmp_status_chip.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -45,6 +47,10 @@ class CmpOutgoingRequestTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (DemoMode.isActive(context)) ...[
+            const SizedBox(width: 8),
+            const CmpDemoBadge(),
+          ],
         ],
       ),
       subtitle: Padding(

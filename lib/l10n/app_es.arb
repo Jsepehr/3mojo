@@ -330,5 +330,20 @@
   "start_error_consent_required": "Para conectarte, confirma de nuevo que Raen puede usar tu género y a quién quieres conocer.",
   "consent_renewal_title": "Confirma tu consentimiento",
   "consent_renewal_body": "El texto del consentimiento ha cambiado desde que lo diste. Léelo y confírmalo para conectarte. Si prefieres no hacerlo, elige \"Prefiero no decirlo\" y \"Todos\" en tu perfil: así no hace falta el consentimiento.",
-  "link_copied": "Enlace copiado"
+  "link_copied": "Enlace copiado",
+  "demo_badge": "Demo",
+  "demo_person_semantics": "Persona de demostración",
+  "demo_banner_title": "Demo — personas de demostración, no reales",
+  "demo_exit": "Salir de la demo",
+  "demo_try_link": "¿Cómo funciona? Prueba la demo",
+  "demo_drawer_item": "Probar la demo",
+  "demo_nearby_note": "En la realidad aparece quien se queda quieto cerca de ti al menos un minuto.",
+  "demo_unavailable_online": "La demo solo se abre sin conexión: primero pulsa Terminar.",
+  "demo_unlock_button": "Desbloquear (demo)",
+  "demo_unlock_dialog_body": "Demo: ningún pago. En la app real, el desbloqueo muestra todos los perfiles cercanos durante 2 horas y se paga a través de la tienda.",
+  "demo_unlock_confirm": "Desbloquear gratis",
+  "demo_nothing_is_sent": "En la demo no se envía nada: la persona solo desaparece de esta demo.",
+  "demo_chat_reply_1": "¡Hola! 👋 Soy una persona de demostración: te respondo automáticamente.",
+  "demo_chat_reply_2": "En la realidad aquí escribirías a alguien que está de verdad cerca de ti, para veros en persona.",
+  "demo_chat_reply_3": "Cuando quieras, cierra el encuentro con Terminar o sal de la demo."
 }

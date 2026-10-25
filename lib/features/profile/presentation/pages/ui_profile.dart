@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '/core/widgets/cmp_busy_filled_button.dart';
 import '/core/widgets/cmp_inline_error.dart';
+import '/features/demo/presentation/providers/pro_demo.dart';
+import '/features/demo/presentation/widgets/cmp_try_demo_link.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/profile_labels.dart';
@@ -266,6 +268,13 @@ class _UiProfileState extends State<UiProfile> {
                 style: theme.textTheme.bodyMedium,
               ),
             ],
+            // Al primo avvio la demo dichiarata si può provare anche prima
+            // di compilare il profilo (la demo ha un profilo neutro suo).
+            if (widget.isOnboarding && context.watch<ProDemo?>() != null)
+              const Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: CmpTryDemoLink(),
+              ),
             section(l10n.you_are),
             Wrap(
               spacing: 8,

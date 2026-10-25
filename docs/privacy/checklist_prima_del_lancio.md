@@ -35,6 +35,8 @@
 - [ ] **[B]** **JDK**: `android/gradle.properties` fissa `org.gradle.java.home` a `C:\Users\sepehrbaradaran\.jdks\azul-17.0.16` (una macchina Windows). Sulla macchina o CI che fa la build di release va adattato (percorsi in `macchine_sviluppo.md`), senza committare un percorso di un'altra macchina.
 - [ ] Build di release con: `--dart-define=API_BASE_URL=https://<server>` (obbligatorio, solo https), `REAL_PAYMENTS=true`, `IOS_UNLOCK_PRODUCT_ID`/`ANDROID_UNLOCK_PRODUCT_ID` (oggi `TODO_REPLACE_…` in `lib/core/config/store_config.dart`), `GOOGLE_CLOUD_PROJECT_NUMBER` (per Play Integrity).
 - [ ] iOS: capability **App Attest** sull'App ID; entitlement `production` già in `ios/Runner/Runner.entitlements`.
+- [x] **Modalità demo dichiarata** per la revisione con un solo telefono (Apple 2.1), senza profili finti nel servizio vero: link "Come funziona? Prova la demo" sotto Start e nel profilo da compilare, voce "Prova la demo" nel menu (solo da offline). Tutta sul telefono (`DemoScope`, `lib/demo_scope.dart`): datasource finti anche in release, nessun messaggio al server né WebSocket, nessuna posizione, fotocamera, permesso o negozio vero; avatar illustrati generati sul telefono; banner fisso "Demo — persone dimostrative, non reali" e badge "Demo" su ogni persona; all'uscita si azzera tutto (passi di End). Test in `test/features/demo/demo_mode_test.dart`.
+- [ ] Provare la demo su un telefono vero **in release** e in modalità aereo (deve funzionare uguale): ingresso dalla home, dal menu e dal profilo da compilare; richiesta → sì → chat; richiesta in arrivo dopo ~15 s; Blocca/Segnala; sblocco gratuito col timer; Esci dalla demo ed End riportano alla home vera; VoiceOver/TalkBack leggono il banner e "Persona dimostrativa".
 
 ### 2.1 Firma della release Android
 
@@ -85,14 +87,15 @@ Riferimento: tabella delle variabili in `server/README.md`.
 - [ ] **[B]** URL dell'informativa privacy (e del supporto) in App Store Connect.
 - [ ] Classificazione d'età **18+**.
 - [ ] Prodotto in-app **consumabile** creato e inviato **insieme** alla build; accordo "App a pagamento" attivo.
-- [ ] Note di revisione (§D) con video o disponibilità a una prova dal vivo; contatto per la revisione.
+- [ ] Note di revisione (§D): spiegare la **modalità demo dichiarata** (come aprirla, perché esiste, che non mostra mai persone demo agli utenti reali e non contatta il server), più, se possibile, video del flusso reale con due telefoni o disponibilità a una prova dal vivo; contatto per la revisione.
+- [ ] Screenshot dello store: se presi dalla demo, banner e badge "Demo" visibili; mai far passare le persone dimostrative per utenti reali.
 
 **Google Play**
 - [ ] **[B]** Data safety come in [store_privacy.md](store_privacy.md) §B (Play Integrity ed eventuale diagnostica della Play Billing Library; **niente più telemetria ML Kit**: se era già stata dichiarata, toglierla).
 - [ ] **[B]** Dichiarazione dei **servizi in primo piano** (tipo "Posizione") con video (§C).
 - [ ] Verificare sull'AAB finale (Esplora app bundle) l'**assenza** di `ACCESS_BACKGROUND_LOCATION` e la presenza di `com.android.vending.BILLING`. Il manifest unito in `build/` è di una build vecchia e non lo contiene ancora.
 - [ ] Pubblico di destinazione: **solo 18+**. Questionario IARC (§E). Annunci: no.
-- [ ] Accesso all'app: "nessuna restrizione d'accesso" (niente login), con le istruzioni per vedere altre persone (servono due dispositivi).
+- [ ] Accesso all'app: "nessuna restrizione d'accesso" (niente login), con le istruzioni: la **demo dichiarata** ("Come funziona? Prova la demo", tutta sul telefono) per vedere il flusso con un solo dispositivo, e due dispositivi vicini per il servizio vero (stesso testo di [store_privacy.md](store_privacy.md) §D).
 - [ ] Prodotto in-app attivo, test delle licenze, service account con i permessi.
 - [ ] Integrità dell'app: progetto Google Cloud collegato, Play Integrity API abilitata.
 

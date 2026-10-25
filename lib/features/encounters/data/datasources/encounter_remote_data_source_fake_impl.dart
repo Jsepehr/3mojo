@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 
 import '/features/profile/domain/entities/profile.dart';
 import '../../domain/entities/encounter_proposal.dart';
@@ -22,7 +23,48 @@ import 'encounter_remote_data_source.dart';
 /// `watchRequests` con un altro id) o con [reset] (End) si azzera tutto —
 /// richieste, timer, stream — invece di riportare le richieste di ieri in
 /// una sessione nuova.
+///
+/// Lo usa anche la **demo dichiarata** (`DemoScope`), in ogni build, con un
+/// copione più prevedibile: le richieste in entrata arrivano da
+/// [incomingRequesters] (persone della lista "Vicinanze" finta, con la
+/// loro foto illustrata), ogni [incomingTickInterval], sempre
+/// ([newIncomingProbability] 1), e le risposte alle tue richieste sono
+/// sempre un sì ([acceptProbability] 1) dopo [responseDelay]. Le regole
+/// (un incontro alla volta, una richiesta per coppia) restano le stesse.
 class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
+  EncounterRemoteDataSourceFakeImpl({
+    this.incomingTickInterval = const Duration(seconds: 5),
+    this.responseDelay = const Duration(seconds: 4),
+    this.newIncomingProbability = 0.3,
+    this.acceptProbability = 0.6,
+    this.incomingRequesters,
+    this.selfieOf,
+  });
+
+  /// Ogni quanto può arrivare una richiesta finta in entrata.
+  final Duration incomingTickInterval;
+
+  /// Dopo quanto arriva la risposta finta a una tua richiesta.
+  final Duration responseDelay;
+
+  /// Probabilità che a ogni giro arrivi una richiesta in entrata (se non ce
+  /// n'è già una in attesa e non c'è un match).
+  final double newIncomingProbability;
+
+  /// Probabilità che una tua richiesta venga accettata.
+  final double acceptProbability;
+
+  /// Chi manda le richieste in entrata, nell'ordine: ognuno una volta sola
+  /// e solo se con lui non c'è già una richiesta. `null` = persone finte
+  /// fuori dalla lista (`fake-person-N`), senza foto e con una proposta a
+  /// caso.
+  final List<FakeIncomingRequester>? incomingRequesters;
+
+  /// La foto (illustrata) della persona [personId] da mettere sulle tue
+  /// richieste, come fa il server per quelle in attesa o accettate (è
+  /// quella che si vede nella pagina del match). `null` = nessuna foto.
+  final Uint8List? Function(String personId)? selfieOf;
+
   final Random _random = Random();
   final List<EncounterRequestModel> _incoming = [];
   final List<EncounterRequestModel> _outgoing = [];
@@ -33,11 +75,6 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
   final Set<Timer> _responseTimers = {};
   String? _sessionId;
   int _fakeIncomingCounter = 0;
-
-  static const Duration _incomingTickInterval = Duration(seconds: 5);
-  static const Duration _responseDelay = Duration(seconds: 4);
-  static const double _newIncomingProbability = 0.3;
-  static const double _acceptProbability = 0.6;
 
   bool get _hasActiveMatch =>
       _incoming.any((r) => r.status == EncounterRequestStatus.accepted) ||
@@ -57,7 +94,7 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
     final controller = StreamController<EncounterSnapshotModel>.broadcast();
     _controller = controller;
     _incomingTimer = Timer.periodic(
-      _incomingTickInterval,
+      incomingTickInterval,
       (_) => _maybeAddIncoming(),
     );
     scheduleMicrotask(_emit);
@@ -129,12 +166,13 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
       otherPersonId: otherPersonId,
       status: EncounterRequestStatus.pending,
       proposal: proposal,
+      otherSelfieBytes: selfieOf?.call(otherPersonId),
     );
     _outgoing.add(request);
     _emit();
 
     late final Timer timer;
-    timer = Timer(_responseDelay, () {
+    timer = Timer(responseDelay, () {
       _responseTimers.remove(timer);
       final index = _outgoing.indexWhere((r) => r.id == request.id);
       if (index == -1 ||
@@ -142,7 +180,7 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
         return;
       }
       final accepted =
-          !_hasActiveMatch && _random.nextDouble() < _acceptProbability;
+          !_hasActiveMatch && _random.nextDouble() < acceptProbability;
       _outgoing[index] = _outgoing[index].withStatus(
         accepted
             ? EncounterRequestStatus.accepted
@@ -198,7 +236,13 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
       (r) => r.status == EncounterRequestStatus.pending,
     );
     if (hasPending || _hasActiveMatch) return;
-    if (_random.nextDouble() >= _newIncomingProbability) return;
+    if (_random.nextDouble() >= newIncomingProbability) return;
+
+    final requesters = incomingRequesters;
+    if (requesters != null) {
+      _addIncomingFrom(requesters);
+      return;
+    }
 
     _fakeIncomingCounter++;
     _incoming.add(
@@ -214,6 +258,34 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
             ? const ['it', 'en']
             : const ['it'],
         otherVisibleGender: _fakeIncomingCounter.isEven ? Gender.female : null,
+      ),
+    );
+    _emit();
+  }
+
+  /// La prossima richiesta del copione: dal primo di [requesters] con cui
+  /// non c'è ancora nessuna richiesta (in nessuno dei due versi). Finiti
+  /// loro, non ne arrivano più.
+  void _addIncomingFrom(List<FakeIncomingRequester> requesters) {
+    final involved = {
+      for (final request in [..._incoming, ..._outgoing]) request.otherPersonId,
+    };
+    final requester = requesters
+        .where((candidate) => !involved.contains(candidate.personId))
+        .firstOrNull;
+    if (requester == null) return;
+
+    _fakeIncomingCounter++;
+    _incoming.add(
+      EncounterRequestModel(
+        id: 'in-$_fakeIncomingCounter-${DateTime.now().microsecondsSinceEpoch}',
+        otherPersonId: requester.personId,
+        status: EncounterRequestStatus.pending,
+        proposal: requester.proposal,
+        otherSelfieBytes: requester.selfieBytes,
+        otherIntent: requester.intent,
+        otherLanguages: requester.languages,
+        otherVisibleGender: requester.visibleGender,
       ),
     );
     _emit();
@@ -238,4 +310,26 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
       outgoing: List.unmodifiable(_outgoing),
     ));
   }
+}
+
+/// Una persona che, nel copione della demo, ti manda una richiesta: lo
+/// stesso pseudonimo e la stessa foto illustrata con cui compare in
+/// "Vicinanze" (`NearbyRemoteDataSourceFakeImpl`), cosa ti propone e ciò che
+/// mostra del profilo.
+class FakeIncomingRequester {
+  const FakeIncomingRequester({
+    required this.personId,
+    required this.proposal,
+    this.selfieBytes,
+    this.intent,
+    this.languages = const [],
+    this.visibleGender,
+  });
+
+  final String personId;
+  final EncounterProposal proposal;
+  final Uint8List? selfieBytes;
+  final MeetIntent? intent;
+  final List<String> languages;
+  final Gender? visibleGender;
 }

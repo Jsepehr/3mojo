@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/core/errors/failures.dart';
 import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_demo_badge.dart';
 import '/core/widgets/cmp_end_button.dart';
 import '/core/widgets/cmp_inline_error.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
@@ -206,7 +208,12 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
             children: [
               _MatchPhoto(photo: photo),
               const SizedBox(width: 12),
-              Text(l10n.chat),
+              Flexible(child: Text(l10n.chat, overflow: TextOverflow.ellipsis)),
+              // Nella demo dichiarata: chi ti risponde è dimostrativo.
+              if (DemoMode.isActive(context)) ...[
+                const SizedBox(width: 8),
+                const CmpDemoBadge(),
+              ],
             ],
           ),
           actions: [

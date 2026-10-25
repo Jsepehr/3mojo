@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/report_reason.dart';
 import '../safety_labels.dart';
@@ -45,6 +46,18 @@ class _CmpReportDialogState extends State<CmpReportDialog> {
                 style: theme.textTheme.bodyMedium,
               ),
             ),
+            // Nella demo dichiarata la segnalazione non parte davvero.
+            if (DemoMode.isActive(context))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: Text(
+                  l10n.demo_nothing_is_sent,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             RadioGroup<ReportReason>(
               groupValue: reason,

@@ -42,16 +42,51 @@ enum FakeStoreOutcome {
 ///
 /// **Solo nei build di debug**: in release il costruttore lancia (è
 /// `StoreConfig.mode` a non sceglierlo mai, questa è la cintura in più).
+///
+/// L'unica eccezione è [StoreBillingDataSourceFakeImpl.demo], il negozio
+/// della **demo dichiarata** (`DemoScope`), che esiste in ogni build: lo
+/// sblocco della demo è gratuito e simulato ("Demo: nessun pagamento",
+/// `UnlockOffer.demo`), e le sue ricevute finte arrivano solo al paywall
+/// finto della demo (`PaywallRemoteDataSourceFakeImpl`) — mai a un server,
+/// mai al negozio vero.
 class StoreBillingDataSourceFakeImpl implements StoreBillingDataSource {
   StoreBillingDataSourceFakeImpl({
     FakeStoreOutcome? outcome,
-    this.sheetDelay = const Duration(milliseconds: 1200),
-    this.approvalDelay = const Duration(seconds: 8),
+    Duration sheetDelay = const Duration(milliseconds: 1200),
+    Duration approvalDelay = const Duration(seconds: 8),
     DateTime Function()? now,
     Iterable<StorePurchase> unfinishedAtStartup = const [],
-  }) : outcome = outcome ?? FakeStoreOutcome.fromEnvironment(),
-       _now = now ?? DateTime.now {
-    if (kReleaseMode) {
+  }) : this._(
+         outcome: outcome ?? FakeStoreOutcome.fromEnvironment(),
+         sheetDelay: sheetDelay,
+         approvalDelay: approvalDelay,
+         now: now,
+         unfinishedAtStartup: unfinishedAtStartup,
+         isDemo: false,
+       );
+
+  /// Il negozio della demo dichiarata: sempre a buon fine, una breve attesa
+  /// come la finestra nativa, offerta `UnlockOffer.demo`. Anche in release.
+  StoreBillingDataSourceFakeImpl.demo({
+    Duration sheetDelay = const Duration(milliseconds: 600),
+  }) : this._(
+         outcome: FakeStoreOutcome.success,
+         sheetDelay: sheetDelay,
+         approvalDelay: Duration.zero,
+         now: null,
+         unfinishedAtStartup: const [],
+         isDemo: true,
+       );
+
+  StoreBillingDataSourceFakeImpl._({
+    required this.outcome,
+    required this.sheetDelay,
+    required this.approvalDelay,
+    required DateTime Function()? now,
+    required Iterable<StorePurchase> unfinishedAtStartup,
+    required this.isDemo,
+  }) : _now = now ?? DateTime.now {
+    if (kReleaseMode && !isDemo) {
       throw StateError('Il negozio simulato non esiste nei build di release');
     }
     for (final purchase in unfinishedAtStartup) {
@@ -59,6 +94,9 @@ class StoreBillingDataSourceFakeImpl implements StoreBillingDataSource {
       _outOfBand.add(purchase);
     }
   }
+
+  /// Il negozio della demo dichiarata ([StoreBillingDataSourceFakeImpl.demo]).
+  final bool isDemo;
 
   /// Modificabile (test, prove a mano): vale per il prossimo acquisto.
   FakeStoreOutcome outcome;
@@ -91,7 +129,8 @@ class StoreBillingDataSourceFakeImpl implements StoreBillingDataSource {
   }
 
   @override
-  Future<UnlockOffer> loadUnlockOffer() async => const UnlockOffer.simulated();
+  Future<UnlockOffer> loadUnlockOffer() async =>
+      isDemo ? const UnlockOffer.demo() : const UnlockOffer.simulated();
 
   @override
   Future<StoreCheckout> buyUnlock() async {

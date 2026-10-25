@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_demo_badge.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/features/profile/presentation/profile_labels.dart';
 import '/features/profile/presentation/widgets/cmp_profile_details.dart';
@@ -59,6 +61,10 @@ class CmpIncomingRequestTile extends StatelessWidget {
       child: Column(
         children: [
           CmpPhoto(image: photo, size: 96),
+          if (DemoMode.isActive(context)) ...[
+            const SizedBox(height: 8),
+            const CmpDemoBadge(),
+          ],
           const SizedBox(height: 12),
           Row(
             mainAxisSize: MainAxisSize.min,

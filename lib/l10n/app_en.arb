@@ -1467,5 +1467,65 @@
   "link_copied": "Link copied",
   "@link_copied": {
     "description": "Snackbar after tapping the public address of the privacy policy: it was copied to the clipboard"
+  },
+  "demo_badge": "Demo",
+  "@demo_badge": {
+    "description": "Small pill shown next to every demo person (Nearby tiles, requests, chat) in the declared demo mode"
+  },
+  "demo_person_semantics": "Demo person",
+  "@demo_person_semantics": {
+    "description": "Screen-reader label of the \"Demo\" pill: this person is not real, only part of the demo"
+  },
+  "demo_banner_title": "Demo — demo people, not real",
+  "@demo_banner_title": {
+    "description": "Fixed banner at the top of every page of the declared demo mode: the people shown are not real"
+  },
+  "demo_exit": "Exit demo",
+  "@demo_exit": {
+    "description": "Button in the demo banner: leaves the demo and goes back to the real offline home"
+  },
+  "demo_try_link": "How does it work? Try the demo",
+  "@demo_try_link": {
+    "description": "Discreet link under the Start button (and at the bottom of the first profile page) that opens the declared demo mode"
+  },
+  "demo_drawer_item": "Try the demo",
+  "@demo_drawer_item": {
+    "description": "Drawer item that opens the declared demo mode (only while offline)"
+  },
+  "demo_nearby_note": "In reality, people appear once they have stayed still near you for at least a minute.",
+  "@demo_nearby_note": {
+    "description": "One line at the top of the demo Nearby list: in the demo the list is full right away, in reality people appear only after staying still near you for at least a minute"
+  },
+  "demo_unavailable_online": "You can only open the demo while offline. Tap End first.",
+  "@demo_unavailable_online": {
+    "description": "Snackbar: the demo cannot be opened during a real session"
+  },
+  "demo_unlock_button": "Unlock (demo)",
+  "@demo_unlock_button": {
+    "description": "Unlock button of the paywall banner in the demo: the unlock is simulated and free"
+  },
+  "demo_unlock_dialog_body": "Demo: no payment. In the real app, unlocking shows every nearby profile for 2 hours and is paid through the app store.",
+  "@demo_unlock_dialog_body": {
+    "description": "Body of the unlock confirmation dialog in the demo: no payment happens"
+  },
+  "demo_unlock_confirm": "Unlock for free",
+  "@demo_unlock_confirm": {
+    "description": "Confirm button of the unlock dialog in the demo (free, simulated)"
+  },
+  "demo_nothing_is_sent": "In the demo nothing is sent: the person only disappears from this demo.",
+  "@demo_nothing_is_sent": {
+    "description": "Note in the Block and Report dialogs during the demo: nothing is sent, the action only affects the demo"
+  },
+  "demo_chat_reply_1": "Hi! 👋 I'm a demo person: I reply automatically.",
+  "@demo_chat_reply_1": {
+    "description": "First automatic reply of a demo person in the demo chat"
+  },
+  "demo_chat_reply_2": "In reality you'd be writing to someone who is really near you, to meet in person.",
+  "@demo_chat_reply_2": {
+    "description": "Second automatic reply in the demo chat"
+  },
+  "demo_chat_reply_3": "Whenever you like, close the match with End, or exit the demo.",
+  "@demo_chat_reply_3": {
+    "description": "Third automatic reply in the demo chat. \"End\" is the button that ends the match (end_match)"
   }
 }

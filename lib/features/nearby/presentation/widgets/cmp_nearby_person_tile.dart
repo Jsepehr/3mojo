@@ -2,8 +2,10 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/core/theme/raen_colors.dart';
 import '/core/utils/photo_data_uri.dart';
+import '/core/widgets/cmp_demo_badge.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/core/widgets/cmp_status_chip.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
@@ -87,6 +89,11 @@ class CmpNearbyPersonTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Nella demo dichiarata: ogni persona è dimostrativa.
+                    if (DemoMode.isActive(context)) ...[
+                      const CmpDemoBadge(),
+                      const SizedBox(height: 8),
+                    ],
                     _MeetingChanceChip(
                       chance: person.meetingChance,
                       label: _meetingChanceLabel(l10n, person.meetingChance),

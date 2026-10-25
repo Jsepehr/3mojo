@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/l10n/generated/app_localizations.dart';
 
 /// Chiede conferma prima di bloccare: cosa succede, e — onestamente — fino
@@ -24,7 +25,17 @@ class CmpBlockConfirmDialog extends StatelessWidget {
     return AlertDialog(
       icon: const Icon(Icons.block),
       title: Text(l10n.block_dialog_title),
-      content: Text(l10n.block_dialog_body),
+      content: DemoMode.isActive(context)
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.block_dialog_body),
+                const SizedBox(height: 12),
+                _DemoNote(text: l10n.demo_nothing_is_sent),
+              ],
+            )
+          : Text(l10n.block_dialog_body),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
@@ -40,6 +51,25 @@ class CmpBlockConfirmDialog extends StatelessWidget {
           child: Text(l10n.block),
         ),
       ],
+    );
+  }
+}
+
+/// La nota della demo dichiarata sotto la spiegazione del blocco.
+class _DemoNote extends StatelessWidget {
+  const _DemoNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }

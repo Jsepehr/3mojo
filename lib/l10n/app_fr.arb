@@ -330,5 +330,20 @@
   "start_error_consent_required": "Pour passer en ligne, confirme à nouveau que Raen peut utiliser ton genre et qui tu veux rencontrer.",
   "consent_renewal_title": "Confirme ton consentement",
   "consent_renewal_body": "Le texte du consentement a changé depuis que tu l’as donné. Lis-le et confirme-le pour passer en ligne. Si tu préfères ne pas le faire, choisis « Je préfère ne pas le dire » et « Tout le monde » dans ton profil : le consentement n’est alors plus nécessaire.",
-  "link_copied": "Lien copié"
+  "link_copied": "Lien copié",
+  "demo_badge": "Démo",
+  "demo_person_semantics": "Personne de démonstration",
+  "demo_banner_title": "Démo — personnes de démonstration, pas réelles",
+  "demo_exit": "Quitter la démo",
+  "demo_try_link": "Comment ça marche ? Essaie la démo",
+  "demo_drawer_item": "Essayer la démo",
+  "demo_nearby_note": "En vrai, une personne apparaît quand elle reste immobile près de toi depuis au moins une minute.",
+  "demo_unavailable_online": "La démo ne s’ouvre que hors ligne : appuie d’abord sur Terminer.",
+  "demo_unlock_button": "Débloquer (démo)",
+  "demo_unlock_dialog_body": "Démo : aucun paiement. Dans la vraie app, le déblocage montre tous les profils à proximité pendant 2 heures et se paie via le store.",
+  "demo_unlock_confirm": "Débloquer gratuitement",
+  "demo_nothing_is_sent": "Dans la démo, rien n’est envoyé : la personne disparaît seulement de cette démo.",
+  "demo_chat_reply_1": "Salut ! 👋 Je suis une personne de démonstration : je te réponds automatiquement.",
+  "demo_chat_reply_2": "En vrai, tu écrirais ici à quelqu’un qui est vraiment près de toi, pour vous retrouver en personne.",
+  "demo_chat_reply_3": "Quand tu veux, termine le match avec Terminer, ou quitte la démo."
 }

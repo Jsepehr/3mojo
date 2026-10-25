@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import '/core/unlock/unlock_token_store.dart';
+import '/core/utils/illustrated_avatar.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/profile/domain/entities/profile.dart';
@@ -28,11 +29,45 @@ import 'nearby_remote_data_source.dart';
 ///   modalità finta basta che esista: lo emette il paywall finto);
 /// - gli id sono diversi a ogni sessione, come gli pseudonimi del server.
 ///
-/// Nessuna foto (placeholder in UI), niente immagini di rete — la modalità
-/// finta funziona anche a modem staccato.
+/// Le foto sono **avatar illustrati** generati sul telefono
+/// (`illustratedAvatarPng`, mai foto di persone reali né immagini di rete:
+/// funziona anche a modem staccato), solo per chi non è bloccato — come il
+/// server, che a chi è dietro il paywall non manda la foto.
+///
+/// Lo usa anche la **demo dichiarata** (`DemoScope`), in ogni build, con
+/// [viewerMustStayPut] e [peopleComeAndGo] spenti (lista piena subito e
+/// stabile: in pochi minuti si vede tutto il flusso), un [idPrefix] fisso
+/// (così le richieste finte in entrata arrivano da persone della lista) e
+/// un proprio [UnlockTokenStore] in memoria (lo sblocco della demo non
+/// tocca quello vero).
 class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
-  NearbyRemoteDataSourceFakeImpl({UnlockTokenStore? unlockTokenStore})
-    : _unlockTokenStore = unlockTokenStore ?? UnlockTokenStore.instance;
+  NearbyRemoteDataSourceFakeImpl({
+    UnlockTokenStore? unlockTokenStore,
+    this.viewerMustStayPut = true,
+    this.peopleComeAndGo = true,
+    this.idPrefix,
+  }) : _unlockTokenStore = unlockTokenStore ?? UnlockTokenStore.instance;
+
+  /// Come sul server: per il primo minuto dopo lo Start la lista è vuota.
+  /// Spento nella demo, che spiega la regola con una riga invece di farla
+  /// aspettare.
+  final bool viewerMustStayPut;
+
+  /// Le persone entrano ed escono a caso a ogni tick. Spento nella demo:
+  /// chi hai appena richiesto non deve sparire.
+  final bool peopleComeAndGo;
+
+  /// Prefisso fisso degli id (`<idPrefix>-<n>`, n da 1 a 5) al posto di uno
+  /// nuovo a ogni sessione: [personId] dice l'id che avrà la persona `n`.
+  final String? idPrefix;
+
+  /// L'id della persona seminata numero [index] (1–5) con il prefisso
+  /// fisso [idPrefix].
+  static String personId(String idPrefix, int index) => '$idPrefix-$index';
+
+  /// Il seed dell'avatar della persona numero [index]: chi mostra la stessa
+  /// persona altrove (richieste finte) usa lo stesso.
+  static int avatarSeedOf(int index) => index;
 
   final UnlockTokenStore _unlockTokenStore;
   final Random _random = Random();
@@ -107,7 +142,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     MeetIntent? intent,
     required Uint8List selfieBytes,
   }) {
-    final prefix = 'fake${sessionId.hashCode.toRadixString(16)}';
+    final prefix = idPrefix ?? 'fake${sessionId.hashCode.toRadixString(16)}';
     final existing = _controller;
     if (existing != null && !existing.isClosed && prefix == _idPrefix) {
       scheduleMicrotask(_emit);
@@ -151,14 +186,22 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
   Future<void> disconnect() async {
     _timer?.cancel();
     _timer = null;
-    await _unlockTokenChanges?.cancel();
+    // Senza aspettare né la disiscrizione né chi ascolta ancora: il "done"
+    // di uno stream broadcast arriva solo quando l'hanno ricevuto tutti, e
+    // chi sta chiudendo la sessione in quel momento può non averlo ancora
+    // fatto — End resterebbe appeso fino al tempo massimo dei passi di
+    // pulizia.
+    final unlockTokenChanges = _unlockTokenChanges;
     _unlockTokenChanges = null;
-    await _controller?.close();
+    unawaited(unlockTokenChanges?.cancel());
+    final controller = _controller;
     _controller = null;
+    unawaited(controller?.close());
     _idPrefix = '';
   }
 
   void _tick() {
+    if (!peopleComeAndGo) return;
     final now = DateTime.now();
     for (final person in _people) {
       if (person.isPresent) {
@@ -179,6 +222,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
 
     final now = DateTime.now();
     final viewerStayedPut =
+        !viewerMustStayPut ||
         now.difference(_connectedAt).inMinutes >= _visibilityThresholdMinutes;
     int band(_FakePresence p) => (p.distanceMeters / _rankBandMeters).floor();
     int tiebreak(_FakePresence p) => Object.hash(_idPrefix, p.index);
@@ -215,11 +259,14 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     controller.add([
       for (var i = 0; i < visible.length; i++)
         NearbyPersonModel(
-          id: '$_idPrefix-${visible[i].index}',
+          id: personId(_idPrefix, visible[i].index),
           meetingChance: _meetingChanceFor(
             now.difference(visible[i].arrivedAt),
           ),
           isLocked: !freeIndexes.contains(visible[i].index),
+          photoBytes: freeIndexes.contains(visible[i].index)
+              ? illustratedAvatarPng(avatarSeedOf(visible[i].index))
+              : null,
           intent: visible[i].intent,
           languages: visible[i].languages,
           visibleGender: visible[i].visibleGender,

@@ -97,6 +97,7 @@ class CmpPaywallBanner extends StatelessWidget {
   }
 
   static String _unlockLabel(AppLocalizations l10n, UnlockOffer? offer) {
+    if (offer?.isDemo ?? false) return l10n.demo_unlock_button;
     final price = offer?.displayPrice;
     return price == null ? l10n.unlock_eur_1 : l10n.unlock_for_price(price);
   }
@@ -104,7 +105,8 @@ class CmpPaywallBanner extends StatelessWidget {
 
 /// Conferma d'acquisto prima della finestra del negozio: cosa si compra, a
 /// quanto (prezzo del negozio), che non si rinnova. Col negozio simulato
-/// dice chiaramente che non c'è nessun addebito. "Sbloccato" compare solo
+/// dice chiaramente che non c'è nessun addebito; nella demo dichiarata
+/// (`UnlockOffer.demo`) "Demo: nessun pagamento", senza prezzo. "Sbloccato" compare solo
 /// se il server ha confermato l'acquisto; un annullamento nel negozio non
 /// mostra nulla; gli altri esiti hanno il loro testo
 /// (`PaywallFailureTexts`). Senza negozio non si apre: una snackbar dice che
@@ -132,7 +134,9 @@ Future<void> showPaywallConfirmDialog(BuildContext context) async {
     builder: (dialogContext) => AlertDialog(
       title: Text(l10n.unlock_nearby_profiles),
       content: Text(
-        price == null
+        offer.isDemo
+            ? l10n.demo_unlock_dialog_body
+            : price == null
             ? l10n.unlock_every_nearby_profile_for_the_next_2_hours_for_eur_1
             : l10n.unlock_dialog_body_price(price),
       ),
@@ -159,7 +163,13 @@ Future<void> showPaywallConfirmDialog(BuildContext context) async {
             if (text == null) return;
             messenger.showSnackBar(SnackBar(content: Text(text)));
           },
-          child: Text(price == null ? l10n.pay_eur_1 : l10n.pay_price(price)),
+          child: Text(
+            offer.isDemo
+                ? l10n.demo_unlock_confirm
+                : price == null
+                ? l10n.pay_eur_1
+                : l10n.pay_price(price),
+          ),
         ),
       ],
     ),

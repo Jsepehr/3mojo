@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/config/store_config.dart';
 import 'core/theme/app_theme.dart';
+import 'demo_scope.dart';
 import 'features/chat/data/datasources/chat_remote_data_source.dart';
 import 'features/chat/data/datasources/chat_remote_data_source_fake_impl.dart';
 import 'features/chat/data/datasources/chat_remote_data_source_impl.dart';
@@ -18,6 +19,8 @@ import 'features/chat/domain/usecases/start_receiving_chat_messages_usecase.dart
 import 'features/chat/domain/usecases/watch_incoming_chat_messages_usecase.dart';
 import 'features/chat/domain/usecases/watch_undelivered_chat_messages_usecase.dart';
 import 'features/chat/presentation/providers/pro_chat.dart';
+import 'features/demo/domain/usecases/check_demo_available_usecase.dart';
+import 'features/demo/presentation/providers/pro_demo.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source_fake_impl.dart';
 import 'features/encounters/data/datasources/encounter_remote_data_source_impl.dart';
@@ -142,11 +145,16 @@ import 'features/settings/presentation/providers/pro_settings.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Widget radice: registra tutti i provider (uno per feature, dal
-/// datasource al ChangeNotifier) e apre su `UiHome`, avvolta da
+/// datasource al ChangeNotifier) e apre su `UiHome` (`RaenApp`), avvolta da
 /// `CmpMatchGate` così un match può prendere il controllo da qualsiasi punto.
 /// `fakeMode` (letta in `main.dart` prima di costruire l'albero) sceglie i
 /// datasource finti al posto di quelli reali per nearby/encounters/chat/
 /// paywall/safety — le uniche feature che dipendono dal backend `server/`.
+///
+/// La **demo dichiarata** non passa da qui: ha la sua radice di
+/// composizione, `DemoScope`, che `RaenApp` mette sopra le pagine solo
+/// mentre `ProDemo.isActive` — i provider di questo albero restano quelli
+/// reali, fermi e intatti, e la modalità finta di sviluppo resta separata.
 class App extends StatelessWidget {
   const App({required this.fakeMode, super.key});
 
@@ -480,6 +488,13 @@ class App extends StatelessWidget {
                 ),
           ),
         ),
+        ChangeNotifierProvider<ProDemo>(
+          create: (context) => ProDemo(
+            checkDemoAvailableUseCase: CheckDemoAvailableUseCase(
+              GetCurrentSessionUseCase(context.read()),
+            ),
+          ),
+        ),
         ChangeNotifierProvider<ProSettings>(
           create: (context) => ProSettings(
             getLanguageUseCase: GetLanguageUseCase(context.read()),
@@ -497,26 +512,68 @@ class App extends StatelessWidget {
           ),
         ),
       ],
-      child: Consumer<ProSettings>(
-        builder: (context, proSettings, _) => MaterialApp(
-          onGenerateTitle: (context) => AppLocalizations.of(context)!.app_title,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: proSettings.themeMode,
-          locale: proSettings.locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          // Sopra ogni pagina: gli avvisi una tantum (connessione,
-          // richieste, sicurezza, sblocco scaduto) e la pagina del match,
-          // che si apre e si chiude da sola seguendo
-          // `ProEncounters.activeMatch`.
-          home: const CmpConnectionNoticeListener(
-            child: CmpEncounterNoticeListener(
-              child: CmpSafetyNoticeListener(
-                child: CmpUnlockExpiredListener(
-                  child: CmpMatchGate(child: UiHome()),
-                ),
-              ),
+      child: const RaenApp(),
+    );
+  }
+}
+
+/// Il `MaterialApp` sotto i provider di `App` (a parte, così i test lo
+/// montano sopra provider finti): tema, lingua, la home con gli avvisi e,
+/// sopra tutte le pagine, la **demo dichiarata** quando è aperta.
+///
+/// Demo: con `ProDemo.isActive` il `builder` mette `DemoScope` (banner fisso
+/// + i provider della demo) sopra il `Navigator`, che resta lo stesso (ha
+/// una `GlobalKey`); la home viene ricreata ([_RaenHome], chiave diversa)
+/// perché gli avvisi si riabbonino ai provider del mondo giusto.
+class RaenApp extends StatefulWidget {
+  const RaenApp({super.key});
+
+  @override
+  State<RaenApp> createState() => _RaenAppState();
+}
+
+class _RaenAppState extends State<RaenApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProSettings>(
+      builder: (context, proSettings, _) => MaterialApp(
+        navigatorKey: _navigatorKey,
+        onGenerateTitle: (context) => AppLocalizations.of(context)!.app_title,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: proSettings.themeMode,
+        locale: proSettings.locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => context.watch<ProDemo>().isActive
+            ? DemoScope(navigatorKey: _navigatorKey, child: child!)
+            : child!,
+        home: const _RaenHome(),
+      ),
+    );
+  }
+}
+
+/// Sopra ogni pagina: gli avvisi una tantum (connessione, richieste,
+/// sicurezza, sblocco scaduto) e la pagina del match, che si apre e si
+/// chiude da sola seguendo `ProEncounters.activeMatch`. Entrando o uscendo
+/// dalla demo si ricrea tutto (chiave): gli avvisi si abbonano una volta,
+/// e devono farlo ai provider del mondo in cui si è.
+class _RaenHome extends StatelessWidget {
+  const _RaenHome();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDemo = context.watch<ProDemo>().isActive;
+    return KeyedSubtree(
+      key: ValueKey(isDemo),
+      child: const CmpConnectionNoticeListener(
+        child: CmpEncounterNoticeListener(
+          child: CmpSafetyNoticeListener(
+            child: CmpUnlockExpiredListener(
+              child: CmpMatchGate(child: UiHome()),
             ),
           ),
         ),

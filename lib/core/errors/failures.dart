@@ -262,3 +262,12 @@ class UnlockNotDeliveredYetFailure extends Failure {
     super.message = 'Paid, the unlock is not confirmed yet',
   ]);
 }
+
+/// La demo dichiarata si apre solo da offline: durante una sessione reale
+/// le persone vicine sono vere, e la demo non deve mai mescolarsi con loro
+/// (`CheckDemoAvailableUseCase`).
+class DemoUnavailableDuringSessionFailure extends Failure {
+  const DemoUnavailableDuringSessionFailure([
+    super.message = 'The demo is not available while online',
+  ]);
+}

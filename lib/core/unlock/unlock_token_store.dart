@@ -31,9 +31,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// presenza, perché il server decida quali selfie mandare in chiaro — e
 /// ascolta [changes] per mandarlo subito dopo un acquisto a sessione già
 /// avviata.
+///
+/// La **demo dichiarata** ne usa uno tutto suo, [UnlockTokenStore.inMemory]:
+/// lo sblocco simulato della demo vive solo in memoria, non tocca né lo
+/// storage cifrato né `shared_preferences`, e sparisce uscendo dalla demo —
+/// non diventa mai uno sblocco vero.
 class UnlockTokenStore {
   UnlockTokenStore._({FlutterSecureStorage? storage})
-    : _storage = storage ?? _defaultStorage;
+    : _storage = storage ?? _defaultStorage,
+      _inMemoryOnly = false;
+
+  /// Solo in memoria, per la demo dichiarata (`DemoScope`): niente disco,
+  /// niente migrazione delle versioni vecchie.
+  UnlockTokenStore.inMemory()
+    : _storage = _defaultStorage,
+      _inMemoryOnly = true;
 
   /// Solo per i test: uno storage cifrato diverso (es. uno che fallisce).
   @visibleForTesting
@@ -56,6 +68,7 @@ class UnlockTokenStore {
   );
 
   final FlutterSecureStorage _storage;
+  final bool _inMemoryOnly;
 
   final StreamController<String?> _changes = StreamController.broadcast();
 
@@ -108,6 +121,7 @@ class UnlockTokenStore {
   }
 
   Future<void> _doLoad() async {
+    if (_inMemoryOnly) return;
     final legacy = await _readLegacy();
     var secureReadable = true;
     try {
@@ -172,6 +186,7 @@ class UnlockTokenStore {
 
   /// `true` se la scrittura cifrata è riuscita.
   Future<bool> _persist(String token, DateTime expiresAt) async {
+    if (_inMemoryOnly) return true;
     try {
       await _storage.write(key: _tokenKey, value: token);
       await _storage.write(
@@ -186,6 +201,7 @@ class UnlockTokenStore {
   }
 
   Future<void> _erase() async {
+    if (_inMemoryOnly) return;
     try {
       await _storage.delete(key: _tokenKey);
       await _storage.delete(key: _expiresAtKey);

@@ -330,5 +330,20 @@
   "start_error_consent_required": "Um online zu gehen, bestätige erneut, dass Raen dein Geschlecht und wen du treffen möchtest nutzen darf.",
   "consent_renewal_title": "Bestätige deine Einwilligung",
   "consent_renewal_body": "Der Text der Einwilligung hat sich geändert, seit du zugestimmt hast. Lies ihn und bestätige ihn, um online zu gehen. Wenn du lieber nicht möchtest, wähle in deinem Profil \"Möchte ich nicht sagen\" und \"Alle\": Dann ist keine Einwilligung nötig.",
-  "link_copied": "Link kopiert"
+  "link_copied": "Link kopiert",
+  "demo_badge": "Demo",
+  "demo_person_semantics": "Demo-Person",
+  "demo_banner_title": "Demo – Demo-Personen, nicht echt",
+  "demo_exit": "Demo beenden",
+  "demo_try_link": "Wie funktioniert es? Probier die Demo",
+  "demo_drawer_item": "Demo ausprobieren",
+  "demo_nearby_note": "In Wirklichkeit erscheint, wer mindestens eine Minute ruhig in deiner Nähe bleibt.",
+  "demo_unavailable_online": "Die Demo lässt sich nur offline öffnen. Tippe zuerst auf Beenden.",
+  "demo_unlock_button": "Freischalten (Demo)",
+  "demo_unlock_dialog_body": "Demo: keine Zahlung. In der echten App zeigt die Freischaltung 2 Stunden lang alle Profile in der Nähe und wird über den App-Store bezahlt.",
+  "demo_unlock_confirm": "Kostenlos freischalten",
+  "demo_nothing_is_sent": "In der Demo wird nichts gesendet: Die Person verschwindet nur aus dieser Demo.",
+  "demo_chat_reply_1": "Hi! 👋 Ich bin eine Demo-Person: Ich antworte automatisch.",
+  "demo_chat_reply_2": "In Wirklichkeit würdest du hier jemandem schreiben, der wirklich in deiner Nähe ist, um euch persönlich zu treffen.",
+  "demo_chat_reply_3": "Wann immer du willst, beende das Match mit Beenden oder verlasse die Demo."
 }

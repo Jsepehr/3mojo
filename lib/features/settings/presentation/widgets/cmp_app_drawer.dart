@@ -3,10 +3,13 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '/features/demo/presentation/demo_entry.dart';
+import '/features/demo/presentation/providers/pro_demo.dart';
 import '/features/profile/presentation/pages/ui_profile.dart';
 import '/features/safety/presentation/pages/ui_privacy_policy.dart';
 import '/features/safety/presentation/pages/ui_safety.dart';
 import '/features/safety/presentation/pages/ui_terms_of_use.dart';
+import '/features/session/presentation/providers/pro_session.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'cmp_language_picker_dialog.dart';
@@ -17,6 +20,10 @@ import 'cmp_language_picker_dialog.dart';
 /// condivisione. Nessuna altra voce di navigazione
 /// qui dentro — è un cassetto di impostazioni, non una seconda barra di
 /// navigazione.
+///
+/// "Prova la demo" apre la demo dichiarata (persone dimostrative, tutta sul
+/// telefono): c'è solo da offline — durante una sessione reale le persone
+/// vicine sono vere — e solo dove l'app ha `ProDemo`.
 ///
 /// In fondo, separata, la voce per sviluppatori "dati finti": esiste solo
 /// nei build in cui la modalità finta è disponibile
@@ -44,6 +51,11 @@ class CmpAppDrawer extends StatelessWidget {
     Navigator.of(context)
       ..pop()
       ..push(MaterialPageRoute(builder: (_) => const UiPrivacyPolicy()));
+  }
+
+  void _openDemo(BuildContext context) {
+    final navigator = Navigator.of(context)..pop();
+    enterDemo(navigator.context);
   }
 
   void _changeLanguage(BuildContext context) {
@@ -121,6 +133,13 @@ class CmpAppDrawer extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final proSettings = context.watch<ProSettings>();
+    // Nullable: il drawer funziona anche dove la demo (o la sessione) non
+    // c'è, come nei test del solo drawer.
+    final canOpenDemo =
+        context.watch<ProDemo?>() != null &&
+        !context.select<ProSession?, bool>(
+          (proSession) => proSession?.isOnline ?? false,
+        );
 
     return Drawer(
       child: Column(
@@ -157,6 +176,12 @@ class CmpAppDrawer extends StatelessWidget {
                   title: Text(l10n.my_profile),
                   onTap: () => _openProfile(context),
                 ),
+                if (canOpenDemo)
+                  ListTile(
+                    leading: const Icon(Icons.play_circle_outline),
+                    title: Text(l10n.demo_drawer_item),
+                    onTap: () => _openDemo(context),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.language),
                   title: Text(l10n.change_language),

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
 
 import '../models/chat_message_model.dart';
@@ -10,21 +9,35 @@ import 'chat_remote_data_source.dart';
 /// Implementazione **finta** (nessuna rete): cronologia solo in memoria,
 /// come quella reale, ma con un autoreply finto dopo ogni messaggio
 /// mandato, per sentire la chat viva senza un vero interlocutore
-/// dall'altra parte.
+/// dall'altra parte. Le risposte arrivano in ordine, una per messaggio, e
+/// ricominciano dalla prima finite tutte.
+///
+/// Lo usa anche la **demo dichiarata** (`DemoScope`), in ogni build: con
+/// [replies] tradotte (dagli ARB, scelte in presentation — il data layer
+/// non ha testi propri per l'utente) e senza toccare l'archivio delle
+/// versioni vecchie ([purgeLegacyStorage] spento: la demo non scrive né
+/// cancella nulla sul telefono).
 class ChatRemoteDataSourceFakeImpl implements ChatRemoteDataSource {
-  ChatRemoteDataSourceFakeImpl() {
-    unawaited(purgeLegacyChatStorage());
+  ChatRemoteDataSourceFakeImpl({
+    List<String>? replies,
+    bool purgeLegacyStorage = true,
+    this.replyDelay = const Duration(seconds: 3),
+  }) : _replies = replies == null || replies.isEmpty ? _fakeReplies : replies {
+    if (purgeLegacyStorage) unawaited(purgeLegacyChatStorage());
   }
 
+  /// Le risposte della modalità finta di sviluppo (solo debug, mai viste da
+  /// un utente).
   static const List<String> _fakeReplies = [
     'Ciao! Dove sei esattamente?',
     "Sono vicino all'entrata, tu?",
     'Perfetto, arrivo tra un minuto!',
   ];
 
-  static const Duration _replyDelay = Duration(seconds: 3);
+  final List<String> _replies;
+  final Duration replyDelay;
 
-  final Random _random = Random();
+  int _nextReply = 0;
   int _counter = 0;
   final Map<String, ConversationModel> _conversations = {};
   final Map<String, List<ChatMessageModel>> _messages = {};
@@ -86,14 +99,14 @@ class ChatRemoteDataSourceFakeImpl implements ChatRemoteDataSource {
   }
 
   void _scheduleFakeReply(String conversationId, String otherPersonId) {
-    Timer(_replyDelay, () {
+    Timer(replyDelay, () {
       // Il match potrebbe essere finito nel frattempo: niente risposta a
       // una conversazione che non esiste più.
       if (!_conversations.containsKey(otherPersonId)) return;
       final reply = ChatMessageModel(
         id: 'msg-${DateTime.now().microsecondsSinceEpoch}-${_counter++}',
         isMine: false,
-        text: _fakeReplies[_random.nextInt(_fakeReplies.length)],
+        text: _replies[_nextReply++ % _replies.length],
         sentAt: DateTime.now(),
       );
       _storeMessage(conversationId, reply);
@@ -114,6 +127,7 @@ class ChatRemoteDataSourceFakeImpl implements ChatRemoteDataSource {
 
   @override
   Future<void> reset() async {
+    _nextReply = 0;
     for (final list in _messages.values) {
       list.clear();
     }

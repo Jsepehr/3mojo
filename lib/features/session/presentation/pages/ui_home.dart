@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '/core/demo/demo_mode.dart';
 import '/core/theme/app_theme.dart';
 import '/core/widgets/cmp_end_button.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/core/widgets/cmp_radar_background.dart';
+import '/features/demo/presentation/widgets/cmp_demo_nearby_note.dart';
+import '/features/demo/presentation/widgets/cmp_try_demo_link.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
 import '/features/encounters/presentation/pages/ui_encounters.dart';
 import '/features/encounters/presentation/providers/pro_encounters.dart';
@@ -34,6 +37,13 @@ import 'ui_start_session.dart';
 /// È anche il punto in cui si compongono le feature della home (lista
 /// vicinanze col paywall, richieste d'incontro, sessione): le passa tra
 /// loro come callback, così nessuna deve importare le altre.
+///
+/// Dentro la **demo dichiarata** (`DemoMode`, `DemoScope`) è la stessa
+/// pagina sui provider della demo: online subito (la sessione della demo),
+/// senza drawer (profilo e impostazioni sono del mondo reale) e con una
+/// riga che spiega l'attesa di un minuto che nella demo non c'è. Da
+/// offline, nella demo, solo l'indicatore: la sessione della demo sta
+/// partendo o finendo, e la home offline (con Start) non è della demo.
 class UiHome extends StatelessWidget {
   const UiHome({super.key});
 
@@ -41,8 +51,11 @@ class UiHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final proSession = context.watch<ProSession>();
     final proProfile = context.watch<ProProfile>();
+    final isDemo = DemoMode.isActive(context);
 
-    if (proSession.isLoading || proProfile.isLoading) {
+    if (proSession.isLoading ||
+        proProfile.isLoading ||
+        (isDemo && !proSession.isOnline)) {
       // Nel tema hero, come la home offline che quasi sempre segue: niente
       // lampo bianco prima del blu.
       return Theme(
@@ -141,7 +154,11 @@ class _OfflineHome extends StatelessWidget {
                         onPressed: () => _openStartSession(context),
                         child: Text(l10n.start),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      // Sempre visibile: la demo dichiarata (persone
+                      // dimostrative, tutta sul telefono).
+                      const CmpTryDemoLink(),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -229,9 +246,12 @@ class _OnlineHome extends StatelessWidget {
     final session = proSession.session!;
     final proEncounters = context.watch<ProEncounters>();
     final pendingCount = proEncounters.pendingIncomingCount;
+    final isDemo = DemoMode.isActive(context);
 
     return Scaffold(
-      drawer: const CmpAppDrawer(),
+      // Nella demo niente drawer: profilo, lingua e impostazioni sono del
+      // mondo reale. Si esce dal banner della demo (o con End).
+      drawer: isDemo ? null : const CmpAppDrawer(),
       appBar: AppBar(
         title: Text(l10n.nearby),
         actions: [
@@ -246,6 +266,7 @@ class _OnlineHome extends StatelessWidget {
       body: Column(
         children: [
           const CmpConnectionBanner(),
+          if (isDemo) const CmpDemoNearbyNote(),
           Expanded(
             child: CmpPaywalledNearbyList(
               requestStateOf: (personId) =>
