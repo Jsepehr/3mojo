@@ -36,11 +36,15 @@ class CmpDemoBadge extends StatelessWidget {
                 color: colorScheme.onInverseSurface,
               ),
               const SizedBox(width: 4),
-              Text(
-                l10n.demo_badge,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: colorScheme.onInverseSurface,
-                  fontWeight: FontWeight.w700,
+              Flexible(
+                child: Text(
+                  l10n.demo_badge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onInverseSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],

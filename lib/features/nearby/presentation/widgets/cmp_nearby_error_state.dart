@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '/core/config/app_update_config.dart';
 import '/core/errors/failures.dart';
 import '/core/widgets/cmp_status_message.dart';
 import '/l10n/generated/app_localizations.dart';
@@ -22,6 +24,11 @@ import '/l10n/generated/app_localizations.dart';
 /// - `DeviceNotVerifiedFailure`: il server non è riuscito a verificare
 ///   l'app su questo dispositivo; nessun nuovo tentativo da soli: Riprova o
 ///   si chiude la sessione ([onEndSession]).
+/// - `AppUpdateRequiredFailure`: questa versione dell'app è troppo vecchia
+///   per il server; si invita ad aggiornare dallo store (il link, se
+///   configurato in `AppUpdateConfig`, si copia: l'app non apre link da
+///   sola) oppure si chiude la sessione ([onEndSession]). Nessun Riprova:
+///   non passerebbe mai.
 /// - qualsiasi altro: errore generico, solo Riprova.
 ///
 /// Senza stato e senza provider: riceve tutto da chi lo usa
@@ -141,6 +148,25 @@ class CmpNearbyErrorState extends StatelessWidget {
                 onPressed: onEndSession!,
               ),
       ),
+      AppUpdateRequiredFailure() => CmpStatusMessage(
+        icon: Icons.system_update_rounded,
+        title: l10n.app_update_required_title,
+        message: l10n.app_update_required_body,
+        primaryAction: AppUpdateConfig.storeUrl == null
+            ? null
+            : CmpStatusMessageAction(
+                label: l10n.app_update_copy_link,
+                icon: Icons.copy_rounded,
+                onPressed: () => _copyStoreLink(context),
+              ),
+        secondaryAction: onEndSession == null
+            ? null
+            : CmpStatusMessageAction(
+                label: l10n.end_session,
+                icon: Icons.stop_circle_outlined,
+                onPressed: onEndSession!,
+              ),
+      ),
       _ => CmpStatusMessage(
         icon: Icons.error_outline_rounded,
         title: l10n.nearby_error_generic_title,
@@ -149,5 +175,14 @@ class CmpNearbyErrorState extends StatelessWidget {
         primaryAction: retry,
       ),
     };
+  }
+
+  Future<void> _copyStoreLink(BuildContext context) async {
+    final url = AppUpdateConfig.storeUrl;
+    if (url == null) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final copied = AppLocalizations.of(context)!.app_update_link_copied;
+    await Clipboard.setData(ClipboardData(text: url));
+    messenger?.showSnackBar(SnackBar(content: Text(copied)));
   }
 }

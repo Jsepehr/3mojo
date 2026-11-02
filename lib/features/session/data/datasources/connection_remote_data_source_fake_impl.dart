@@ -1,5 +1,6 @@
 import '/features/session/domain/entities/connection_status.dart';
 import '/features/session/domain/entities/server_handshake.dart';
+import '/features/session/domain/entities/session_closure_reason.dart';
 import 'connection_remote_data_source.dart';
 
 /// Implementazione **finta** del collegamento, per la demo dichiarata
@@ -16,7 +17,7 @@ class ConnectionRemoteDataSourceFakeImpl implements ConnectionRemoteDataSource {
   Stream<ServerHandshake> watchHandshakes() => const Stream.empty();
 
   @override
-  Stream<void> watchSessionClosures() => const Stream.empty();
+  Stream<SessionClosureReason> watchSessionClosures() => const Stream.empty();
 
   @override
   void checkAlive() {}

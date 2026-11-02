@@ -195,25 +195,40 @@ class _UiStartSessionState extends State<UiStartSession> {
               Stack(fit: StackFit.expand, children: [...previous, ?current]),
           child: KeyedSubtree(
             key: ValueKey(_step),
-            child: _step == 0
-                ? _buildSelfieStep(l10n, errorMessage)
-                : _buildIntentStep(l10n, errorMessage),
+            child: _scrollable(
+              _step == 0
+                  ? _buildSelfieStep(l10n, errorMessage)
+                  : _buildIntentStep(l10n, errorMessage),
+            ),
           ),
         ),
       ),
     );
   }
 
+  /// Il passo scorre se non ci sta (testo grande, orizzontale); altrimenti
+  /// occupa tutta l'altezza, così il bottone resta in fondo (`Spacer`).
+  Widget _scrollable(Widget step) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: IntrinsicHeight(child: step),
+      ),
+    ),
+  );
+
   /// Il passo che entra arriva da destra, quello che esce scivola a
   /// sinistra (la sua animazione gira all'indietro, da 1 a 0): sempre in
   /// avanti, sfumando.
   Widget _stepTransition(Widget child, Animation<double> animation) {
     final isIncoming = child.key == ValueKey(_step);
+    // "Avanti" è verso sinistra in arabo (RTL).
+    final forward = Directionality.of(context) == TextDirection.rtl ? -1 : 1;
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
         position: Tween(
-          begin: Offset(isIncoming ? 0.08 : -0.08, 0),
+          begin: Offset(forward * (isIncoming ? 0.08 : -0.08), 0),
           end: Offset.zero,
         ).animate(animation),
         child: child,
@@ -256,9 +271,9 @@ class _UiStartSessionState extends State<UiStartSession> {
                   ),
                 ),
               if (_selfieBytes != null)
-                Positioned(
+                PositionedDirectional(
                   top: -8,
-                  right: -8,
+                  end: -8,
                   child: IconButton.filled(
                     onPressed: _isFlipping ? null : _flipSelfie,
                     tooltip: l10n.flip_photo,

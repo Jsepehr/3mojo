@@ -49,4 +49,44 @@ void main() {
       expect(ends, 1);
     });
   }
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    testWidgets('[${locale.languageCode}] "update required" explains it, '
+        'offers End and no Retry; the store link is hidden until it is '
+        'configured (placeholder)', (tester) async {
+      var ends = 0;
+      const failure = AppUpdateRequiredFailure();
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CmpNearbyErrorState(
+              failure: failure,
+              isRetrying: false,
+              onRetry: () {},
+              onOpenLocationSettings: () {},
+              onOpenAppSettings: () {},
+              onEndSession: () => ends++,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final l10n = await AppLocalizations.delegate.load(locale);
+
+      expect(find.text(l10n.app_update_required_title), findsOneWidget);
+      expect(find.text(l10n.app_update_required_body), findsOneWidget);
+      expect(find.text(failure.message), findsNothing);
+      expect(find.text(l10n.retry), findsNothing);
+      // The default URLs are placeholders (TODO_REPLACE): no broken link.
+      expect(find.text(l10n.app_update_copy_link), findsNothing);
+
+      await tester.ensureVisible(find.text(l10n.end_session));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.end_session));
+      expect(ends, 1);
+    });
+  }
 }

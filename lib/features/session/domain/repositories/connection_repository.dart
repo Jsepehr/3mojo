@@ -1,5 +1,6 @@
 import '../entities/connection_status.dart';
 import '../entities/server_handshake.dart';
+import '../entities/session_closure_reason.dart';
 
 /// Contratto per osservare il canale in tempo reale condiviso da `nearby`,
 /// `encounters` e `chat` (una sola connessione per sessione). Non manda
@@ -14,7 +15,7 @@ abstract class ConnectionRepository {
 
   /// Un evento quando il server chiude la sessione per conto suo (dopo le
   /// segnalazioni di più persone): lato server la sessione non c'è più.
-  Stream<void> watchSessionClosures();
+  Stream<SessionClosureReason> watchSessionClosures();
 
   /// Verifica che il collegamento sia davvero vivo e, se non lo è (o se si
   /// stava aspettando il prossimo tentativo), riconnette subito. Non

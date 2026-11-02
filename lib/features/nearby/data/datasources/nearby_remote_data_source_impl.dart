@@ -43,7 +43,11 @@ import 'nearby_remote_data_source.dart';
 /// - `{"type": "error", "code": "attestationRequired"}` (il server non ha
 ///   potuto verificare l'app su questo dispositivo, solo con la verifica in
 ///   `enforce`; poi chiude il socket e `RealtimeConnection` non riprova da
-///   sola) → [DeviceNotVerifiedException].
+///   sola) → [DeviceNotVerifiedException];
+/// - `{"type": "error", "code": "updateRequired"}` (il protocollo di
+///   questa app è troppo vecchio; il server chiude il socket e
+///   `RealtimeConnection` non riprova da sola) →
+///   [AppUpdateRequiredException].
 class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   NearbyRemoteDataSourceImpl({
     RealtimeConnection? connection,
@@ -57,6 +61,12 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
   final UnlockTokenStore _unlockTokenStore;
   final Future<Uint8List> Function(Uint8List selfie) _prepareSelfie;
   final PhotoBytesCache _photos = PhotoBytesCache();
+
+  /// Le foto già ricevute, per `personId` (pseudonimo): il server le manda
+  /// una volta sola per connessione, le liste successive le omettono.
+  /// Azzerata a End ([disconnect]); alla riconnessione il server le
+  /// rimanda tutte, e si sovrascrivono.
+  final Map<String, Uint8List> _photosByPersonId = {};
 
   // Solo ciò che il server deve sapere del profilo (vedi
   // `PresenceProfileModel`): mai la conferma d'età né il consenso.
@@ -158,7 +168,11 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
               }
               sink.add([
                 for (final json in people)
-                  ?NearbyPersonModel.tryFromJson(json, photos: _photos),
+                  ?NearbyPersonModel.tryFromJson(
+                    json,
+                    photos: _photos,
+                    knownPhotos: _photosByPersonId,
+                  ),
               ]);
             case 'rejected'
                 when decoded['action'] == 'presence' &&
@@ -170,6 +184,8 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
               sink.addError(const RateLimitedException());
             case 'error' when decoded['code'] == 'attestationRequired':
               sink.addError(const DeviceNotVerifiedException());
+            case 'error' when decoded['code'] == 'updateRequired':
+              sink.addError(const AppUpdateRequiredException());
           }
         },
       ),
@@ -296,6 +312,7 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
     _sessionId = null;
     _selfieRejectedSessionId = null;
     _photos.clear();
+    _photosByPersonId.clear();
     await _connection.disconnect();
   }
 }

@@ -95,38 +95,35 @@ class CmpPaywalledNearbyList extends StatelessWidget {
     );
     final anyLocked = lockedPeople.any((entry) => entry.isLocked);
 
-    return Column(
-      children: [
-        // Con lo sblocco attivo nessuno è bloccato: al posto del banner c'è
-        // il chip (sopra, in `build`).
-        if (anyLocked) const CmpPaywallBanner(),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            itemCount: lockedPeople.length,
-            itemBuilder: (context, index) {
-              final entry = lockedPeople[index];
-              final person = entry.person;
-              final requestState = requestStateOf(person.id);
+    // Con lo sblocco attivo nessuno è bloccato: al posto del banner c'è il
+    // chip (sopra, in `build`). Il banner è la prima voce della lista, non
+    // una fascia fissa: con testo grande o in orizzontale non toglie spazio
+    // alle persone, scorre con loro.
+    final headerCount = anyLocked ? 1 : 0;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      itemCount: lockedPeople.length + headerCount,
+      itemBuilder: (context, index) {
+        if (anyLocked && index == 0) return const CmpPaywallBanner();
+        final entry = lockedPeople[index - headerCount];
+        final person = entry.person;
+        final requestState = requestStateOf(person.id);
 
-              return CmpNearbyPersonTile(
-                person: person,
-                isLocked: entry.isLocked,
-                requestState: requestState,
-                actions: entry.isLocked ? null : actionsOf?.call(person),
-                onTap: entry.isLocked
-                    ? () => showPaywallConfirmDialog(context)
-                    : requestState != CmpNearbyRequestState.none
-                    ? null
-                    // Cosa proporre e l'invio li decide chi compone
-                    // (`UiHome`, tendina della proposta); l'esito arriva da
-                    // `CmpEncounterNoticeListener`.
-                    : () => onRequest(person),
-              );
-            },
-          ),
-        ),
-      ],
+        return CmpNearbyPersonTile(
+          person: person,
+          isLocked: entry.isLocked,
+          requestState: requestState,
+          actions: entry.isLocked ? null : actionsOf?.call(person),
+          onTap: entry.isLocked
+              ? () => showPaywallConfirmDialog(context)
+              : requestState != CmpNearbyRequestState.none
+              ? null
+              // Cosa proporre e l'invio li decide chi compone
+              // (`UiHome`, tendina della proposta); l'esito arriva da
+              // `CmpEncounterNoticeListener`.
+              : () => onRequest(person),
+        );
+      },
     );
   }
 }

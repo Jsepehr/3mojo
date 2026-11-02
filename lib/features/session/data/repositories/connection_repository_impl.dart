@@ -1,6 +1,7 @@
 import '/features/session/data/datasources/connection_remote_data_source.dart';
 import '/features/session/domain/entities/connection_status.dart';
 import '/features/session/domain/entities/server_handshake.dart';
+import '/features/session/domain/entities/session_closure_reason.dart';
 import '/features/session/domain/repositories/connection_repository.dart';
 
 /// Passacarte verso il datasource: osservare (o controllare) la
@@ -18,7 +19,7 @@ class ConnectionRepositoryImpl implements ConnectionRepository {
       _remoteDataSource.watchHandshakes();
 
   @override
-  Stream<void> watchSessionClosures() =>
+  Stream<SessionClosureReason> watchSessionClosures() =>
       _remoteDataSource.watchSessionClosures();
 
   @override

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../domain/entities/connection_status.dart';
+import '../../domain/entities/session_closure_reason.dart';
 import '../../domain/usecases/check_connection_usecase.dart';
 import '../../domain/usecases/watch_connection_status_usecase.dart';
 import '../../domain/usecases/watch_server_session_restarts_usecase.dart';
@@ -43,16 +44,17 @@ class ProConnection extends ChangeNotifier with WidgetsBindingObserver {
       (_) => _restarts.add(null),
     );
     _closureSubscription = watchSessionClosedByServerUseCase?.call().listen(
-      (_) => _closures.add(null),
+      _closures.add,
     );
   }
 
   final CheckConnectionUseCase _checkConnectionUseCase;
   late final StreamSubscription<ConnectionStatus> _statusSubscription;
   late final StreamSubscription<void> _restartSubscription;
-  StreamSubscription<void>? _closureSubscription;
+  StreamSubscription<SessionClosureReason>? _closureSubscription;
   final StreamController<void> _restarts = StreamController.broadcast();
-  final StreamController<void> _closures = StreamController.broadcast();
+  final StreamController<SessionClosureReason> _closures =
+      StreamController.broadcast();
   ConnectionStatus _status = ConnectionStatus.offline;
 
   ConnectionStatus get status => _status;
@@ -61,9 +63,10 @@ class ProConnection extends ChangeNotifier with WidgetsBindingObserver {
   /// Un evento ogni volta che la sessione è ripartita da zero lato server.
   Stream<void> get restarts => _restarts.stream;
 
-  /// Un evento quando il server ha chiuso la sessione dopo le segnalazioni
-  /// di più persone (End lo fa `ProSession`).
-  Stream<void> get closures => _closures.stream;
+  /// Un evento quando il server ha chiuso la sessione (End lo fa
+  /// `ProSession`): dopo le segnalazioni di più persone o perché si sta
+  /// riavviando, lo dice il motivo.
+  Stream<SessionClosureReason> get closures => _closures.stream;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

@@ -11,6 +11,7 @@ import '/features/safety/presentation/pages/ui_safety.dart';
 import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/settings/presentation/providers/pro_settings.dart';
+import '/core/config/app_store_links.dart';
 import '/l10n/generated/app_localizations.dart';
 import 'cmp_language_picker_dialog.dart';
 
@@ -112,9 +113,11 @@ class CmpAppDrawer extends StatelessWidget {
         ? null
         : box.localToGlobal(Offset.zero) & box.size;
     Navigator.of(context).pop();
+    final storeUrl = AppStoreLinks.current;
+    final text = l10n.check_out_raen_an_app_to_meet_people_nearby_in_real_time;
     SharePlus.instance.share(
       ShareParams(
-        text: l10n.check_out_raen_an_app_to_meet_people_nearby_in_real_time,
+        text: storeUrl == null ? text : '$text\n$storeUrl',
         sharePositionOrigin: origin,
       ),
     );
@@ -160,11 +163,13 @@ class CmpAppDrawer extends StatelessWidget {
                           color: theme.colorScheme.onPrimary,
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          l10n.app_title,
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            l10n.app_title,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

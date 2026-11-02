@@ -178,6 +178,43 @@ void main() {
       expect(sent['platform'], 'ios');
     });
 
+    test('every call declares the protocol version in a header', () async {
+      final headers = <Map<String, String>>[];
+      final source = PaywallRemoteDataSourceImpl(
+        client: MockClient((request) async {
+          headers.add(request.headers);
+          return http.Response(
+            jsonEncode({
+              'unlockToken': 't',
+              'remainingSeconds': 5,
+              'isUnlocked': true,
+            }),
+            200,
+          );
+        }),
+      );
+
+      await source.redeemPurchase(model);
+      await source.getRemaining('t');
+
+      expect(headers, hasLength(2));
+      for (final h in headers) {
+        expect(h['X-Raen-Protocol'] ?? h['x-raen-protocol'], '1');
+      }
+    });
+
+    test('426 (protocol too old) is its own error on both calls, never a '
+        'generic server error', () async {
+      await expectLater(
+        remote(426, {'code': 'updateRequired'}).redeemPurchase(model),
+        throwsA(isA<AppUpdateRequiredException>()),
+      );
+      await expectLater(
+        remote(426, {'code': 'updateRequired'}).getRemaining('t'),
+        throwsA(isA<AppUpdateRequiredException>()),
+      );
+    });
+
     test('422 → rejected with the code, 409 → already redeemed, anything '
         'else → server error (retry)', () async {
       await expectLater(

@@ -16,6 +16,7 @@ import 'package:threemojo_app/features/profile/domain/repositories/profile_repos
 import 'package:threemojo_app/features/session/domain/entities/connection_status.dart';
 import 'package:threemojo_app/features/session/domain/entities/online_session.dart';
 import 'package:threemojo_app/features/session/domain/entities/server_handshake.dart';
+import 'package:threemojo_app/features/session/domain/entities/session_closure_reason.dart';
 import 'package:threemojo_app/features/session/domain/repositories/connection_repository.dart';
 import 'package:threemojo_app/features/session/domain/repositories/face_detection_repository.dart';
 import 'package:threemojo_app/features/session/domain/repositories/session_repository.dart';
@@ -94,7 +95,7 @@ class FakeSessionRepository implements SessionRepository {
 class FakeConnectionRepository implements ConnectionRepository {
   final status = StreamController<ConnectionStatus>.broadcast();
   final handshakes = StreamController<ServerHandshake>.broadcast();
-  final closures = StreamController<void>.broadcast();
+  final closures = StreamController<SessionClosureReason>.broadcast();
 
   @override
   Stream<ConnectionStatus> watchStatus() => status.stream;
@@ -103,7 +104,7 @@ class FakeConnectionRepository implements ConnectionRepository {
   Stream<ServerHandshake> watchHandshakes() => handshakes.stream;
 
   @override
-  Stream<void> watchSessionClosures() => closures.stream;
+  Stream<SessionClosureReason> watchSessionClosures() => closures.stream;
 
   int checkCalls = 0;
 

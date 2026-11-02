@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '/core/config/protocol_config.dart';
 import '/core/errors/exceptions.dart';
 import '/core/network/api_config.dart';
 import '../models/store_purchase_model.dart';
@@ -10,7 +11,10 @@ import 'paywall_remote_data_source.dart';
 /// Implementazione **reale**: chiama `server/` via HTTP (non serve il
 /// push in tempo reale della connessione condivisa — controllare lo
 /// sblocco è un'azione puntuale, non qualcosa che cambia da solo mentre
-/// la si guarda). Il token viaggia sempre nel corpo, mai nell'URL.
+/// la si guarda). Il token viaggia sempre nel corpo, mai nell'URL. Ogni
+/// chiamata dichiara la versione del protocollo (header `X-Raen-Protocol`,
+/// vedi `ProtocolConfig`); con **426** il server dice che l'app è troppo
+/// vecchia → [AppUpdateRequiredException].
 class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
   PaywallRemoteDataSourceImpl({http.Client? client})
     : _client = client ?? http.Client();
@@ -19,13 +23,18 @@ class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
 
   Uri _uri(String path) => Uri.parse('${ApiConfig.baseUrl}$path');
 
+  static const _jsonHeaders = {
+    'Content-Type': 'application/json',
+    ProtocolConfig.httpHeader: '${ProtocolConfig.version}',
+  };
+
   @override
   Future<UnlockGrant> redeemPurchase(StorePurchaseModel purchase) async {
     final http.Response response;
     try {
       response = await _client.post(
         _uri('/paywall/purchase'),
-        headers: const {'Content-Type': 'application/json'},
+        headers: _jsonHeaders,
         body: jsonEncode(purchase.toJson()),
       );
     } on Exception catch (e) {
@@ -36,6 +45,8 @@ class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
         break;
       case 409:
         throw const PurchaseAlreadyRedeemedException();
+      case 426:
+        throw const AppUpdateRequiredException();
       case 422:
         final code = _tryDecodeObject(response.body)?['code'];
         throw PurchaseRejectedException(code is String ? code : 'unknown');
@@ -59,11 +70,14 @@ class PaywallRemoteDataSourceImpl implements PaywallRemoteDataSource {
     try {
       response = await _client.post(
         _uri('/paywall/status'),
-        headers: const {'Content-Type': 'application/json'},
+        headers: _jsonHeaders,
         body: jsonEncode({'unlockToken': unlockToken}),
       );
     } on Exception catch (e) {
       throw ServerException('Server irraggiungibile: $e');
+    }
+    if (response.statusCode == 426) {
+      throw const AppUpdateRequiredException();
     }
     if (response.statusCode != 200) {
       throw ServerException(

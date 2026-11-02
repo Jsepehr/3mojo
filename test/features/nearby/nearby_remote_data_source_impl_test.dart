@@ -317,6 +317,131 @@ void main() {
     await subscription.cancel();
   });
 
+  test('"updateRequired" from the server becomes its own error', () async {
+    final errors = <Object>[];
+    final subscription = connect().listen((_) {}, onError: errors.add);
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'error', 'code': 'updateRequired'});
+    await pumpEvents();
+
+    expect(errors.first, isA<AppUpdateRequiredException>());
+    await subscription.cancel();
+  });
+
+  group('photos sent once per connection', () {
+    final photo = base64Encode(selfie);
+
+    Map<String, dynamic> person(String id, {bool withPhoto = true}) => {
+      'personId': id,
+      'meetingChance': 'high',
+      'locked': false,
+      if (withPhoto) 'selfieBase64': photo,
+    };
+
+    test('a later list without the photo reuses the one already received, '
+        'per person id', () async {
+      final lists = <List<NearbyPersonModel>>[];
+      connect().listen(lists.add);
+      await pumpEvents();
+      server.last
+        ..welcome()
+        ..serverSends({
+          'type': 'nearby',
+          'people': [person('a'), person('b')],
+        })
+        ..serverSends({
+          'type': 'nearby',
+          'people': [
+            person('a', withPhoto: false),
+            person('b', withPhoto: false),
+            person('c'),
+          ],
+        });
+      await pumpEvents();
+
+      expect(lists, hasLength(2));
+      expect(lists.last.map((p) => p.id), ['a', 'b', 'c']);
+      expect(lists.last.map((p) => p.photoBytes), everyElement(selfie));
+    });
+
+    test(
+      'a person who never got a photo has none, and is still listed',
+      () async {
+        final lists = <List<NearbyPersonModel>>[];
+        connect().listen(lists.add);
+        await pumpEvents();
+        server.last
+          ..welcome()
+          ..serverSends({
+            'type': 'nearby',
+            'people': [person('x', withPhoto: false)],
+          });
+        await pumpEvents();
+
+        expect(lists.single.single.id, 'x');
+        expect(lists.single.single.photoBytes, isNull);
+      },
+    );
+
+    test('the cache is per id (another id does not borrow a photo) and is '
+        'emptied at End', () async {
+      final lists = <List<NearbyPersonModel>>[];
+      connect().listen(lists.add);
+      await pumpEvents();
+      server.last
+        ..welcome()
+        ..serverSends({
+          'type': 'nearby',
+          'people': [person('a')],
+        })
+        ..serverSends({
+          'type': 'nearby',
+          'people': [person('other', withPhoto: false)],
+        });
+      await pumpEvents();
+      expect(lists.last.single.photoBytes, isNull);
+
+      await dataSource.disconnect();
+      connect().listen(lists.add);
+      await pumpEvents();
+      server.last
+        ..welcome()
+        ..serverSends({
+          'type': 'nearby',
+          'people': [person('a', withPhoto: false)],
+        });
+      await pumpEvents();
+
+      expect(lists.last.single.photoBytes, isNull);
+    });
+
+    test(
+      'a locked person never shows a photo, even one received before',
+      () async {
+        final lists = <List<NearbyPersonModel>>[];
+        connect().listen(lists.add);
+        await pumpEvents();
+        server.last
+          ..welcome()
+          ..serverSends({
+            'type': 'nearby',
+            'people': [person('a')],
+          })
+          ..serverSends({
+            'type': 'nearby',
+            'people': [
+              {'personId': 'a', 'meetingChance': 'high', 'locked': true},
+            ],
+          });
+        await pumpEvents();
+
+        expect(lists.last.single.isLocked, isTrue);
+        expect(lists.last.single.photoBytes, isNull);
+      },
+    );
+  });
+
   test('"attestationRequired" from the server becomes its own error, not a '
       'generic connection drop', () async {
     final errors = <Object>[];

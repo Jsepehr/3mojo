@@ -903,6 +903,30 @@
   "@session_closed_after_reports_body": {
     "description": "Body of the dialog: the session was closed after reports, new sessions from this network are paused for a while"
   },
+  "session_closed_server_restart_title": "Server restarting",
+  "@session_closed_server_restart_title": {
+    "description": "Title of the dialog shown when the server closed the session because it is restarting (deploy/maintenance)"
+  },
+  "session_closed_server_restart_body": "Raen's server was restarted for maintenance, so your session ended. Nothing was saved: tap Start to go back online.",
+  "@session_closed_server_restart_body": {
+    "description": "Body of that dialog: the session ended because the server restarted, nothing was saved, the person can tap Start again"
+  },
+  "app_update_required_title": "Update Raen",
+  "@app_update_required_title": {
+    "description": "Title when the server refuses this app version because its protocol is too old: the app must be updated"
+  },
+  "app_update_required_body": "This version of Raen is no longer supported by the server. Update the app from the App Store or Google Play to keep using it.",
+  "@app_update_required_body": {
+    "description": "Body for the same case: update from the store to keep using the app"
+  },
+  "app_update_copy_link": "Copy store link",
+  "@app_update_copy_link": {
+    "description": "Button that copies the store page address of the app (the app does not open external links by itself)"
+  },
+  "app_update_link_copied": "Link copied",
+  "@app_update_link_copied": {
+    "description": "Snackbar after the store link was copied to the clipboard"
+  },
   "ok": "OK",
   "@ok": {
     "description": "Generic button closing an informational dialog"
@@ -1139,7 +1163,7 @@
   "@privacy_in_short_visible": {
     "description": "Privacy policy, 'In short' bullet. Start and End are the names of the buttons"
   },
-  "privacy_in_short_memory": "Our server keeps session data in memory only and forgets it when the session ends. The only exception is moderation records (see below), kept for at most 30 days.",
+  "privacy_in_short_memory": "Our server keeps session data in memory only and forgets it when the session ends. The only exceptions are moderation records and purchase records (see below), kept for a limited time.",
   "@privacy_in_short_memory": {
     "description": "Privacy policy, 'In short' bullet"
   },
@@ -1275,7 +1299,7 @@
   "@privacy_retention_moderation": {
     "description": "Privacy policy, retention: moderation records"
   },
-  "privacy_retention_purchases": "Purchases: the unlock code lasts 2 hours. To stop the same payment from counting twice we keep only a cryptographic fingerprint (unreadable) of the transaction for 8 days.",
+  "privacy_retention_purchases": "Purchases: the unlock code lasts 2 hours. So that a payment isn't lost if our server restarts, and doesn't count twice, we keep on disk, encrypted, only unreadable cryptographic fingerprints (hashes) of the unlock code (for the 2 hours it lasts) and of the transaction (for 8 days). No name, no account, no device.",
   "@privacy_retention_purchases": {
     "description": "Privacy policy, retention: purchases of the unlock"
   },

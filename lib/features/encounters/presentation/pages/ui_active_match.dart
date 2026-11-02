@@ -119,7 +119,7 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
   }) {
     if (maxLength == null || currentLength < maxLength - 100) return null;
     return Padding(
-      padding: const EdgeInsets.only(right: 16, bottom: 4),
+      padding: const EdgeInsetsDirectional.only(end: 16, bottom: 4),
       child: Text(
         '$currentLength/$maxLength',
         style: Theme.of(context).textTheme.labelSmall,
@@ -212,7 +212,14 @@ class _UiActiveMatchState extends State<UiActiveMatch> {
               // Nella demo dichiarata: chi ti risponde è dimostrativo.
               if (DemoMode.isActive(context)) ...[
                 const SizedBox(width: 8),
-                const CmpDemoBadge(),
+                // Nel titolo resta poco posto (due bottoni a destra): il
+                // badge si rimpicciolisce invece di sforare.
+                const Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: CmpDemoBadge(),
+                  ),
+                ),
               ],
             ],
           ),
@@ -379,8 +386,8 @@ class _MatchPhoto extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         CmpPhoto(image: photo, size: 40),
-        Positioned(
-          right: -6,
+        PositionedDirectional(
+          end: -6,
           bottom: -6,
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -501,13 +508,13 @@ class _PhotoPair extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           if (hasOwn)
-            Positioned(
-              left: 0,
+            PositionedDirectional(
+              start: 0,
               top: 0,
               child: _framed(context, ownPhoto, -_tilt),
             ),
-          Positioned(
-            right: 0,
+          PositionedDirectional(
+            end: 0,
             top: 0,
             child: _framed(context, otherPhoto, hasOwn ? _tilt : 0),
           ),

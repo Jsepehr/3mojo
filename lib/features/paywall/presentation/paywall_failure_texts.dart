@@ -14,6 +14,7 @@ class PaywallFailureTexts {
         PurchaseNotVerifiedFailure() => l10n.purchase_not_verified,
         PurchaseAlreadyRedeemedFailure() => l10n.purchase_already_redeemed,
         UnlockNotDeliveredYetFailure() => l10n.unlock_delivery_delayed,
+        AppUpdateRequiredFailure() => l10n.app_update_required_body,
         _ => l10n.purchase_failed,
       };
 }

@@ -17,6 +17,7 @@ void main() {
         const PurchaseNotVerifiedFailure('invalidReceipt'),
         const PurchaseAlreadyRedeemedFailure(),
         const UnlockNotDeliveredYetFailure(),
+        const AppUpdateRequiredFailure(),
       ];
 
       final texts = [

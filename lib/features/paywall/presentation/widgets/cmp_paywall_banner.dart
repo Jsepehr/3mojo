@@ -26,6 +26,9 @@ import '../providers/pro_paywall.dart';
 class CmpPaywallBanner extends StatelessWidget {
   const CmpPaywallBanner({super.key});
 
+  /// Larghezza interna (carta meno padding) sotto cui il bottone va sotto.
+  static const _stackBelow = 340.0;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -42,40 +45,42 @@ class CmpPaywallBanner extends StatelessWidget {
       color: colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(Icons.lock_outline, color: onContainer),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.the_closest_profiles_are_blurred,
-                    style: TextStyle(color: onContainer),
-                  ),
-                  if (proPaywall.isPaymentPending) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.schedule, size: 16, color: onContainer),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            l10n.payment_pending_confirmation,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: onContainer),
-                          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Il prezzo "Sblocca per 1,00 €" è largo: con poco spazio (o testo
+            // ingrandito) il bottone va sotto il testo, a tutta larghezza,
+            // invece di rubargli quasi tutta la riga.
+            final stacked =
+                constraints.maxWidth < _stackBelow ||
+                MediaQuery.textScalerOf(context).scale(14) > 20;
+            final message = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.the_closest_profiles_are_blurred,
+                  style: TextStyle(color: onContainer),
+                ),
+                if (proPaywall.isPaymentPending) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule, size: 16, color: onContainer),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          l10n.payment_pending_confirmation,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelMedium?.copyWith(color: onContainer),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(
+              ],
+            );
+            final button = FilledButton(
               onPressed: isBusy || isUnavailable
                   ? null
                   : () => showPaywallConfirmDialog(context),
@@ -88,9 +93,39 @@ class CmpPaywallBanner extends StatelessWidget {
                       isUnavailable
                           ? l10n.unlock_unavailable
                           : _unlockLabel(l10n, proPaywall.offer),
+                      textAlign: TextAlign.center,
                     ),
-            ),
-          ],
+            );
+            final lock = Icon(Icons.lock_outline, color: onContainer);
+
+            if (stacked) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      lock,
+                      const SizedBox(width: 12),
+                      Expanded(child: message),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  button,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                lock,
+                const SizedBox(width: 12),
+                Expanded(child: message),
+                const SizedBox(width: 12),
+                button,
+              ],
+            );
+          },
         ),
       ),
     );

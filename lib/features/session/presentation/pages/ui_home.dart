@@ -124,42 +124,54 @@ class _OfflineHome extends StatelessWidget {
           drawer: Theme(data: appTheme, child: const CmpAppDrawer()),
           body: Stack(
             children: [
-              const Positioned(
-                left: 0,
-                right: 0,
+              const PositionedDirectional(
+                start: 0,
+                end: 0,
                 top: -_radarLift,
                 bottom: _radarLift,
                 child: CmpRadarBackground(),
               ),
               SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        l10n.meet_people_near_you,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineMedium,
+                // Scorrevole: con testo grande o in orizzontale il contenuto
+                // supera lo schermo; altrimenti resta ancorato in basso.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 48,
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.discover_people_within_100_meters_in_real_time,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              l10n.meet_people_near_you,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.discover_people_within_100_meters_in_real_time,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                            const SizedBox(height: 32),
+                            FilledButton(
+                              onPressed: () => _openStartSession(context),
+                              child: Text(l10n.start),
+                            ),
+                            const SizedBox(height: 8),
+                            // Sempre visibile: la demo dichiarata (persone
+                            // dimostrative, tutta sul telefono).
+                            const CmpTryDemoLink(),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 32),
-                      FilledButton(
-                        onPressed: () => _openStartSession(context),
-                        child: Text(l10n.start),
-                      ),
-                      const SizedBox(height: 8),
-                      // Sempre visibile: la demo dichiarata (persone
-                      // dimostrative, tutta sul telefono).
-                      const CmpTryDemoLink(),
-                      const SizedBox(height: 8),
-                    ],
+                    ),
                   ),
                 ),
               ),

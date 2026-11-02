@@ -151,6 +151,15 @@ class DeviceNotVerifiedFailure extends Failure {
   ]);
 }
 
+/// Questa versione dell'app è troppo vecchia per il server (protocollo non
+/// più supportato): la UI invita ad aggiornare dallo store. Nessun nuovo
+/// tentativo automatico, e niente che dipenda dal dispositivo o dalla rete.
+class AppUpdateRequiredFailure extends Failure {
+  const AppUpdateRequiredFailure([
+    super.message = 'This app version is no longer supported by the server',
+  ]);
+}
+
 // --- Profilo ---
 
 /// Maggiore età non confermata.

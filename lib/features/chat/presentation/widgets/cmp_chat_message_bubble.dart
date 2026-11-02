@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/chat_message.dart';
 
-/// Un fumetto di chat, in stile WhatsApp: a destra ed evidenziato se è tuo,
-/// a sinistra altrimenti, con un angolo "a coda" dalla parte del mittente
+/// Un fumetto di chat, in stile WhatsApp: dal lato "fine" (destra, a sinistra in arabo) ed
+/// evidenziato se è tuo, dal lato "inizio" altrimenti, con un angolo "a coda" dalla parte del mittente
 /// (raggio ridotto) e l'orario incorporato in fondo al testo — se il
 /// messaggio è corto sta sulla stessa riga, altrimenti va a capo da solo,
 /// perché è un [WidgetSpan] dentro lo stesso `Text.rich`, non una riga
@@ -40,16 +40,16 @@ class CmpChatMessageBubble extends StatelessWidget {
         maxWidth: MediaQuery.of(context).size.width * 0.78,
       ),
       margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 10, 8),
       decoration: BoxDecoration(
         color: isMine
             ? colorScheme.primary
             : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(16),
-          topRight: const Radius.circular(16),
-          bottomLeft: Radius.circular(isMine ? 16 : 4),
-          bottomRight: Radius.circular(isMine ? 4 : 16),
+        borderRadius: BorderRadiusDirectional.only(
+          topStart: const Radius.circular(16),
+          topEnd: const Radius.circular(16),
+          bottomStart: Radius.circular(isMine ? 16 : 4),
+          bottomEnd: Radius.circular(isMine ? 4 : 16),
         ),
       ),
       child: Text.rich(
@@ -63,7 +63,7 @@ class CmpChatMessageBubble extends StatelessWidget {
               alignment: PlaceholderAlignment.baseline,
               baseline: TextBaseline.alphabetic,
               child: Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsetsDirectional.only(start: 8),
                 child: Text(
                   timeLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -79,14 +79,18 @@ class CmpChatMessageBubble extends StatelessWidget {
 
     if (!isUnsent) {
       return Align(
-        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        alignment: isMine
+            ? AlignmentDirectional.centerEnd
+            : AlignmentDirectional.centerStart,
         child: bubble,
       );
     }
 
     final l10n = AppLocalizations.of(context)!;
     return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMine
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
       child: InkWell(
         onTap: onRetry,
         borderRadius: BorderRadius.circular(16),
@@ -95,7 +99,7 @@ class CmpChatMessageBubble extends StatelessWidget {
           children: [
             Opacity(opacity: 0.6, child: bubble),
             Padding(
-              padding: const EdgeInsets.only(bottom: 4, right: 4),
+              padding: const EdgeInsetsDirectional.only(bottom: 4, end: 4),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

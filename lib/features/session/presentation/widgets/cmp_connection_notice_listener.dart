@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '/l10n/generated/app_localizations.dart';
+import '../../domain/entities/session_closure_reason.dart';
 import '../providers/pro_connection.dart';
 
 /// Mostra un avviso (snackbar) quando la sessione è ripartita da zero lato
@@ -25,7 +26,7 @@ class CmpConnectionNoticeListener extends StatefulWidget {
 class _CmpConnectionNoticeListenerState
     extends State<CmpConnectionNoticeListener> {
   StreamSubscription<void>? _subscription;
-  StreamSubscription<void>? _closureSubscription;
+  StreamSubscription<SessionClosureReason>? _closureSubscription;
 
   @override
   void initState() {
@@ -37,7 +38,9 @@ class _CmpConnectionNoticeListenerState
         context,
       )?.showSnackBar(SnackBar(content: Text(l10n.session_restarted)));
     });
-    _closureSubscription = context.read<ProConnection>().closures.listen((_) {
+    _closureSubscription = context.read<ProConnection>().closures.listen((
+      reason,
+    ) {
       if (!mounted) return;
       final navigator = Navigator.maybeOf(context, rootNavigator: true);
       if (navigator == null) return;
@@ -45,8 +48,18 @@ class _CmpConnectionNoticeListenerState
       showDialog<void>(
         context: navigator.context,
         builder: (context) => AlertDialog(
-          title: Text(l10n.session_closed_after_reports_title),
-          content: Text(l10n.session_closed_after_reports_body),
+          title: Text(switch (reason) {
+            SessionClosureReason.reports =>
+              l10n.session_closed_after_reports_title,
+            SessionClosureReason.serverRestart =>
+              l10n.session_closed_server_restart_title,
+          }),
+          content: Text(switch (reason) {
+            SessionClosureReason.reports =>
+              l10n.session_closed_after_reports_body,
+            SessionClosureReason.serverRestart =>
+              l10n.session_closed_server_restart_body,
+          }),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),

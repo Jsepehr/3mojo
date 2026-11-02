@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '/core/utils/photo_bytes_cache.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/profile/domain/entities/profile.dart';
@@ -9,7 +11,12 @@ import '/features/profile/domain/entities/profile.dart';
 /// bloccato, `selfieBase64`. Nessuna distanza.
 ///
 /// Il selfie viene decodificato **qui, una volta**, e non a ogni `build`
-/// (vedi `PhotoBytesCache`).
+/// (vedi `PhotoBytesCache`). **Il server manda la foto di una persona una
+/// volta sola per connessione** (poi omette `selfieBase64`, che pesa fino a
+/// ~230 KB): quella ricevuta si tiene in [knownPhotos] per `personId`, e una
+/// lista senza foto per una persona già vista riusa quella. Una persona di
+/// cui non è mai arrivata una foto resta senza (`photoBytes` nullo), come
+/// una bloccata dal paywall.
 class NearbyPersonModel extends NearbyPerson {
   const NearbyPersonModel({
     required super.id,
@@ -27,6 +34,7 @@ class NearbyPersonModel extends NearbyPerson {
   factory NearbyPersonModel.fromJson(
     Map<String, dynamic> json, {
     PhotoBytesCache? photos,
+    Map<String, Uint8List>? knownPhotos,
   }) {
     final id = json['personId'];
     final chance = _enumOrNull(MeetingChance.values, json['meetingChance']);
@@ -34,16 +42,23 @@ class NearbyPersonModel extends NearbyPerson {
       throw FormatException('Persona vicina non valida', json);
     }
     final isLocked = json['locked'] == true;
+    Uint8List? photo;
+    if (!isLocked) {
+      photo = (photos ?? PhotoBytesCache(maxEntries: 0)).decode(
+        json['selfieBase64'],
+      );
+      if (photo != null) {
+        knownPhotos?[id] = photo;
+      } else {
+        photo = knownPhotos?[id];
+      }
+    }
     final rawLanguages = json['languages'];
     return NearbyPersonModel(
       id: id,
       meetingChance: chance,
       isLocked: isLocked,
-      photoBytes: isLocked
-          ? null
-          : (photos ?? PhotoBytesCache(maxEntries: 0)).decode(
-              json['selfieBase64'],
-            ),
+      photoBytes: photo,
       intent: _enumOrNull(MeetIntent.values, json['intent']),
       languages: rawLanguages is List
           ? rawLanguages.whereType<String>().toList(growable: false)
@@ -57,10 +72,15 @@ class NearbyPersonModel extends NearbyPerson {
   static NearbyPersonModel? tryFromJson(
     Object? json, {
     PhotoBytesCache? photos,
+    Map<String, Uint8List>? knownPhotos,
   }) {
     if (json is! Map<String, dynamic>) return null;
     try {
-      return NearbyPersonModel.fromJson(json, photos: photos);
+      return NearbyPersonModel.fromJson(
+        json,
+        photos: photos,
+        knownPhotos: knownPhotos,
+      );
     } on FormatException {
       return null;
     }

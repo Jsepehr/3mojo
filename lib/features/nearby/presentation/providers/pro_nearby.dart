@@ -249,7 +249,8 @@ class ProNearby extends ChangeNotifier {
         break;
       case Left(value: ConnectionFailure())
           when _failure is TooManyStartsFailure ||
-              _failure is DeviceNotVerifiedFailure:
+              _failure is DeviceNotVerifiedFailure ||
+              _failure is AppUpdateRequiredFailure:
         // Il server chiude il socket subito dopo `rateLimited`: resta la
         // spiegazione vera, non un generico "sei offline".
         break;

@@ -71,6 +71,10 @@ class RedeemStorePurchaseUseCase {
         return Left(failure);
       case Left(value: PurchaseNotVerifiedFailure() && final failure):
         return Left(failure);
+      case Left(value: AppUpdateRequiredFailure() && final failure):
+        // L'acquisto resta da riscattare: si completerà dopo l'aggiornamento
+        // (il negozio lo ripresenta, il server lo accetta una volta sola).
+        return Left(failure);
       case Left():
         return const Left(UnlockNotDeliveredYetFailure());
     }

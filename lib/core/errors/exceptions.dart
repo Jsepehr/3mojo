@@ -101,6 +101,18 @@ class DeviceNotVerifiedException implements Exception {
   String toString() => message;
 }
 
+/// Il server dice che questa versione dell'app parla un protocollo troppo
+/// vecchio (`error` `updateRequired` sul WebSocket, 426 sulle rotte HTTP):
+/// bisogna aggiornare dallo store. Definitivo: riprovare non serve.
+class AppUpdateRequiredException implements Exception {
+  const AppUpdateRequiredException([this.message = 'App update required']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 // --- Acquisti in-app (paywall) ---
 
 /// Il negozio (App Store / Google Play) non è utilizzabile qui: build senza

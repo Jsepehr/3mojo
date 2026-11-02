@@ -34,34 +34,63 @@ class CmpDemoBanner extends StatelessWidget {
         bottom: false,
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 8, 4),
-          child: Row(
-            children: [
-              Icon(
-                Icons.smart_toy_outlined,
-                size: 20,
-                color: colorScheme.onInverseSurface,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    l10n.demo_banner_title,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: colorScheme.onInverseSurface,
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final title = Semantics(
+                header: true,
+                child: Text(
+                  l10n.demo_banner_title,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.onInverseSurface,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
+              );
+              final exit = TextButton(
                 onPressed: isExiting ? null : onExit,
                 style: TextButton.styleFrom(
                   foregroundColor: colorScheme.inversePrimary,
                 ),
                 child: Text(l10n.demo_exit),
-              ),
-            ],
+              );
+              final icon = Icon(
+                Icons.smart_toy_outlined,
+                size: 20,
+                color: colorScheme.onInverseSurface,
+              );
+              // Testo grande: il bottone va sotto il titolo, non lo
+              // schiaccia.
+              if (MediaQuery.textScalerOf(context).scale(14) > 20) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          icon,
+                          const SizedBox(width: 12),
+                          Expanded(child: title),
+                        ],
+                      ),
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: exit,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  icon,
+                  const SizedBox(width: 12),
+                  Expanded(child: title),
+                  const SizedBox(width: 8),
+                  exit,
+                ],
+              );
+            },
           ),
         ),
       ),

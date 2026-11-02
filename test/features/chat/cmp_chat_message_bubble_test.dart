@@ -60,7 +60,47 @@ void main() {
       find.ancestor(of: find.textContaining('b'), matching: find.byType(Align)),
     );
 
-    expect(mineAlign.alignment, Alignment.centerRight);
-    expect(theirsAlign.alignment, Alignment.centerLeft);
+    expect(mineAlign.alignment, AlignmentDirectional.centerEnd);
+    expect(theirsAlign.alignment, AlignmentDirectional.centerStart);
+  });
+
+  testWidgets('in RTL (Arabic) mine sits on the left and others on the '
+      'right; in LTR the opposite', (tester) async {
+    final mine = ChatMessage(
+      id: '1',
+      isMine: true,
+      text: 'a',
+      sentAt: DateTime(2026, 1, 1),
+    );
+    final theirs = ChatMessage(
+      id: '2',
+      isMine: false,
+      text: 'b',
+      sentAt: DateTime(2026, 1, 1),
+    );
+
+    for (final (locale, mineOnRight) in [
+      (const Locale('en'), true),
+      (const Locale('ar'), false),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Column(
+              children: [
+                CmpChatMessageBubble(message: mine),
+                CmpChatMessageBubble(message: theirs),
+              ],
+            ),
+          ),
+        ),
+      );
+      final mineX = tester.getCenter(find.textContaining('a')).dx;
+      final theirsX = tester.getCenter(find.textContaining('b')).dx;
+      expect(mineX > theirsX, mineOnRight, reason: '$locale');
+    }
   });
 }

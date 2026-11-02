@@ -35,6 +35,8 @@ class PaywallRepositoryImpl implements PaywallRepository {
         return const Right(Duration.zero);
       }
       return Right(remaining);
+    } on AppUpdateRequiredException {
+      return const Left(AppUpdateRequiredFailure());
     } catch (e) {
       return Left(UnexpectedFailure(e.toString()));
     }
@@ -54,6 +56,8 @@ class PaywallRepositoryImpl implements PaywallRepository {
       return Left(PurchaseNotVerifiedFailure(e.code));
     } on PurchaseAlreadyRedeemedException {
       return const Left(PurchaseAlreadyRedeemedFailure());
+    } on AppUpdateRequiredException {
+      return const Left(AppUpdateRequiredFailure());
     } on ServerException catch (e) {
       return Left(ConnectionFailure(e.message));
     } catch (e) {

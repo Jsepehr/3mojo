@@ -108,66 +108,77 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
     return Stack(
       children: [
         const Positioned.fill(child: CmpRadarBackground()),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Niente card dai bordi netti: un velo ovale che parte
-                // quasi pieno al centro e svanisce verso i lati, così il
-                // testo resta leggibile e il radar si vede tutto intorno.
-                Positioned(
-                  left: -_glowBleedX,
-                  right: -_glowBleedX,
-                  top: -_glowBleedY,
-                  bottom: -_glowBleedY,
-                  child: CustomPaint(
-                    painter: _OvalGlowPainter(
-                      color: veilColor,
-                      peakOpacity: _glowPeakOpacity,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 28,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+        // Scorrevole: con testo grande o lingue lunghe (arabo) il velo
+        // cresce oltre l'altezza disponibile.
+        LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Text(
-                        widget.title,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          shadows: textHalo,
+                      // Niente card dai bordi netti: un velo ovale che parte
+                      // quasi pieno al centro e svanisce verso i lati, così il
+                      // testo resta leggibile e il radar si vede tutto intorno.
+                      Positioned(
+                        left: -_glowBleedX,
+                        right: -_glowBleedX,
+                        top: -_glowBleedY,
+                        bottom: -_glowBleedY,
+                        child: CustomPaint(
+                          painter: _OvalGlowPainter(
+                            color: veilColor,
+                            peakOpacity: _glowPeakOpacity,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: _tipHeight,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 600),
-                          child: Center(
-                            key: ValueKey(_tipIndex),
-                            child: Text(
-                              tips[_tipIndex],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 28,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.title,
                               textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
                                 shadows: textHalo,
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 16),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                minHeight: _tipHeight,
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 600),
+                                child: Center(
+                                  key: ValueKey(_tipIndex),
+                                  child: Text(
+                                    tips[_tipIndex],
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurface,
+                                      shadows: textHalo,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

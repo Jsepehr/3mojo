@@ -3,6 +3,7 @@ import 'dart:async';
 import '/core/network/realtime_connection.dart';
 import '/features/session/domain/entities/connection_status.dart';
 import '/features/session/domain/entities/server_handshake.dart';
+import '/features/session/domain/entities/session_closure_reason.dart';
 import 'connection_remote_data_source.dart';
 
 /// Implementazione **reale** sopra `RealtimeConnection`. Conta i `welcome`
@@ -53,7 +54,8 @@ class ConnectionRemoteDataSourceImpl implements ConnectionRemoteDataSource {
   Stream<ServerHandshake> watchHandshakes() => _handshakes.stream;
 
   @override
-  Stream<void> watchSessionClosures() => _connection.sessionClosures;
+  Stream<SessionClosureReason> watchSessionClosures() =>
+      _connection.sessionClosures.map(SessionClosureReason.fromWire);
 
   @override
   void checkAlive() => _connection.checkAlive();

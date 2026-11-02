@@ -15,6 +15,7 @@ import 'package:threemojo_app/features/nearby/domain/usecases/stop_being_visible
 import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/get_profile_usecase.dart';
 import 'package:threemojo_app/features/session/domain/repositories/selfie_repository.dart';
+import 'package:threemojo_app/features/session/domain/entities/session_closure_reason.dart';
 import 'package:threemojo_app/features/session/domain/usecases/check_selfie_has_face_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/end_session_usecase.dart';
 import 'package:threemojo_app/features/session/domain/usecases/flip_selfie_usecase.dart';
@@ -162,7 +163,7 @@ void main() {
       async.flushMicrotasks();
       expect(proSession.isOnline, isTrue);
 
-      connection.closures.add(null);
+      connection.closures.add(SessionClosureReason.reports);
       async.elapse(const Duration(seconds: 4));
 
       expect(sessionRepository.endSessionCalls, 1);

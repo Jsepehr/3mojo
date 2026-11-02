@@ -189,7 +189,7 @@ void main() {
         'safety and the licenses button', (tester) async {
       PackageInfo.setMockInitialValues(
         appName: 'Raen',
-        packageName: 'com.threemojo.app',
+        packageName: 'com.raen.app',
         version: '1.0.0',
         buildNumber: '1',
         buildSignature: '',

@@ -7,6 +7,7 @@ import 'package:threemojo_app/core/attestation/attestation_data_source.dart';
 import 'package:threemojo_app/core/attestation/attestation_data_source_fake_impl.dart';
 import 'package:threemojo_app/core/attestation/device_attestation.dart';
 import 'package:threemojo_app/core/config/attestation_config.dart';
+import 'package:threemojo_app/core/config/protocol_config.dart';
 import 'package:threemojo_app/core/errors/exceptions.dart';
 import 'package:threemojo_app/core/network/realtime_connection.dart';
 import 'package:threemojo_app/core/network/reconnect_backoff.dart';
@@ -15,6 +16,14 @@ import '../../support/fake_realtime_socket.dart';
 
 const _secret = '0f6a2c7e-1d3b-4c55-9a8e-7b2f4e6d8c10';
 const _otherSecret = '9b1e5d3c-7a2f-4e60-8c4d-2f6a8b0c1e3d';
+
+/// Il saluto: segreto e versione del protocollo (`appVersion` solo se già
+/// letta dal plugin, nei test mai).
+Map<String, dynamic> _hello(String secret) => {
+  'type': 'hello',
+  'secret': secret,
+  'protocol': ProtocolConfig.version,
+};
 
 void main() {
   late FakeRealtimeServer server;
@@ -29,7 +38,7 @@ void main() {
     await pumpEvents();
 
     expect(server.uris.single.query, isEmpty);
-    expect(server.last.sent.first, {'type': 'hello', 'secret': _secret});
+    expect(server.last.sent.first, _hello(_secret));
   });
 
   test('send is refused until the server says welcome', () async {
@@ -78,8 +87,8 @@ void main() {
       'never reconnected: that would be a new Start', () async {
     final events = <Object>[];
     server.connection.connect(_secret).listen(events.add, onError: events.add);
-    var closures = 0;
-    server.connection.sessionClosures.listen((_) => closures++);
+    final closures = <String>[];
+    server.connection.sessionClosures.listen(closures.add);
     await pumpEvents();
     server.last.welcome();
     await pumpEvents();
@@ -88,7 +97,7 @@ void main() {
     await server.last.serverCloses(code: 4010);
     await pumpEvents();
 
-    expect(closures, 1);
+    expect(closures, ['reports']);
     expect(server.sockets, hasLength(1));
     expect(events.whereType<ServerException>(), isEmpty);
     expect(server.connection.status, RealtimeStatus.offline);
@@ -99,6 +108,119 @@ void main() {
       ..checkAlive();
     await pumpEvents();
     expect(server.sockets, hasLength(1));
+  });
+
+  test('sessionClosed carries its reason; a server restart is announced '
+      'with serverRestart and, like reports, never reconnected', () async {
+    server.connection.connect(_secret).listen((_) {}, onError: (_) {});
+    final closures = <String>[];
+    server.connection.sessionClosures.listen(closures.add);
+    await pumpEvents();
+    server.last.welcome();
+    await pumpEvents();
+
+    server.last.serverSends({
+      'type': 'sessionClosed',
+      'reason': 'serverRestart',
+    });
+    await server.last.serverCloses(code: 1012);
+    await pumpEvents();
+
+    expect(closures, ['serverRestart']);
+    expect(server.sockets, hasLength(1));
+    expect(server.connection.status, RealtimeStatus.offline);
+  });
+
+  test('a sessionClosed without a (string) reason is "reports", as old '
+      'servers sent it', () async {
+    server.connection.connect(_secret).listen((_) {}, onError: (_) {});
+    final closures = <String>[];
+    server.connection.sessionClosures.listen(closures.add);
+    await pumpEvents();
+    server.last.welcome();
+    await pumpEvents();
+
+    server.last.serverSends({'type': 'sessionClosed', 'reason': 7});
+    await pumpEvents();
+
+    expect(closures, ['reports']);
+  });
+
+  group('protocol version', () {
+    test('updateRequired is final: no automatic reconnection, not even on '
+        'a foreground check; the error reaches the features', () async {
+      final events = <Object>[];
+      server.connection
+          .connect(_secret)
+          .listen(events.add, onError: events.add);
+      await pumpEvents();
+
+      server.last.serverSends({
+        'type': 'error',
+        'code': 'updateRequired',
+        'minProtocol': 2,
+      });
+      await server.last.serverCloses(
+        code: ProtocolConfig.closeCodeUpdateRequired,
+      );
+      await pumpEvents();
+
+      expect(
+        events.whereType<Map<String, dynamic>>().any(
+          (m) => m['code'] == 'updateRequired',
+        ),
+        isTrue,
+      );
+      expect(server.sockets, hasLength(1));
+      expect(server.connection.status, RealtimeStatus.offline);
+
+      server.connection.checkAlive();
+      await pumpEvents();
+      expect(server.sockets, hasLength(1));
+    });
+
+    test('the close code alone (error frame lost) is also final', () async {
+      server.connection.connect(_secret).listen((_) {}, onError: (_) {});
+      await pumpEvents();
+
+      await server.last.serverCloses(code: 4012);
+      await pumpEvents();
+
+      expect(server.sockets, hasLength(1));
+      expect(server.connection.status, RealtimeStatus.offline);
+    });
+
+    test('an explicit retry (connect again) opens a new socket', () async {
+      server.connection.connect(_secret).listen((_) {}, onError: (_) {});
+      await pumpEvents();
+      await server.last.serverCloses(code: 4012);
+      await pumpEvents();
+
+      server.connection.connect(_secret);
+      await pumpEvents();
+
+      expect(server.sockets, hasLength(2));
+    });
+
+    test('unknown fields and unknown message types are ignored', () async {
+      final events = <Object>[];
+      server.connection
+          .connect(_secret)
+          .listen(events.add, onError: events.add);
+      await pumpEvents();
+      server.last.serverSends({
+        'type': 'welcome',
+        'resumed': false,
+        'graceSeconds': 45,
+        'protocol': 9,
+        'somethingNew': {'a': 1},
+      });
+      server.last.serverSends({'type': 'futureMessage', 'x': 1});
+      await pumpEvents();
+
+      expect(server.connection.isReady, isTrue);
+      expect(events.whereType<Object>().length, 2);
+    });
   });
 
   test('keeps retrying while the server is unreachable', () async {
@@ -134,7 +256,7 @@ void main() {
     expect(firstSocket.sentTypes, contains('end'));
     expect(firstSocket.closedByClient, isTrue);
     expect(firstDone, isTrue);
-    expect(server.last.sent.first, {'type': 'hello', 'secret': _otherSecret});
+    expect(server.last.sent.first, _hello(_otherSecret));
   });
 
   test(
@@ -195,7 +317,7 @@ void main() {
         expect(dead.closedByClient, isTrue);
         expect(dead.sentTypes, isNot(contains('end')));
         expect(fake.sockets, hasLength(2));
-        expect(fake.last.sent.first, {'type': 'hello', 'secret': _secret});
+        expect(fake.last.sent.first, _hello(_secret));
         expect(fake.connection.status, RealtimeStatus.reconnecting);
 
         fake.connection.disconnect();
@@ -296,7 +418,7 @@ void main() {
 
         expect(sockets, hasLength(2));
         final farewell = sockets.last;
-        expect(farewell.sent.single, {'type': 'hello', 'secret': _secret});
+        expect(farewell.sent.single, _hello(_secret));
         expect(connection.status, RealtimeStatus.offline);
 
         farewell.welcome(resumed: true);
@@ -385,7 +507,7 @@ void _attestationTests() {
 
     expect(attestation.nonces, ['n-1']);
     expect(server.last.sent, [
-      {'type': 'hello', 'secret': _secret},
+      _hello(_secret),
       {'type': 'attestation', 'platform': 'android', 'token': 'token-for-n-1'},
     ]);
     expect(events, isEmpty);

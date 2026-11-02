@@ -1,5 +1,6 @@
 import '/features/session/domain/entities/connection_status.dart';
 import '/features/session/domain/entities/server_handshake.dart';
+import '/features/session/domain/entities/session_closure_reason.dart';
 
 /// Contratto per osservare la connessione in tempo reale condivisa
 /// (`RealtimeConnection`, in `core/network/`). Nessun model/JSON: legge e
@@ -14,7 +15,7 @@ abstract class ConnectionRemoteDataSource {
 
   /// Un evento quando il server chiude la sessione per conto suo (dopo le
   /// segnalazioni di più persone, `sessionClosed`).
-  Stream<void> watchSessionClosures();
+  Stream<SessionClosureReason> watchSessionClosures();
 
   /// Controlla che il socket sia davvero vivo (ping, risposta attesa per
   /// pochi secondi) e, se non lo è, riconnette subito. Senza sessione non

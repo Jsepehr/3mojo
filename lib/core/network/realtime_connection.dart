@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '/core/attestation/attestation_data_source.dart';
 import '/core/attestation/default_attestation_data_source.dart';
+import '/core/config/protocol_config.dart';
 import '/core/errors/exceptions.dart';
 import 'api_config.dart';
 import 'realtime_socket.dart';
@@ -60,7 +61,9 @@ enum RealtimeStatus {
 /// segnalazioni di più persone): la sessione lato server non esiste più e
 /// riconnettersi sarebbe un nuovo Start (rifiutato per un po' da quella
 /// rete). Si avvisa chi ascolta [sessionClosures] e non si riprova più:
-/// tocca a chi ascolta chiudere la sessione locale (End).
+/// tocca a chi ascolta chiudere la sessione locale (End). Il motivo
+/// (`reports`, oppure `serverRestart` quando il server si sta spegnendo per
+/// un deploy) arriva con l'evento, così l'avviso dice la cosa giusta.
 ///
 /// **Verifica del dispositivo** (spenta sul server di default): se dopo
 /// l'`hello` di una sessione nuova il server manda `{"type": "challenge",
@@ -74,6 +77,14 @@ enum RealtimeStatus {
 /// Apple/Google per lo stesso risultato. Riprova ([connect] con la stessa
 /// sessione) o End; l'errore arriva alle feature dallo stesso stream (vedi
 /// `NearbyRemoteDataSourceImpl`).
+///
+/// **Versione del protocollo**: l'`hello` porta `protocol` (e `appVersion`,
+/// informativa; vedi [ProtocolConfig]). Se il server risponde
+/// `{"type": "error", "code": "updateRequired"}` (chiusura 4012) l'app è
+/// troppo vecchia: come per la verifica del dispositivo **non si riprova da
+/// soli** (non passerebbe mai) e l'errore arriva alle feature dallo stesso
+/// stream (→ `AppUpdateRequiredFailure`). Campi e tipi di messaggio
+/// sconosciuti si ignorano.
 class RealtimeConnection {
   RealtimeConnection({
     RealtimeSocketFactory? socketFactory,
@@ -98,6 +109,9 @@ class RealtimeConnection {
   /// Codice con cui il server chiude un socket di una sessione nuova senza
   /// un'attestazione valida del dispositivo.
   static const closeCodeAttestationRequired = 4011;
+
+  /// Il server dice che il protocollo di questa app è troppo vecchio.
+  static const closeCodeUpdateRequired = ProtocolConfig.closeCodeUpdateRequired;
 
   /// Oltre questa lunghezza un `nonce` non viene dal nostro server.
   static const maxNonceLength = 256;
@@ -124,7 +138,8 @@ class RealtimeConnection {
   final StreamController<RealtimeStatus> _statusChanges =
       StreamController.broadcast();
   final StreamController<bool> _readyEvents = StreamController.broadcast();
-  final StreamController<void> _sessionClosures = StreamController.broadcast();
+  final StreamController<String> _sessionClosures =
+      StreamController.broadcast();
 
   /// Il server ha chiuso la sessione attuale (`sessionClosed`): da qui in
   /// poi non si riconnette più.
@@ -134,6 +149,10 @@ class RealtimeConnection {
   /// (`attestationRequired`): niente riconnessioni automatiche finché non
   /// si richiama [connect] (Riprova).
   bool _attestationRefused = false;
+
+  /// Il server ha detto `updateRequired`: l'app è troppo vecchia. Stessa
+  /// regola di [_attestationRefused]: niente riconnessioni automatiche.
+  bool _updateRequired = false;
 
   String? _sessionId;
   StreamController<Map<String, dynamic>>? _messages;
@@ -167,9 +186,11 @@ class RealtimeConnection {
   Stream<bool> get onReady => _readyEvents.stream;
 
   /// Un evento quando il server chiude la sessione per conto suo
-  /// (`sessionClosed`, motivo `reports`): niente più riconnessioni, la
-  /// sessione locale va chiusa (vedi `WatchSessionClosedByServerUseCase`).
-  Stream<void> get sessionClosures => _sessionClosures.stream;
+  /// (`sessionClosed`): niente più riconnessioni, la sessione locale va
+  /// chiusa (vedi `WatchSessionClosedByServerUseCase`). L'evento è il
+  /// motivo dichiarato dal server (`reports`, `serverRestart`; `reports` se
+  /// manca o non è una stringa: i server vecchi mandavano solo quello).
+  Stream<String> get sessionClosures => _sessionClosures.stream;
 
   /// Apre (o riusa) la connessione per [sessionId] e ritorna lo stream
   /// broadcast dei messaggi JSON in arrivo, condiviso da tutti. Chiamabile
@@ -183,6 +204,7 @@ class RealtimeConnection {
       if (_socket == null && !_closedByServer) {
         _reconnectTimer?.cancel();
         _attestationRefused = false;
+        _updateRequired = false;
         _openSocket();
       }
       return current.stream;
@@ -193,6 +215,8 @@ class RealtimeConnection {
     final messages = StreamController<Map<String, dynamic>>.broadcast();
     _closedByServer = false;
     _attestationRefused = false;
+    _updateRequired = false;
+    ProtocolConfig.ensureAppVersionLoaded();
     _sessionId = sessionId;
     _messages = messages;
     _backoff.reset();
@@ -233,12 +257,21 @@ class RealtimeConnection {
       if (!identical(_socket, socket)) return;
       try {
         // Il segreto viaggia solo qui, mai nell'URL.
-        socket.add(jsonEncode({'type': 'hello', 'secret': sessionId}));
+        socket.add(jsonEncode(_hello(sessionId)));
       } catch (_) {
         // Il socket si è chiuso nel frattempo: ci pensa `onDone`.
       }
     }, onError: (Object _) {});
   }
+
+  /// Il saluto: il segreto (mai nell'URL), la versione del protocollo e,
+  /// se già nota, quella dell'app.
+  static Map<String, dynamic> _hello(String sessionId) => {
+    'type': 'hello',
+    'secret': sessionId,
+    'protocol': ProtocolConfig.version,
+    'appVersion': ?ProtocolConfig.appVersion,
+  };
 
   void _onFrame(
     RealtimeSocket socket,
@@ -267,6 +300,9 @@ class RealtimeConnection {
         decoded['code'] == 'attestationRequired') {
       _attestationRefused = true;
     }
+    if (decoded['type'] == 'error' && decoded['code'] == 'updateRequired') {
+      _updateRequired = true;
+    }
     if (decoded['type'] == 'welcome') {
       final graceSeconds = decoded['graceSeconds'];
       if (graceSeconds is int && graceSeconds > 0) {
@@ -284,7 +320,10 @@ class RealtimeConnection {
       _closedByServer = true;
       _reconnectTimer?.cancel();
       _reconnectTimer = null;
-      _sessionClosures.add(null);
+      final reason = decoded['reason'];
+      _sessionClosures.add(
+        reason is String && reason.isNotEmpty ? reason : 'reports',
+      );
     }
     if (!messages.isClosed) messages.add(decoded);
   }
@@ -357,6 +396,14 @@ class RealtimeConnection {
       _setStatus(RealtimeStatus.offline);
       return;
     }
+    // App troppo vecchia: il server risponderebbe uguale a ogni tentativo.
+    if (_updateRequired || socket?.closeCode == closeCodeUpdateRequired) {
+      _updateRequired = true;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _setStatus(RealtimeStatus.offline);
+      return;
+    }
     if (socket?.closeCode == closeCodeRateLimited) _backoff.jumpToMax();
     _setStatus(RealtimeStatus.reconnecting);
     _reconnectTimer?.cancel();
@@ -375,7 +422,7 @@ class RealtimeConnection {
   void checkAlive() {
     final messages = _messages;
     if (_sessionId == null || messages == null || messages.isClosed) return;
-    if (_closedByServer || _attestationRefused) return;
+    if (_closedByServer || _attestationRefused || _updateRequired) return;
 
     final socket = _socket;
     if (socket == null) {
@@ -480,6 +527,7 @@ class RealtimeConnection {
     _ready = false;
     _closedByServer = false;
     _attestationRefused = false;
+    _updateRequired = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _stopPing();
@@ -555,7 +603,7 @@ class RealtimeConnection {
     socket.ready.then((_) {
       if (finished) return;
       try {
-        socket.add(jsonEncode({'type': 'hello', 'secret': sessionId}));
+        socket.add(jsonEncode(_hello(sessionId)));
       } catch (_) {
         finish();
       }
