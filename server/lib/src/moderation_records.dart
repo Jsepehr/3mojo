@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:threemojo_server/src/log.dart';
+import 'package:threemojo_server/src/secure_file.dart';
 
 /// Un record di moderazione: ciò che resta, per una revisione umana, delle
 /// segnalazioni ricevute da **una** sessione. È il **primo e unico dato
@@ -186,15 +187,8 @@ class ModerationRecordStore {
 
   Future<void> _ensureDirectory() async {
     if (_directoryReady) return;
-    await directory.create(recursive: true);
-    if (!Platform.isWindows) {
-      // Solo il processo del server deve poterla leggere. Best-effort: su
-      // un filesystem che non lo permette resta com'è (i file sono comunque
-      // cifrati).
-      try {
-        await Process.run('chmod', ['700', directory.path]);
-      } catch (_) {}
-    }
+    // Solo il processo del server deve poterla leggere (700, best-effort).
+    await ensureSecureDirectory(directory);
     _directoryReady = true;
   }
 
@@ -227,10 +221,8 @@ class ModerationRecordStore {
       ..add(box.nonce)
       ..add(box.cipherText)
       ..add(box.mac.bytes);
-    final file = _fileFor(record.id);
-    final temporary = File('${file.path}.tmp');
-    await temporary.writeAsBytes(bytes.takeBytes(), flush: true);
-    await temporary.rename(file.path);
+    // File atomico e con permessi 600 (vedi `writeFileAtomically600`).
+    await writeFileAtomically600(_fileFor(record.id), bytes.takeBytes());
   }
 
   /// Il record [id], o `null` se non esiste, l'id non è valido o il file
@@ -346,8 +338,8 @@ class ModerationRecordStore {
     try {
       await purgeExpired();
     } catch (error, stackTrace) {
-      developer.log(
-        'Pulizia dei record di moderazione fallita',
+      Log.error(
+        'moderation.purge_failed',
         error: error,
         stackTrace: stackTrace,
       );

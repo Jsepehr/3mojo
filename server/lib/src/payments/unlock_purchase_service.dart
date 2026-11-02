@@ -61,8 +61,10 @@ class UnlockPurchaseService {
     required RedeemedTransactions registry,
     required PaywallStore paywallStore,
     DateTime Function()? now,
+    Future<void> Function()? persist,
     this.maxPurchaseAge = const Duration(days: 7),
-  }) : _verifiers = verifiers,
+  }) : _persist = persist,
+       _verifiers = verifiers,
        _productIds = productIds,
        _registry = registry,
        _paywallStore = paywallStore,
@@ -79,6 +81,10 @@ class UnlockPurchaseService {
   final RedeemedTransactions _registry;
   final PaywallStore _paywallStore;
   final DateTime Function() _now;
+
+  /// Scrive su disco lo stato (`UnlockStatePersistence.flush`), o `null`
+  /// (solo RAM).
+  final Future<void> Function()? _persist;
 
   /// Oltre questa età un acquisto Apple non si riscatta più (dopo, una
   /// transazione uscita dal registro potrebbe essere riscattata di nuovo).
@@ -144,17 +150,19 @@ class UnlockPurchaseService {
     final redeemed = _registry.lookup(hash);
     if (redeemed != null) {
       final token = redeemed.unlockToken;
-      final remaining = token == null
-          ? null
-          : _paywallStore.remainingFor(token);
-      if (token != null && remaining != null) {
-        return UnlockGrant(
-          unlockToken: token,
-          remaining: remaining,
-          replayed: true,
-        );
+      if (token != null) {
+        final remaining = _paywallStore.remainingFor(token);
+        if (remaining != null) {
+          return UnlockGrant(
+            unlockToken: token,
+            remaining: remaining,
+            replayed: true,
+          );
+        }
+        _registry.forgetToken(hash);
       }
-      _registry.forgetToken(hash);
+      // Senza token in chiaro (riavvio del server) o con lo sblocco finito:
+      // già riscattata.
       throw const PurchaseAlreadyRedeemedException();
     }
     if (verified.alreadyConsumed) {
@@ -173,6 +181,11 @@ class UnlockPurchaseService {
     try {
       final token = _paywallStore.issueUnlockToken();
       _registry.record(hash, token);
+      // Prima di rispondere (e di chiudere l'acquisto nel negozio) lo
+      // sblocco e la transazione devono essere su disco: un riavvio subito
+      // dopo non deve far perdere ciò che si è pagato né permettere il
+      // doppio riscatto.
+      await _persist?.call();
       try {
         await verifier.finalize(verified);
       } catch (_) {
@@ -203,10 +216,10 @@ class UnlockPurchaseService {
     String transactionKey,
   ) async {
     final hash = await _registry.hash(platform, transactionKey);
-    final token = _registry.forgetToken(hash);
+    final tokenHash = _registry.forgetToken(hash);
     // Anche se non era ancora stata riscattata: dopo un rimborso non deve
     // più poterlo essere.
     _registry.markRedeemed(hash);
-    return token != null && _paywallStore.revoke(token);
+    return tokenHash != null && _paywallStore.revokeHash(tokenHash);
   }
 }

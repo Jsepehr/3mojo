@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:dart_frog/dart_frog.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:threemojo_server/src/attestation/attestation_gate.dart';
 import 'package:threemojo_server/src/client_ip.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
+import 'package:threemojo_server/src/connection_limit.dart';
+import 'package:threemojo_server/src/metrics.dart';
 import 'package:threemojo_server/src/session_lifecycle.dart';
 import 'package:threemojo_server/src/socket_session.dart';
 
@@ -13,9 +17,18 @@ import 'package:threemojo_server/src/socket_session.dart';
 /// sessione arriva col primo messaggio (vedi sotto), mai in query string.
 ///
 /// Messaggi dal client, un JSON per frame di testo, distinti da `"type"`:
-/// - `{"type": "hello", "secret": "<segreto>"}` — **obbligatorio e primo**,
-///   entro 10 s, altrimenti il socket viene chiuso (codice 4001) senza aver
-///   registrato nulla. Risposta: `welcome` (sotto), oppure
+/// - `{"type": "hello", "secret": "<segreto>"}` più, dalla versione 1,
+///   `"protocol": 1` e `"appVersion": "1.2.3"` — **obbligatorio e primo**,
+///   entro 10 s, altrimenti il socket viene chiuso (codice 4001) senza aver registrato
+///   nulla. `protocol` è la versione del protocollo che parla il client
+///   (assente = 0: le app uscite prima), `appVersion` solo informativa
+///   (testo breve, ignorata dal server). Politica (`ProtocolPolicy`): il
+///   server accetta la versione attuale N e la precedente N-1; una più
+///   vecchia riceve `{"type": "error", "code": "updateRequired",
+///   "minProtocol": ..., "protocol": ...}` e chiusura 4012, prima di
+///   qualunque altro controllo; una più nuova è accettata. **Campi e tipi
+///   di messaggio sconosciuti si ignorano, da entrambe le parti.**
+///   Risposta: `welcome` (sotto), oppure
 ///   `{"type": "error", "code": "invalidSecret" | "rateLimited"}` e chiusura
 ///   (4002 / 4008) — oppure, con la verifica del dispositivo accesa e un
 ///   hello che aprirebbe una sessione **nuova**, prima un `challenge`
@@ -84,14 +97,18 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   aprirebbe una sessione nuova: il nonce (32 byte casuali, base64url)
 ///   vale una volta, per questo socket, per `expiresInSeconds` secondi. Con
 ///   `off` (default) non arriva mai e dopo `hello` c'è subito `welcome`;
-/// - `{"type": "welcome", "resumed": bool, "graceSeconds": 45}` — dopo un
-///   hello valido; `resumed: true` = stessa sessione di prima (stessa
+/// - `{"type": "welcome", "resumed": bool, "graceSeconds": 45,
+///   "protocol": 1}` — dopo un hello valido; `resumed: true` = stessa sessione di prima (stessa
 ///   permanenza, richieste e match), `false` = sessione nuova;
 /// - `{"type": "nearby", "people": [{"personId", "meetingChance", "locked",
 ///   "selfieBase64"?, "intent"?, "languages"?, "gender"?}]}` — ordinata per
 ///   fasce di distanza di 25 m (dentro una fascia, un ordine fisso per chi
 ///   guarda), **senza distanze**; `locked` = dietro il paywall (niente
-///   selfie). **Vuota per il primo minuto** della sessione e dopo ogni
+///   selfie). **Il selfie di una persona parte una volta sola per socket**:
+///   la prima lista in cui compare sbloccata lo porta, le successive
+///   omettono `selfieBase64` e il client riusa quello già ricevuto per lo
+///   stesso `personId` (cache azzerata a End; a ogni nuovo socket il server
+///   ricomincia a mandarli); **Vuota per il primo minuto** della sessione e dopo ogni
 ///   spostamento confermato: anche chi guarda dev'essere fermo da un minuto
 ///   (le distanze vanno da ancora ad ancora, vedi `SessionStore`). Al più
 ///   una lista diversa ogni 5 s per sessione
@@ -112,7 +129,16 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   chiusa dal server dopo abbastanza segnalazioni: subito dopo il socket
 ///   si chiude (4010) e la sessione non esiste più (un nuovo `hello` con lo
 ///   stesso segreto è un nuovo Start, e dallo stesso IP torna `rateLimited`
-///   per il cooldown).
+///   per il cooldown);
+/// - `{"type": "sessionClosed", "reason": "serverRestart"}` — il server si
+///   sta spegnendo (deploy, riavvio: `GracefulShutdown`): il socket si
+///   chiude con 1012 e lo stato in RAM sparisce. Per il client è una
+///   sessione chiusa dal server (End, nessuna riconnessione automatica),
+///   ma senza colpe: nessun cooldown, si può ripartire subito.
+///
+/// **Limiti di connessione**: oltre `MAX_WS_CONNECTIONS` socket aperti
+/// insieme (`WebSocketConnectionLimit`) la richiesta riceve 503 con
+/// `Retry-After` prima dell'upgrade.
 ///
 /// **Cosa vede chi viene bloccato**: esattamente ciò che vedrebbe se l'altro
 /// avesse premuto End — la richiesta tra loro `cancelled` (o il match
@@ -132,6 +158,12 @@ import 'package:threemojo_server/src/socket_session.dart';
 /// `SessionLifecycle`). Il server manda un ping WebSocket ogni 20 s
 /// ([pingInterval]): un socket morto senza chiusura viene scoperto e chiuso.
 Future<Response> onRequest(RequestContext context) async {
+  final limit = WebSocketConnectionLimit.instance;
+  if (!limit.hasRoom) {
+    Metrics.instance.connection('refusedLimit');
+    return Response(statusCode: 503, headers: {'Retry-After': '30'});
+  }
+
   final clientIp = resolveClientIp(
     remoteAddress: context.request.connectionInfo.remoteAddress.address,
     forwardedFor: context.request.headers['x-forwarded-for'],
@@ -143,6 +175,13 @@ Future<Response> onRequest(RequestContext context) async {
 
   final handler = fromShelfHandler(
     webSocketHandler((webSocket, protocol) {
+      if (!limit.tryAcquire()) {
+        Metrics.instance.connection('refusedLimit');
+        unawaited(webSocket.sink.close(1013, 'overloaded'));
+        return;
+      }
+      Metrics.instance.connection('accepted');
+      unawaited(webSocket.sink.done.whenComplete(limit.release));
       SocketSession(
         incoming: webSocket.stream,
         outgoing: webSocket.sink,

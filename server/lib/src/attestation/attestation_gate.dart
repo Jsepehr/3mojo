@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'dart:io';
-
+import '../log.dart';
 import '../rate_limiters.dart';
 import 'app_attest_verifier.dart';
 import 'attestation_challenge.dart';
@@ -83,12 +82,15 @@ class AttestationGate {
     void Function(String line)? log,
   }) : _verifiers = verifiers,
        _now = now ?? DateTime.now,
-       _log = log ?? stderr.writeln,
+       _log = log ?? _defaultLog,
        rateLimit = SlidingWindowRateLimiter(
          maxActions: maxPerIpPerMinute,
          window: const Duration(minutes: 1),
          now: now,
        );
+
+  static void _defaultLog(String line) =>
+      Log.info('attestation.outcome', {'msg': line});
 
   /// Monta i verificatori dalla configurazione: una piattaforma senza
   /// configurazione completa non ha verificatore (→ `unsupportedPlatform`).

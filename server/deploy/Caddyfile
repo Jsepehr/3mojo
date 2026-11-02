@@ -1,0 +1,56 @@
+# Reverse proxy TLS davanti al server Raen (vedi docker-compose.yml).
+# Il certificato lo ottiene e lo rinnova Caddy da solo (Let's Encrypt):
+# RAEN_DOMAIN deve puntare qui (DNS) e le porte 80/443 essere raggiungibili.
+
+{
+	# Contatto per Let's Encrypt (avvisi di scadenza): ACME_EMAIL, obbligatoria
+	# nel docker-compose.yml.
+	email {$ACME_EMAIL}
+}
+
+{$RAEN_DOMAIN} {
+	# NESSUN access log, apposta: l'URL di `POST /paywall/notifications/google`
+	# porta il token RTDN in query string (`?token=...`) e finirebbe in chiaro
+	# in un log. Senza la direttiva `log` Caddy non scrive access log (restano
+	# solo i log di servizio su stderr, senza URL delle richieste). Non
+	# aggiungerla.
+
+	encode zstd gzip
+
+	# Mai raggiungibili da fuori: le metriche (solo da loopback o con
+	# METRICS_TOKEN, per uno scraper nella rete interna) e gli endpoint di
+	# debug. Gli endpoint /admin/reports restano dietro ADMIN_TOKEN + TLS.
+	@internal path /metrics /metrics/* /debug /debug/*
+	respond @internal 404
+
+	# Corpo delle richieste HTTP: il server impone 64 KB, qui lo si ferma
+	# prima. Non tocca il WebSocket (GET senza corpo).
+	request_body {
+		max_size 64KB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	reverse_proxy raen:8080 {
+		# Caddy aggiunge X-Forwarded-For (il client vero, in coda) e
+		# X-Forwarded-Proto: il server li legge SOLO da TRUSTED_PROXY
+		# (l'indirizzo fisso di questo container nel compose).
+
+		# Un WebSocket sopravvive a un reload della configurazione di Caddy
+		# fino a 5 minuti (senza, ogni reload chiuderebbe tutte le sessioni).
+		stream_close_delay 5m
+
+		# Un backend che non risponde non tiene appesa la richiesta.
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 30s
+		}
+		health_uri /
+		health_interval 15s
+	}
+}

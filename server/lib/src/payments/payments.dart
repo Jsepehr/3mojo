@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:io';
+
+import '../log.dart';
 import '../paywall_store.dart';
+import '../state/unlock_state_persistence.dart';
+import '../state/unlock_state_store.dart';
 import 'app_store_server_api.dart';
 import 'apple_receipt_verifier.dart';
 import 'fake_receipt_verifier.dart';
 import 'google_play_api.dart';
 import 'google_play_receipt_verifier.dart';
+import '../server_environment.dart';
 import 'payments_config.dart';
 import 'receipt_verifier.dart';
 import 'redeemed_transactions.dart';
@@ -21,6 +28,7 @@ class Payments {
   Payments._({
     required this.config,
     required this.service,
+    this.persistence,
     this.appleNotifications,
     this.googleNotifications,
   });
@@ -30,6 +38,7 @@ class Payments {
     PaywallStore? paywallStore,
     GooglePlayApi? googlePlayApi,
     AppStoreServerApi? appStoreServerApi,
+    Directory? dataDirectory,
   }) {
     final verifiers = <StorePlatform, ReceiptVerifier>{};
     final productIds = <StorePlatform, String>{};
@@ -70,15 +79,29 @@ class Payments {
         }
     }
 
+    final store = paywallStore ?? PaywallStore.instance;
+    final registry = RedeemedTransactions(hashKey: config.transactionHashKey);
+    // Lo stato si salva solo con la chiave fissa: con una casuale per
+    // processo gli HMAC salvati non servirebbero a nulla al riavvio dopo.
+    final key = config.transactionHashKey;
+    final persistence = dataDirectory != null && key != null
+        ? UnlockStatePersistence(
+            store: UnlockStateStore(directory: dataDirectory, key: key),
+            paywall: store,
+            registry: registry,
+          )
+        : null;
     final service = UnlockPurchaseService(
       verifiers: verifiers,
       productIds: productIds,
-      registry: RedeemedTransactions(hashKey: config.transactionHashKey),
-      paywallStore: paywallStore ?? PaywallStore.instance,
+      registry: registry,
+      paywallStore: store,
+      persist: persistence?.flush,
     );
     return Payments._(
       config: config,
       service: service,
+      persistence: persistence,
       appleNotifications: apple != null && apple.notificationsEnabled
           ? AppleNotificationHandler(settings: apple, service: service)
           : null,
@@ -91,10 +114,40 @@ class Payments {
   /// Quella del processo, dalle variabili d'ambiente.
   static final Payments instance = Payments.fromConfig(
     PaymentsConfig.fromEnvironment(),
+    dataDirectory: Directory(ServerEnvironment.dataDir(Platform.environment)),
   );
+
+  /// All'avvio: rimette in RAM gli sblocchi e le transazioni salvate e
+  /// avvia la pulizia periodica del file. Senza persistenza (chiave HMAC non
+  /// fissa) non fa nulla.
+  Future<void> start() async {
+    final persistence = this.persistence;
+    if (persistence == null) return;
+    final restored = await persistence.restore();
+    Log.info('state.restored', {
+      'unlocks': restored.unlocks,
+      'transactions': restored.transactions,
+    });
+    _compactTimer ??= Timer.periodic(
+      const Duration(hours: 1),
+      (_) => unawaited(persistence.compact()),
+    );
+  }
+
+  /// Allo spegnimento: ultima scrittura dello stato e stop del timer.
+  Future<void> stop() async {
+    _compactTimer?.cancel();
+    _compactTimer = null;
+    await persistence?.flush();
+  }
+
+  Timer? _compactTimer;
 
   final PaymentsConfig config;
   final UnlockPurchaseService service;
+
+  /// Lo stato degli sblocchi su disco, o `null` (solo RAM).
+  final UnlockStatePersistence? persistence;
 
   /// `null` = `POST /paywall/notifications/apple` risponde 404.
   final AppleNotificationHandler? appleNotifications;

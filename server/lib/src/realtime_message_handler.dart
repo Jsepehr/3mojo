@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_proposal.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
+import 'package:threemojo_server/src/log.dart';
+import 'package:threemojo_server/src/metrics.dart';
 import 'package:threemojo_server/src/moderation_records.dart';
 import 'package:threemojo_server/src/moderation_store.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
@@ -161,6 +162,7 @@ class RealtimeMessageHandler {
     String reason, [
     Map<String, dynamic> extra = const {},
   ]) {
+    Metrics.instance.rejected(reason);
     _hub.sendTo(sessionId, {
       'type': 'rejected',
       'action': action,
@@ -484,14 +486,19 @@ class RealtimeMessageHandler {
       autoClosed: tally.autoClosed,
       selfieBase64: tally.selfieBase64,
     );
+    if (!_records.isEnabled) return;
     unawaited(
-      _records.save(record).catchError((Object error, StackTrace stackTrace) {
-        developer.log(
-          'Salvataggio del record di moderazione fallito',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }),
+      _records
+          .save(record)
+          .then((_) => Metrics.instance.moderationRecord(saved: true))
+          .catchError((Object error, StackTrace stackTrace) {
+            Metrics.instance.moderationRecord(saved: false);
+            Log.error(
+              'moderation.save_failed',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          }),
     );
   }
 

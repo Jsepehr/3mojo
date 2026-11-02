@@ -6,7 +6,7 @@
 # Files and directories created by pub
 .dart_tool/
 .packages
-pubspec.lock
+# pubspec.lock È committato (deploy riproducibili): non rimetterlo qui.
 
 # Files and directories created by dart_frog
 build/
@@ -16,3 +16,13 @@ build/
 coverage/
 # Record di moderazione cifrati (MODERATION_DIR di default): mai nel repository.
 moderation_records/
+
+# Stato persistente del server (DATA_DIR di default): sblocchi e transazioni
+# (hash, cifrati). Mai nel repository.
+data/
+
+# Configurazione e segreti del deploy (vedi deploy/README.md): mai nel
+# repository. Resta committato solo deploy/.env.example.
+deploy/.env
+deploy/secrets/
+deploy/data/

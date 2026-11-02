@@ -52,7 +52,7 @@ List<int> _cbor(Object value) => switch (value) {
 };
 
 const _teamId = 'ABCDE12345';
-const _bundleId = 'com.threemojo.app';
+const _bundleId = 'com.raen.app';
 const _nonce = 'challenge-nonce-of-this-socket';
 final _now = DateTime.utc(2026, 6, 1);
 

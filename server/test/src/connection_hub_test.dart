@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
+import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/presence_profile.dart';
 import 'package:threemojo_server/src/pseudonyms.dart';
 import 'package:threemojo_server/src/session_store.dart';
@@ -282,6 +283,149 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(incomingOf(second.single)['otherSelfieBase64'], 'selfie-a');
+    });
+
+    test('a nearby selfie travels once per person per socket: later lists '
+        'omit it, a new socket gets it again', () async {
+      store
+        ..upsertPosition(sessionId: 'a', lat: 0, lng: 0)
+        ..upsertPosition(
+          sessionId: 'b',
+          lat: 0,
+          lng: 0,
+          selfieBase64: 'selfie-b',
+        );
+      clock = clock.add(const Duration(minutes: 5));
+
+      List<Map<dynamic, dynamic>> peopleIn(Object? raw) =>
+          ((jsonDecode(raw! as String) as Map)['people'] as List)
+              .cast<Map<dynamic, dynamic>>();
+
+      final first = <dynamic>[];
+      hub
+        ..register('a', StreamController<dynamic>()..stream.listen(first.add))
+        ..broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+      expect(peopleIn(first.single).single['selfieBase64'], 'selfie-b');
+
+      // A third person arrives: the list changes, but b's photo is not
+      // sent again; the newcomer's is.
+      store.upsertPosition(
+        sessionId: 'c',
+        lat: 0,
+        lng: 0,
+        selfieBase64: 'selfie-c',
+      );
+      clock = clock.add(const Duration(minutes: 5));
+      hub.broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(first, hasLength(2));
+      final people = peopleIn(first.last);
+      expect(people, hasLength(2));
+      final byPhoto = {
+        for (final p in people) p['selfieBase64'] ?? 'none': p['personId'],
+      };
+      expect(byPhoto.keys, unorderedEquals(['none', 'selfie-c']));
+      expect(
+        pseudonyms.resolve(
+          viewerId: 'a',
+          pseudonym: byPhoto['none']! as String,
+        ),
+        'b',
+      );
+
+      // Reconnection: a new socket starts from zero and gets both.
+      final second = <dynamic>[];
+      hub
+        ..register('a', StreamController<dynamic>()..stream.listen(second.add))
+        ..broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        peopleIn(second.single).map((p) => p['selfieBase64']),
+        unorderedEquals(['selfie-b', 'selfie-c']),
+      );
+    });
+
+    test('a person who was locked gets the photo the first time she is '
+        'unlocked, not before', () async {
+      final paywall = PaywallStore.withClock(() => clock);
+      hub = ConnectionHub.withStore(
+        store,
+        paywallStore: paywall,
+        pseudonyms: pseudonyms,
+        broadcastThrottleInterval: Duration.zero,
+        nearbyPushMinInterval: Duration.zero,
+      );
+      // Many people at distance: the farthest third is free, the rest locked
+      // for a viewer without a token.
+      store.upsertPosition(sessionId: 'v', lat: 0, lng: 0);
+      for (var i = 0; i < 6; i++) {
+        store.upsertPosition(
+          sessionId: 'p$i',
+          lat: 0.0001 * (i + 1),
+          lng: 0,
+          selfieBase64: 'selfie-$i',
+        );
+      }
+      clock = clock.add(const Duration(minutes: 5));
+      final messages = <dynamic>[];
+      hub
+        ..register(
+          'v',
+          StreamController<dynamic>()..stream.listen(messages.add),
+        )
+        ..broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+      final before =
+          ((jsonDecode(messages.single as String) as Map)['people'] as List)
+              .cast<Map<dynamic, dynamic>>();
+      final lockedBefore = before.where((p) => p['locked'] == true).toList();
+      expect(lockedBefore, isNotEmpty);
+      expect(lockedBefore.every((p) => !p.containsKey('selfieBase64')), isTrue);
+
+      store.upsertPosition(
+        sessionId: 'v',
+        lat: 0,
+        lng: 0,
+        unlockToken: paywall.issueUnlockToken(),
+      );
+      hub.broadcastNearbyUpdates();
+      await Future<void>.delayed(Duration.zero);
+
+      final after =
+          ((jsonDecode(messages.last as String) as Map)['people'] as List)
+              .cast<Map<dynamic, dynamic>>();
+      for (final person in after.where(
+        (p) => lockedBefore.any((l) => l['personId'] == p['personId']),
+      )) {
+        expect(person['locked'], isFalse);
+        expect(person['selfieBase64'], isNotNull);
+      }
+    });
+
+    test('closeAllForShutdown tells every client and closes the sockets '
+        'without leaving anything registered', () async {
+      final aMessages = <dynamic>[];
+      var aClosed = false;
+      hub.register(
+        'a',
+        StreamController<dynamic>(onCancel: () => aClosed = true)
+          ..stream.listen(aMessages.add),
+      );
+      hub.register('b', StreamController<dynamic>()..stream.listen((_) {}));
+      expect(hub.connectedCount, 2);
+
+      hub.closeAllForShutdown();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(jsonDecode(aMessages.single as String), {
+        'type': 'sessionClosed',
+        'reason': 'serverRestart',
+      });
+      expect(hub.connectedCount, 0);
+      expect(hub.isConnected('a'), isFalse);
+      expect(aClosed, isTrue);
     });
 
     test('unregister stops further pushes to that session', () async {

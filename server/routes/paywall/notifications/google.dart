@@ -1,5 +1,6 @@
 import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/constant_time.dart';
+import 'package:threemojo_server/src/http_limits.dart';
 import 'package:threemojo_server/src/payments/payments.dart';
 import 'package:threemojo_server/src/payments/store_notifications.dart';
 
@@ -26,7 +27,9 @@ Future<Response> onRequest(RequestContext context) async {
   }
   final Object? body;
   try {
-    body = await context.request.json();
+    body = await readJsonBody(context.request);
+  } on BodyTooLargeException {
+    return bodyTooLargeResponse();
   } catch (_) {
     return Response(statusCode: 400);
   }

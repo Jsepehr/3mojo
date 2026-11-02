@@ -143,6 +143,45 @@ void main() {
     );
   });
 
+  test('IPv4-mapped addresses are the same as plain IPv4 for the proxy and '
+      'loopback checks', () async {
+    final proxied = api(
+      allowInsecureLoopback: false,
+      trustedProxies: const {'127.0.0.1'},
+    );
+    expect(
+      (await proxied.list(
+        _request(
+          remote: '::ffff:127.0.0.1',
+          extraHeaders: {'x-forwarded-proto': 'https'},
+        ),
+      )).statusCode,
+      200,
+    );
+    final mappedConfig = api(
+      allowInsecureLoopback: false,
+      trustedProxies: const {'::ffff:10.0.0.1'},
+    );
+    expect(
+      (await mappedConfig.list(
+        _request(
+          remote: '10.0.0.1',
+          extraHeaders: {'x-forwarded-proto': 'https'},
+        ),
+      )).statusCode,
+      200,
+    );
+    // The loopback opt-in also holds for the mapped form, and only there.
+    expect(
+      (await api().list(_request(remote: '::ffff:127.0.0.1'))).statusCode,
+      200,
+    );
+    expect(
+      (await api().list(_request(remote: '::ffff:10.0.0.5'))).statusCode,
+      403,
+    );
+  });
+
   test('requests are rate limited per IP, before authentication', () async {
     final limited = api(
       rateLimiter: SlidingWindowRateLimiter(

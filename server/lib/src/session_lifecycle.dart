@@ -5,6 +5,7 @@ import 'package:threemojo_server/src/connection_hub.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/moderation_store.dart';
 import 'package:threemojo_server/src/new_session_rate_limiter.dart';
+import 'package:threemojo_server/src/protocol_version.dart';
 import 'package:threemojo_server/src/session_credentials.dart';
 import 'package:threemojo_server/src/session_store.dart';
 
@@ -132,6 +133,9 @@ class SessionLifecycle {
   /// `true` se [sessionId] è nel periodo di grazia.
   bool isInGrace(String sessionId) => _graceTimers.containsKey(sessionId);
 
+  /// Quante sessioni sono nel periodo di grazia adesso (per `/metrics`).
+  int get graceCount => _graceTimers.length;
+
   /// `true` se [secret] è valido e appartiene a una sessione ancora viva:
   /// un `hello` con questo segreto **riprende** quella sessione invece di
   /// aprirne una nuova. Per `SocketSession`, che chiede la verifica del
@@ -184,6 +188,7 @@ class SessionLifecycle {
         'type': 'welcome',
         'resumed': resumed,
         'graceSeconds': gracePeriod.inSeconds,
+        'protocol': ProtocolPolicy.currentVersion,
       })
       // Stato già esistente (es. richieste ricevute prima di una
       // riconnessione) — non aspettare il prossimo cambiamento per vederlo.
@@ -298,6 +303,18 @@ class SessionLifecycle {
     Duration maxAge = const Duration(seconds: 90),
   }) {
     _autoPurgeTimer ??= Timer.periodic(interval, (_) => purgeStale(maxAge));
+  }
+
+  /// Chiude in modo ordinato per lo spegnimento del processo: avvisa ogni
+  /// client connesso (`sessionClosed` `serverRestart`), chiude i socket con
+  /// 1012 ("service restart") e ferma i timer. Non fa `endNow` sessione per
+  /// sessione: il processo sta per uscire e tutto lo stato è in RAM — e le
+  /// chiusure dei socket che seguono non devono avviare nessuna grazia (il
+  /// canale è già stato staccato dall'hub).
+  void shutdownGracefully() {
+    _hub.closeAllForShutdown();
+    dispose();
+    _hub.stopHotspotDetection();
   }
 
   /// Solo per i test: ferma ogni timer (purge e grazie in corso).

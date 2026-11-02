@@ -1,12 +1,15 @@
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/client_ip.dart';
+import 'package:threemojo_server/src/http_limits.dart';
+import 'package:threemojo_server/src/log.dart';
+import 'package:threemojo_server/src/metrics.dart';
 import 'package:threemojo_server/src/payments/payments.dart';
 import 'package:threemojo_server/src/payments/receipt_verifier.dart';
 import 'package:threemojo_server/src/payments/unlock_purchase_service.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
+import 'package:threemojo_server/src/protocol_version.dart';
 import 'package:threemojo_server/src/rate_limiters.dart';
 
 /// `POST /paywall/purchase` — riscatta un acquisto in-app **verificato col
@@ -34,6 +37,9 @@ import 'package:threemojo_server/src/rate_limiters.dart';
 /// - 422 `{"code": <ReceiptRejection>}` — il negozio dice che non vale
 ///   (`invalidReceipt`, `wrongProduct`, `wrongApp`, `wrongEnvironment`,
 ///   `notPurchased`, `refunded`, `tooOld`, `transactionMismatch`);
+/// - 413 `{"code": "bodyTooLarge"}` — corpo oltre 64 KB;
+/// - 426 `{"code": "updateRequired"}` — l'header `X-Raen-Protocol` dichiara
+///   un protocollo troppo vecchio (`ProtocolPolicy`);
 /// - 429 troppe richieste dallo stesso IP;
 /// - 502 `{"code": "storeUnavailable"}` — il negozio non risponde, riprovare;
 /// - 503 `{"code": "platformNotEnabled" | "storeNotConfigured"}` — il server
@@ -50,20 +56,34 @@ Future<Response> onRequest(RequestContext context) async {
     return Response(statusCode: 405);
   }
 
+  final outdated = ProtocolPolicy.instance.checkHttp(context.request.headers);
+  if (outdated != null) {
+    Metrics.instance.purchase('refusedUpdateRequired');
+    return outdated;
+  }
+
   final clientIp = resolveClientIp(
     remoteAddress: context.request.connectionInfo.remoteAddress.address,
     forwardedFor: context.request.headers['x-forwarded-for'],
     trustedProxies: _trustedProxies,
   );
   if (!purchaseRateLimiter.tryAcquire(clientIp)) {
+    Metrics.instance.purchase('rateLimited');
     return Response.json(
       statusCode: HttpStatus.tooManyRequests,
       body: {'error': 'Troppe richieste, riprova tra qualche minuto'},
     );
   }
 
-  final claim = await _readClaim(context.request);
+  final PurchaseClaim? claim;
+  try {
+    claim = await _readClaim(context.request);
+  } on BodyTooLargeException {
+    Metrics.instance.purchase('bodyTooLarge');
+    return bodyTooLargeResponse();
+  }
   if (claim == null) {
+    Metrics.instance.purchase('invalidRequest');
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: {'error': 'Richiesta non valida', 'code': 'invalidRequest'},
@@ -72,6 +92,7 @@ Future<Response> onRequest(RequestContext context) async {
 
   try {
     final grant = await Payments.instance.service.redeem(claim);
+    Metrics.instance.purchase(grant.replayed ? 'replayed' : 'granted');
     return Response.json(
       body: {
         'unlockToken': grant.unlockToken,
@@ -81,17 +102,23 @@ Future<Response> onRequest(RequestContext context) async {
       },
     );
   } on ReceiptRejectedException catch (e) {
-    _log('rifiutata (${claim.platform.name}): ${e.reason.name}');
+    Metrics.instance.purchase('rejected_${e.reason.name}');
+    Log.info('payments.rejected', {
+      'platform': claim.platform.name,
+      'reason': e.reason.name,
+    });
     return Response.json(
       statusCode: HttpStatus.unprocessableEntity,
       body: {'error': 'Acquisto non valido', 'code': e.reason.name},
     );
   } on PurchaseAlreadyRedeemedException {
+    Metrics.instance.purchase('alreadyRedeemed');
     return Response.json(
       statusCode: HttpStatus.conflict,
       body: {'error': 'Acquisto già riscattato', 'code': 'alreadyRedeemed'},
     );
   } on PlatformNotEnabledException {
+    Metrics.instance.purchase('platformNotEnabled');
     return Response.json(
       statusCode: HttpStatus.serviceUnavailable,
       body: {
@@ -99,8 +126,9 @@ Future<Response> onRequest(RequestContext context) async {
         'code': 'platformNotEnabled',
       },
     );
-  } on StoreNotConfiguredException catch (e) {
-    _log('configurazione: ${e.detail}');
+  } on StoreNotConfiguredException {
+    Metrics.instance.purchase('storeNotConfigured');
+    Log.error('payments.store_not_configured');
     return Response.json(
       statusCode: HttpStatus.serviceUnavailable,
       body: {
@@ -108,8 +136,9 @@ Future<Response> onRequest(RequestContext context) async {
         'code': 'storeNotConfigured',
       },
     );
-  } on StoreUnavailableException catch (e) {
-    _log('negozio non raggiungibile: ${e.detail}');
+  } on StoreUnavailableException {
+    Metrics.instance.purchase('storeUnavailable');
+    Log.warn('payments.store_unavailable');
     return Response.json(
       statusCode: HttpStatus.badGateway,
       body: {'error': 'Negozio non raggiungibile', 'code': 'storeUnavailable'},
@@ -117,12 +146,15 @@ Future<Response> onRequest(RequestContext context) async {
   }
 }
 
-/// `null` se il corpo non è un acquisto ben formato. Nessun campo viene
-/// creduto qui: lo verifica il negozio.
+/// `null` se il corpo non è un acquisto ben formato; lancia
+/// [BodyTooLargeException] oltre 64 KB. Nessun campo viene creduto qui: lo
+/// verifica il negozio.
 Future<PurchaseClaim?> _readClaim(Request request) async {
   final Object? body;
   try {
-    body = await request.json();
+    body = await readJsonBody(request);
+  } on BodyTooLargeException {
+    rethrow;
   } catch (_) {
     return null;
   }
@@ -149,9 +181,5 @@ Future<PurchaseClaim?> _readClaim(Request request) async {
     transactionId: transactionId,
   );
 }
-
-/// Solo l'esito, mai ricevute, token o transazioni.
-void _log(String message) =>
-    developer.log(message, name: 'paywall.purchase', level: 800);
 
 final Set<String> _trustedProxies = trustedProxiesFromEnvironment();

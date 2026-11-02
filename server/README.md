@@ -7,9 +7,11 @@
 Backend [Dart Frog](https://dart-frog.dev) dell'app **Raen** (`threemojo_app`,
 nella cartella superiore). Tiene **solo in RAM** tutto lo stato di sessione
 (sessioni, richieste d'incontro, chat inoltrate, blocchi, segnalazioni,
-sblocchi, transazioni riscattate, hotspot): riavviarlo lo cancella. **Unica eccezione**: i record di
-moderazione (vedi [Segnalazioni e moderazione](#segnalazioni-e-moderazione)),
-cifrati su disco e cancellati dopo 30 giorni. Architettura e regole sono
+hotspot): riavviarlo lo cancella. **Due eccezioni su disco, entrambe cifrate**:
+i record di moderazione (vedi [Segnalazioni e
+moderazione](#segnalazioni-e-moderazione), 30 giorni) e lo stato degli
+acquisti — solo hash degli sblocchi (2 ore) e delle transazioni riscattate
+(8 giorni), vedi [Stato degli acquisti](#stato-degli-acquisti-su-disco). Architettura e regole sono
 spiegate in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md) (§4).
 
 [dart_frog_lint_badge]: https://img.shields.io/badge/style-dart_frog_lint-1DF9D2.svg
@@ -28,7 +30,17 @@ dart build/bin/server.dart        # porta 8080 (env PORT)
 In un terminale interattivo va bene anche `dart_frog dev` (hot reload); da
 script/CI/agenti no: legge da stdin e va in crash con `StdinException`.
 
-Route: `GET /` (controllo di salute), `GET /ws` (WebSocket), `POST
+`dart_frog_cli` non è una dipendenza del progetto: per provare il server in
+locale va installata a mano, una volta, sulla propria macchina (`dart pub
+global activate dart_frog_cli`). In produzione non serve: l'immagine Docker la
+installa solo nello stadio di build (vedi [deploy/README.md](deploy/README.md),
+che spiega anche Caddy, i volumi, il deploy notturno e il rollback).
+
+`pubspec.lock` è **committato**: le build (e l'immagine Docker) usano le versioni
+provate.
+
+Route: `GET /` (controllo di salute), `GET /metrics` (solo loopback o
+`METRICS_TOKEN`, vedi [Log e metriche](#log-e-metriche)), `GET /ws` (WebSocket), `POST
 /paywall/purchase`, `POST /paywall/status`, `POST
 /paywall/notifications/apple` e `/google` (spente di default, vedi
 [Pagamenti](#pagamenti-in-app)), `GET /debug/sessions` (spento di
@@ -51,10 +63,17 @@ per i client già usciti.
 
 | Variabile | Effetto |
 |---|---|
+| `RAEN_ENV` | `production` = **fail closed**: il server NON parte se `PAYMENTS_MODE` non è `real`, se `MODERATION_KEY` manca o non è valida, se `ADMIN_TOKEN` ha meno di 32 caratteri o manca, se manca `PAYMENTS_TRANSACTION_HASH_KEY` (fissa, 32 byte in base64), o se sono impostati `DEBUG_ENDPOINTS_TOKEN`, `ADMIN_ALLOW_INSECURE_HTTP` (diverso da `false`) o `ATTESTATION_ALLOW_FAKE`; tutti i motivi insieme nel messaggio d'errore. In production anche il CORS è spento (vedi `CORS_ALLOW_ORIGIN`). `development` o vuoto = i default da sviluppo. Qualsiasi altro valore (un refuso: `prod`) rifiuta l'avvio. Vale **sempre**, anche senza `RAEN_ENV`: `PAYMENTS_MODE=fake` esplicito con `TLS_CERT_PATH` o `TRUSTED_PROXY` rifiuta l'avvio. |
+| `DATA_DIR` | Cartella dello stato degli acquisti (`unlocks.state`, cifrato, `600`, dentro una cartella `700`). Default `data` nella cartella di lavoro (nell'immagine Docker `/var/lib/raen/data`, un volume). Usata solo con `PAYMENTS_TRANSACTION_HASH_KEY` impostata. |
+| `MAX_WS_CONNECTIONS` | Tetto alle connessioni WebSocket aperte insieme (default 2000): oltre, `GET /ws` risponde 503 `Retry-After` prima dell'upgrade. Tarare sul limite di memoria (ogni sessione porta un selfie fino a ~230 KB). |
+| `MIN_PROTOCOL_VERSION` | Alza il minimo del protocollo accettato (default: N-1, vedi [Versione del protocollo](#versione-del-protocollo)); mai oltre la versione attuale. I client sotto il minimo ricevono `updateRequired`. |
+| `METRICS_TOKEN` | Almeno 32 caratteri: abilita `GET /metrics` anche da fuori loopback (`Authorization: Bearer <token>`). Senza, solo da loopback diretto. |
+| `CORS_ALLOW_ORIGIN` | Origini ammesse dal CORS, separate da virgola (`https://app.example`), `*` o `none`. Default: `*` in sviluppo, **nessun header CORS** con `RAEN_ENV=production` (le app Android/iOS non ne hanno bisogno; serve solo a `flutter run -d chrome`). |
+| `LOG_LEVEL` | `debug`, `info` (default), `warn`, `error`. |
 | `TLS_CERT_PATH` + `TLS_KEY_PATH` | Percorsi di catena di certificati e chiave privata (PEM). Se presenti entrambe il server parla **solo** `https://`/`wss://` (vedi `main.dart`). Con una sola delle due si rifiuta di partire. |
 | `DEBUG_ENDPOINTS_TOKEN` | Accende `GET /debug/sessions`, che risponde solo con l'header `X-Debug-Token` uguale a questo valore. Senza, l'endpoint risponde 404. Da non impostare in produzione. Non espone posizioni né distanze tra persone. |
 | `MAX_NEW_SESSIONS_PER_IP` | Quanti nuovi Start (hello con un segreto nuovo) ammette lo stesso IP ogni 10 minuti (`NewSessionRateLimiter`). Default 20; un valore non intero o ≤ 0 è ignorato. Da alzare solo per le prove in locale (es. `200` col simulatore, che da solo apre 20 sessioni). |
-| `TRUSTED_PROXY` | IP dei reverse proxy fidati, separati da virgola (es. `127.0.0.1,10.0.0.5`). Solo per le connessioni che arrivano da uno di questi si legge `X-Forwarded-For` per i limiti per IP (nuovi Start su `/ws`, `POST /paywall/purchase`). Vuoto = l'header è ignorato (chiunque potrebbe falsificarlo). Dietro un proxy **va impostato**, altrimenti tutti i client sembrano lo stesso IP. |
+| `TRUSTED_PROXY` | IP dei reverse proxy fidati, separati da virgola (es. `127.0.0.1,10.0.0.5`). Solo per le connessioni che arrivano da uno di questi si legge `X-Forwarded-For` per i limiti per IP (nuovi Start su `/ws`, `POST /paywall/purchase`). Gli indirizzi sono normalizzati: `::ffff:127.0.0.1` e `127.0.0.1` sono lo stesso proxy. Vuoto = l'header è ignorato (chiunque potrebbe falsificarlo). Dietro un proxy **va impostato**, altrimenti tutti i client sembrano lo stesso IP. |
 | `MODERATION_KEY` | Chiave AES-256-GCM dei record di moderazione: 32 byte in base64, es. `openssl rand -base64 32`. **Senza (o non valida) i record non vengono salvati** e il server lo scrive nel log all'avvio; blocchi, soglie e chiusura automatica funzionano lo stesso. Tenerla fuori dal repository e dai backup dei record: chi ha i file senza la chiave non legge nulla. Cambiarla rende illeggibili i record vecchi (spariscono comunque entro 30 giorni dalla data del file). |
 | `MODERATION_DIR` | Cartella dei record (un file `<id>.rec` per record). Default `moderation_records` nella cartella di lavoro. Creata con permessi `700` dove possibile; va su un disco non condiviso. |
 | `ADMIN_TOKEN` | Accende gli endpoint `/admin/reports` (header `Authorization: Bearer <token>`, confronto a tempo costante). Almeno 32 caratteri (es. `openssl rand -hex 32`), altrimenti restano spenti (404) e il server lo scrive nel log. |
@@ -68,7 +87,7 @@ per i client già usciti.
 | `APPLE_NOTIFICATIONS_ENABLED` | `true` = accende `POST /paywall/notifications/apple` (App Store Server Notifications v2: un `REFUND`/`REVOKE` revoca lo sblocco). Senza: 404. |
 | `GOOGLE_PACKAGE_NAME`, `GOOGLE_PRODUCT_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON_PATH` | Con `PAYMENTS_MODE=real`, accendono Android: package name, ID del prodotto in-app (lo stesso di `StoreConfig.androidUnlockProductId`), file JSON del service account con accesso alla Google Play Developer API (permessi "Visualizza dati finanziari" e "Gestisci ordini" in Play Console). Tutte e tre obbligatorie: su Android la ricevuta è solo un `purchaseToken` da chiedere a Google. |
 | `GOOGLE_RTDN_TOKEN` | Almeno 32 caratteri (`openssl rand -hex 32`): accende `POST /paywall/notifications/google?token=<valore>` (Real-time Developer Notifications via push di Pub/Sub: un acquisto rimborsato/annullato revoca lo sblocco). Senza, o token sbagliato: 404. |
-| `PAYMENTS_TRANSACTION_HASH_KEY` | Opzionale, 32 byte in base64: chiave HMAC degli hash delle transazioni riscattate. Senza, una casuale per processo (va benissimo finché il registro è in RAM; serve fissa solo per renderlo persistente). |
+| `PAYMENTS_TRANSACTION_HASH_KEY` | 32 byte in base64 (`openssl rand -base64 32`): chiave HMAC degli hash delle transazioni riscattate **e** (derivata) chiave di cifratura di `unlocks.state`. **Obbligatoria in production.** Senza (solo sviluppo) ne esce una casuale per processo e lo stato resta in RAM, senza persistenza. Cambiarla rende illeggibile il file (il server lo scrive nel log e riparte da vuoto). |
 | `MODERATION_COOLDOWN_MINUTES` | Dopo una chiusura automatica, per quanti minuti gli IP della sessione chiusa non possono fare nuovi Start (risposta `rateLimited`). Default 30, `0` = spento; un valore non intero è ignorato. |
 | `ATTESTATION_MODE` | Verifica del dispositivo (App Attest / Play Integrity) per le sessioni **nuove**, vedi [sotto](#verifica-del-dispositivo). `off` (default) = nessun challenge, protocollo invariato. `log` = challenge e verifica, esito solo nel log (`[attestazione] …`), nessun rifiuto. `enforce` = senza attestazione valida `error` `attestationRequired` e chiusura 4011. Un valore diverso, o `enforce` senza **entrambe** le piattaforme configurate, e il server **non parte** (mai un rifiuto silenzioso di tutti, mai una piattaforma lasciata aperta). |
 | `GOOGLE_PACKAGE_NAME` + `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_PATH` | Con `ATTESTATION_MODE` `log`/`enforce`, accendono la verifica Android (Play Integrity, `decodeIntegrityToken`). Il service account deve stare nel progetto Google Cloud **collegato all'app in Play Console** con la Play Integrity API abilitata. Senza `PLAY_INTEGRITY_SERVICE_ACCOUNT_JSON_PATH` si usa `GOOGLE_SERVICE_ACCOUNT_JSON_PATH` dei pagamenti. Il numero del progetto Google Cloud serve solo all'app (`--dart-define=GOOGLE_CLOUD_PROJECT_NUMBER`), non al server. |
@@ -77,13 +96,44 @@ per i client già usciti.
 | `ATTESTATION_ALLOW_FAKE` | `true` = accetta l'attestazione **finta** dei build di debug (`platform: "fake"`), per provare `log`/`enforce` in locale. Ignorato (e scritto nel log) se il server ha TLS o `TRUSTED_PROXY`. Con questa, `enforce` parte anche senza Apple/Google. **Mai in produzione.** |
 
 Senza `TLS_*` il server resta in chiaro: va bene in sviluppo locale, in
-produzione **solo** dietro un reverse proxy che termina TLS. L'app in release
+produzione **solo** dietro un reverse proxy che termina TLS (vedi
+[deploy/](deploy/README.md)). L'app in release
 accetta comunque solo `API_BASE_URL=https://…`.
 
 ## WebSocket `/ws`
 
 Il protocollo completo (messaggi e campi) è documentato in testa a
 `routes/ws.dart`: quella è la fonte di verità.
+
+### Versione del protocollo
+
+L'`hello` porta `"protocol": 1` (e `"appVersion"`, solo informativa); `welcome`
+risponde con `"protocol"`. **Politica** (`ProtocolPolicy`): il server accetta la
+versione attuale N e la precedente N-1, così un rilascio graduale non rompe
+nessuno; assente vale 0 (le app uscite prima del meccanismo). Una versione
+troppo vecchia riceve `{"type":"error","code":"updateRequired","minProtocol":…,
+"protocol":…}` e il socket si chiude con **4012**, prima di ogni altro controllo
+(nessun Start contato); il client lo tratta come definitivo (nessuna
+riconnessione automatica) e invita ad aggiornare. Una versione più nuova è
+accettata. Le rotte `/paywall/*` leggono l'header `X-Raen-Protocol` (assente = 0)
+e rispondono **426** `{"code":"updateRequired"}` sotto il minimo (con lo stesso
+header, valorizzato con la versione attuale).
+
+**Regola di compatibilità**: client e server ignorano campi e tipi di messaggio
+sconosciuti. Si aggiungono campi e messaggi senza alzare la versione; la si alza
+(e con essa `ProtocolPolicy.currentVersion` e `ProtocolConfig.version` nell'app)
+solo cambiando il *significato* di qualcosa che esiste. Oggi N = 1, minimo 0: passano
+tutti. `MIN_PROTOCOL_VERSION` forza l'aggiornamento senza toccare il codice.
+
+### Spegnimento ordinato
+
+Con SIGTERM o SIGINT (`docker stop`, deploy): smette di accettare connessioni,
+manda a ogni client `{"type":"sessionClosed","reason":"serverRestart"}`, chiude i
+socket con **1012**, aspetta i salvataggi (stato degli acquisti, record di
+moderazione) ed esce, in ogni caso entro ~5 s (`GracefulShutdown`). Lo stato di
+sessione sparisce (è in RAM): per i client è una sessione chiusa dal server — End,
+nessuna riconnessione, avviso "Server in riavvio" — e rifanno Start. Nessun
+cooldown. Sblocchi e transazioni sopravvivono (`DATA_DIR`).
 
 **Autenticazione**: il segreto di sessione arriva col **primo messaggio**
 (`{"type":"hello","secret":...}`, entro 10 s), mai nell'URL. Il server lo
@@ -111,9 +161,12 @@ congelato dopo il primo minuto), mai dall'ultima lettura grezza: chi
 falsifica il GPS non può più sondare la posizione altrui a piccoli passi. La
 lista è ordinata per fasce di 25 m, senza distanze (vedi `SessionStore`).
 
-**Selfie nelle richieste**: lo snapshot `encounters` porta il selfie della
-controparte solo la prima volta per ogni richiesta su ogni socket; gli
-snapshot successivi lo omettono e il client riusa quello già ricevuto.
+**Selfie nelle liste e nelle richieste**: il selfie di una persona nella lista
+`nearby` parte **una volta per pseudonimo e per socket** (in un locale pieno
+erano fino a ~12 MB a ogni lista); le liste successive omettono `selfieBase64` e
+il client riusa quello ricevuto per lo stesso `personId` (cache azzerata a End;
+un nuovo socket li riceve di nuovo, e una persona dietro il paywall la prima
+volta che è sbloccata). Lo snapshot `encounters` fa lo stesso per richiesta.
 
 ## Segnalazioni e moderazione
 
@@ -236,6 +289,18 @@ ATTESTATION_MODE=enforce ATTESTATION_ALLOW_FAKE=true dart_frog dev
 | Segnalazioni | 5 per sessione di chi segnala (le successive → `rejected` `tooManyReports`, il blocco vale comunque); un doppione verso la stessa persona non conta | `ModerationStore.maxReportsPerSession` |
 | Chiusura automatica | 3 sessioni diverse da 2 IP diversi (configurabile); poi cooldown di 30 minuti sui nuovi Start da quegli IP | `ModerationStore`, `SessionLifecycle.hello` |
 | Endpoint admin | 120 richieste per IP ogni 10 minuti | `AdminReportsApi` |
+| Corpo delle richieste HTTP | 64 KB (4 KB per `/paywall/status`); oltre → 413 | `readJsonBody` (`http_limits.dart`) |
+| Connessioni WebSocket aperte | 2000 insieme (`MAX_WS_CONNECTIONS`); oltre → 503 `Retry-After` prima dell'upgrade | `WebSocketConnectionLimit` |
+| Protocollo | versione N e N-1 (`MIN_PROTOCOL_VERSION` per alzare il minimo); sotto → `updateRequired` + 4012 / 426 | `ProtocolPolicy` |
+| Permessi dei file | file `600` (temporaneo ristretto prima di scriverci), cartelle `700` | `secure_file.dart` |
+
+**Da mettere anche nel reverse proxy** (prima linea di difesa, valori e
+motivi in [deploy/README.md §5](deploy/README.md)): corpo massimo 64 KB, timeout
+di connessione/risposta all'upstream, nessun timeout di inattività sotto 90 s per i
+WebSocket (il client manda un ping ogni 20 s), un tetto di connessioni per IP
+(~50, senza esagerare: un locale ha molte persone dietro lo stesso IP), un rate
+limit generico su `/paywall/*`, `/metrics` e `/debug` non esposti, **nessun
+access log** (il token RTDN di Google è in query string).
 | Liste `nearby` | al più una diversa ogni 5 s per osservatore (le modifiche nel frattempo partono alla fine della finestra), oltre al throttle globale di 500 ms | `ConnectionHub.nearbyPushMinInterval` |
 
 ## Pagamenti in-app
@@ -259,12 +324,12 @@ Console in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md)
   la data e il token finché vale; uscita dopo 8 giorni. Un nuovo tentativo
   della stessa transazione riceve lo stesso token (risposta persa); finito lo
   sblocco, 409. Se Google non consuma, il token è revocato e l'app riproverà.
-- **Limite al riavvio**: il registro è in RAM. Google non ne risente (la
-  transazione è consumata da Google); per Apple, dopo un riavvio, una
-  transazione più giovane di 7 giorni potrebbe essere riscattata di nuovo da
-  chi l'ha pagata. Per chiuderlo: stesso registro (hash + data, cancellati
-  dopo 8 giorni) su disco o database, con `PAYMENTS_TRANSACTION_HASH_KEY`
-  fissa.
+- **Riavvii**: sblocchi e registro **sopravvivono** (vedi [Stato degli
+  acquisti](#stato-degli-acquisti-su-disco)): il doppio riscatto di una
+  transazione Apple dopo un riavvio non è più possibile. Limite residuo: dopo un
+  riavvio il token in chiaro non c'è più (su disco c'è solo l'hash), quindi un
+  *nuovo tentativo* della stessa transazione riceve 409 invece dello stesso
+  token; lo sblocco già in mano al client resta valido.
 - **Rimborsi**: route di notifica spente di default (vedi variabili); quando
   accese revocano il token della transazione. URL da configurare:
   `https://<host>/paywall/notifications/apple` (App Store Connect, versione
@@ -279,11 +344,56 @@ Console in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md)
 # Prova in locale col negozio simulato (il default)
 dart build/bin/server.dart
 # Pagamenti veri, sandbox
-PAYMENTS_MODE=real APPLE_BUNDLE_ID=com.threemojo.app APPLE_PRODUCT_ID=<id> \
-APPLE_ENVIRONMENT=sandbox GOOGLE_PACKAGE_NAME=com.threemojo.app \
+PAYMENTS_MODE=real APPLE_BUNDLE_ID=com.raen.app APPLE_PRODUCT_ID=<id> \
+APPLE_ENVIRONMENT=sandbox GOOGLE_PACKAGE_NAME=com.raen.app \
 GOOGLE_PRODUCT_ID=<id> GOOGLE_SERVICE_ACCOUNT_JSON_PATH=/etc/raen/play.json \
 dart build/bin/server.dart
 ```
+
+### Stato degli acquisti su disco
+
+`DATA_DIR/unlocks.state` (`UnlockStateStore`, `UnlockStatePersistence`): **un
+file**, cifrato AES-256-GCM con una chiave derivata da
+`PAYMENTS_TRANSACTION_HASH_KEY`, scritto in modo atomico (temporaneo + `rename`)
+con permessi `600` in una cartella `700`. Contiene **solo**:
+
+- SHA-256 del token di sblocco → ora dello sblocco, finché vale (2 ore);
+- HMAC della transazione → data del riscatto e SHA-256 del suo token, per 8 giorni.
+
+Mai token o transazioni in chiaro, mai dati personali. Si rimette in RAM
+all'avvio (`state.restored` nel log), si riscrive a ogni cambiamento (scritture
+serializzate e raggruppate; il riscatto di un acquisto aspetta che sia su disco
+prima di rispondere e di consumare l'acquisto su Google) e si ripulisce a ogni
+salvataggio e ogni ora. Un file illeggibile (chiave cambiata, rovinato) non ferma
+il server: log `state.restore_failed`, ripartenza da vuoto, file sovrascritto. Un
+disco che fallisce non fa fallire l'acquisto: `state.save_failed` nel log e si
+continua in RAM — **da monitorare** (`/metrics` non lo conta: grep sul log).
+
+**Perché un file e non SQLite**: poche righe al giorno e un solo processo; nessuna
+libreria nativa da portare nell'immagine Docker, niente file `-wal`/`-shm`, niente
+problemi di versione; l'atomicità la dà `rename`. L'interfaccia è `load`/`save`:
+se un giorno servissero più processi o migliaia di acquisti al giorno, si
+sostituisce senza toccare il resto.
+
+## Log e metriche
+
+Un solo logger (`Log`, `lib/src/log.dart`): **una riga JSON per evento su stderr**,
+`{"t","level","event",…}`, livello da `LOG_LEVEL`. Mai IP, posizione, pseudonimi,
+segreti o token: i campi sono solo numeri/booleani/stringhe brevi, ogni stringa
+passa da `Log.scrub` (che cancella ciò che somiglia a un IP o a un token) e di
+un errore si scrive il **tipo**, mai il messaggio. Eventi principali:
+`server.started`, `payments.mode`, `payments.rejected`, `state.restored`,
+`state.save_failed`, `moderation.save_failed`, `ws.message_unhandled`,
+`shutdown.start`/`shutdown.done`.
+
+`GET /metrics` (`MetricsApi`): JSON con contatori **aggregati**: `sessions`
+(connesse, in grazia, sblocchi attivi, connessioni WebSocket), `connections`
+(accettate/rifiutate), `messages` per tipo, `rejected` per motivo, `purchases` per
+esito, `attestations` per esito, `moderationRecords` (saved/failed), `rssBytes`,
+`uptimeSeconds`. Si legge **solo** da loopback diretto (una richiesta che porta
+`X-Forwarded-For` non conta come locale: un proxy sullo stesso host farebbe
+sembrare locale tutta Internet) o con `Authorization: Bearer <METRICS_TOKEN>`;
+altrimenti 404. Il Caddyfile di `deploy/` non lo espone all'esterno.
 
 ## Simulatore di dispositivi
 

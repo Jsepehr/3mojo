@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:threemojo_server/src/block_store.dart';
 import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
+import 'package:threemojo_server/src/log.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/pseudonyms.dart';
 import 'package:threemojo_server/src/session_store.dart';
@@ -131,6 +131,14 @@ class ConnectionHub {
   /// si rimanda — ogni lista porta i selfie, decine di KB a persona.
   final Map<String, int> _lastNearbySignature = {};
 
+  /// Per ogni sessione, i pseudonimi (di [Pseudonyms]) la cui **foto è già
+  /// partita sul socket attuale** in una lista "vicinanze": le liste
+  /// successive non la ripetono (fino a ~230 KB a persona, in un locale
+  /// pieno ~12 MB a ogni lista). Come [_encounterSelfiesSent], si azzera a
+  /// ogni nuovo socket e a fine sessione; il client tiene la foto ricevuta
+  /// per pseudonimo fino a End.
+  final Map<String, Set<String>> _nearbySelfiesSent = {};
+
   /// Per ogni sessione, le richieste d'incontro di cui il selfie della
   /// controparte è **già partito sul socket attuale**: gli snapshot
   /// successivi non lo ripetono (decine di KB a richiesta, a ogni
@@ -154,8 +162,8 @@ class ConnectionHub {
       try {
         _hotspotStore.detectAndRefresh(_sessionStore.allSessions);
       } catch (error, stackTrace) {
-        developer.log(
-          'Rilevamento hotspot fallito',
+        Log.error(
+          'hotspots.detection_failed',
           error: error,
           stackTrace: stackTrace,
         );
@@ -187,6 +195,7 @@ class ConnectionHub {
     _sinks[sessionId] = sink;
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _nearbySelfiesSent.remove(sessionId);
     if (previous != null && !identical(previous, sink)) {
       _closeSink(previous, 4011, 'replaced');
     }
@@ -203,11 +212,34 @@ class ConnectionHub {
     _sinks.remove(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _nearbySelfiesSent.remove(sessionId);
     return true;
   }
 
   /// `true` se [sessionId] ha un socket registrato in questo momento.
   bool isConnected(String sessionId) => _sinks.containsKey(sessionId);
+
+  /// Quanti socket sono registrati adesso (per `/metrics`).
+  int get connectedCount => _sinks.length;
+
+  /// Spegnimento del server: a ogni client connesso manda
+  /// `{"type": "sessionClosed", "reason": "serverRestart"}`, chiude il
+  /// socket con 1012 ("service restart") e lo stacca (così la chiusura che
+  /// ne segue non avvia nessun periodo di grazia: il processo sta uscendo
+  /// e lo stato in RAM sparisce comunque).
+  void closeAllForShutdown() {
+    for (final sessionId in _sinks.keys.toList()) {
+      sendTo(sessionId, const {
+        'type': 'sessionClosed',
+        'reason': 'serverRestart',
+      });
+      final sink = _sinks.remove(sessionId);
+      if (sink != null) _closeSink(sink, 1012, 'serverRestart');
+    }
+    _lastNearbySignature.clear();
+    _encounterSelfiesSent.clear();
+    _nearbySelfiesSent.clear();
+  }
 
   /// Stacca **e chiude** il socket di [sessionId] (se c'è), con un codice
   /// di chiusura WebSocket: usato a fine sessione (End, purge) — il client
@@ -216,6 +248,7 @@ class ConnectionHub {
     final sink = _sinks.remove(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _nearbySelfiesSent.remove(sessionId);
     _forgetNearbyPushCooldown(sessionId);
     if (sink != null) _closeSink(sink, code, reason);
   }
@@ -227,6 +260,7 @@ class ConnectionHub {
     _hotspotStore.forgetSession(sessionId);
     _lastNearbySignature.remove(sessionId);
     _encounterSelfiesSent.remove(sessionId);
+    _nearbySelfiesSent.remove(sessionId);
     _forgetNearbyPushCooldown(sessionId);
   }
 
@@ -255,7 +289,7 @@ class ConnectionHub {
     try {
       sink.add(jsonEncode(message));
     } catch (error) {
-      developer.log('Invio a una sessione fallito', error: error);
+      Log.warn('hub.send_failed', {'errorType': error.runtimeType});
     }
   }
 
@@ -334,8 +368,8 @@ class ConnectionHub {
       try {
         _pushNearbyTo(sessionId);
       } catch (error, stackTrace) {
-        developer.log(
-          'Calcolo vicinanze fallito per una sessione',
+        Log.error(
+          'nearby.compute_failed',
           error: error,
           stackTrace: stackTrace,
         );
@@ -364,8 +398,8 @@ class ConnectionHub {
       try {
         _pushNearbyTo(sessionId);
       } catch (error, stackTrace) {
-        developer.log(
-          'Calcolo vicinanze fallito per una sessione',
+        Log.error(
+          'nearby.compute_failed',
           error: error,
           stackTrace: stackTrace,
         );
@@ -394,13 +428,17 @@ class ConnectionHub {
           ),
         ),
     ];
+    // La firma dice se la lista è cambiata per chi la riceve: conta se una
+    // foto c'è (non il suo contenuto, fissato alla nascita della sessione),
+    // così omettere dopo la prima volta le foto già mandate non fa sembrare
+    // "cambiata" una lista uguale.
     final signature = Object.hashAll(
       payload.map(
         (p) => Object.hash(
           p['personId'],
           p['meetingChance'],
           p['locked'],
-          p['selfieBase64'],
+          p.containsKey('selfieBase64'),
           p['intent'],
           Object.hashAll(p['languages'] as List? ?? const []),
           p['gender'],
@@ -410,7 +448,20 @@ class ConnectionHub {
     if (_lastNearbySignature[sessionId] == signature) return false;
     _lastNearbySignature[sessionId] = signature;
 
-    sendTo(sessionId, {'type': 'nearby', 'people': payload});
+    // La foto di una persona parte una volta sola per socket: il client la
+    // tiene per pseudonimo (vedi [_nearbySelfiesSent]).
+    final sent = _nearbySelfiesSent.putIfAbsent(sessionId, () => <String>{});
+    final toSend = <Map<String, dynamic>>[];
+    for (final person in payload) {
+      final id = person['personId'] as String;
+      if (person.containsKey('selfieBase64') && !sent.add(id)) {
+        toSend.add({...person}..remove('selfieBase64'));
+      } else {
+        toSend.add(person);
+      }
+    }
+
+    sendTo(sessionId, {'type': 'nearby', 'people': toSend});
     return true;
   }
 

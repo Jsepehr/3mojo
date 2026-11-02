@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:threemojo_server/src/client_ip.dart';
 import 'package:threemojo_server/src/constant_time.dart';
+import 'package:threemojo_server/src/ip_address.dart';
+import 'package:threemojo_server/src/log.dart';
 import 'package:threemojo_server/src/moderation_records.dart';
 import 'package:threemojo_server/src/rate_limiters.dart';
 
@@ -58,10 +59,13 @@ class AdminReportsApi {
     required String? token,
     required this.records,
     required this.serverHasTls,
-    required this.trustedProxies,
+    required Set<String> trustedProxies,
     this.allowInsecureLoopback = false,
     SlidingWindowRateLimiter? rateLimiter,
-  }) : _token = token != null && token.length >= minTokenLength ? token : null,
+  }) : trustedProxies = {
+         for (final proxy in trustedProxies) normalizeIp(proxy),
+       },
+       _token = token != null && token.length >= minTokenLength ? token : null,
        rateLimiter =
            rateLimiter ??
            SlidingWindowRateLimiter(
@@ -125,14 +129,13 @@ class AdminReportsApi {
   /// `true` se la richiesta è arrivata cifrata (vedi la doc della classe).
   bool isSecure(AdminRequest request) {
     if (serverHasTls) return true;
-    if (trustedProxies.contains(request.remoteAddress)) {
+    if (trustedProxies.contains(normalizeIp(request.remoteAddress))) {
       // Più proxy in fila aggiungono in coda: conta l'ultimo valore.
       final proto = request.headers['x-forwarded-proto'] ?? '';
       final last = proto.split(',').last.trim().toLowerCase();
       return last == 'https';
     }
-    final address = InternetAddress.tryParse(request.remoteAddress);
-    return allowInsecureLoopback && (address?.isLoopback ?? false);
+    return allowInsecureLoopback && isLoopbackIp(request.remoteAddress);
   }
 
   Response? _guard(AdminRequest request) {
@@ -235,11 +238,7 @@ class AdminReportsApi {
     try {
       return await handler();
     } catch (error, stackTrace) {
-      developer.log(
-        'Endpoint admin fallito',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      Log.error('admin.failed', error: error, stackTrace: stackTrace);
       return Response(statusCode: HttpStatus.internalServerError);
     }
   }

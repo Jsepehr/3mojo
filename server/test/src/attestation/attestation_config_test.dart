@@ -22,10 +22,10 @@ void main() {
 
   Map<String, String> complete(String mode) => {
     'ATTESTATION_MODE': mode,
-    'GOOGLE_PACKAGE_NAME': 'com.threemojo.app',
+    'GOOGLE_PACKAGE_NAME': 'com.raen.app',
     'GOOGLE_SERVICE_ACCOUNT_JSON_PATH': accountPath,
     'APPLE_TEAM_ID': 'ABCDE12345',
-    'APPLE_BUNDLE_ID': 'com.threemojo.app',
+    'APPLE_BUNDLE_ID': 'com.raen.app',
     'APPLE_APP_ATTEST_ENVIRONMENT': 'production',
   };
 
@@ -47,7 +47,7 @@ void main() {
   test('a complete configuration mounts both verifiers', () {
     final config = AttestationConfig.fromEnvironment(complete('enforce'));
     expect(config.fatalProblem, isNull);
-    expect(config.playIntegrity?.packageName, 'com.threemojo.app');
+    expect(config.playIntegrity?.packageName, 'com.raen.app');
     expect(config.appAttest?.environment, AppAttestEnvironment.production);
     final gate = AttestationGate.fromConfig(config);
     expect(gate.mode, AttestationMode.enforce);

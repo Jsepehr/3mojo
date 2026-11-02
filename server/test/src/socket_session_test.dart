@@ -8,6 +8,7 @@ import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/new_session_rate_limiter.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
+import 'package:threemojo_server/src/protocol_version.dart';
 import 'package:threemojo_server/src/pseudonyms.dart';
 import 'package:threemojo_server/src/realtime_message_handler.dart';
 import 'package:threemojo_server/src/session_credentials.dart';
@@ -247,8 +248,109 @@ void main() {
         'type': 'welcome',
         'resumed': false,
         'graceSeconds': 0,
+        'protocol': ProtocolPolicy.currentVersion,
       });
     });
+  });
+
+  group('protocol version', () {
+    _Client openWith(ProtocolPolicy policy) {
+      final client = _Client();
+      SocketSession(
+        incoming: client.toServer.stream,
+        outgoing: client.fromServer,
+        clientIp: '10.0.0.1',
+        lifecycle: world.lifecycle,
+        handler: world.handler,
+        protocol: policy,
+      ).start();
+      return client;
+    }
+
+    test('the policy accepts N and N-1 and refuses older', () {
+      const policy = ProtocolPolicy(current: 3);
+      expect(policy.minimum, 2);
+      expect(policy.isSupported(3), isTrue);
+      expect(policy.isSupported(2), isTrue);
+      expect(policy.isSupported(1), isFalse);
+      expect(policy.isSupported(ProtocolPolicy.parse(null)), isFalse);
+      // Today N = 1: an app that declares nothing (0) still passes.
+      expect(const ProtocolPolicy().isSupported(0), isTrue);
+    });
+
+    test('MIN_PROTOCOL_VERSION raises the minimum, never above N', () {
+      expect(
+        ProtocolPolicy.fromEnvironment({'MIN_PROTOCOL_VERSION': '1'}).minimum,
+        1,
+      );
+      expect(
+        ProtocolPolicy.fromEnvironment({'MIN_PROTOCOL_VERSION': '99'}).minimum,
+        ProtocolPolicy.currentVersion,
+      );
+      expect(
+        ProtocolPolicy.fromEnvironment({'MIN_PROTOCOL_VERSION': 'x'}).minimum,
+        0,
+      );
+    });
+
+    test('a hello without protocol (version 0) is refused with '
+        'updateRequired when the minimum is 1: nothing is registered, '
+        'no Start is counted', () async {
+      final client = openWith(const ProtocolPolicy(minimum: 1))
+        ..hello(_secret('old'));
+      await _settle();
+
+      expect(client.last('error'), {
+        'type': 'error',
+        'code': 'updateRequired',
+        'minProtocol': 1,
+        'protocol': ProtocolPolicy.currentVersion,
+      });
+      expect(client.last('welcome'), isNull);
+      expect(client.closedByServer, isTrue);
+      expect(world.sessions.allSessions, isEmpty);
+      expect(world.credentials.knows(_secret('old')), isFalse);
+    });
+
+    test('the current protocol, and a newer one, are accepted; unknown '
+        'fields are ignored', () async {
+      final policy = const ProtocolPolicy(minimum: 1);
+      final current = openWith(policy)
+        ..send({
+          'type': 'hello',
+          'secret': _secret('cur'),
+          'protocol': 1,
+          'appVersion': '1.4.0',
+          'somethingNew': {'a': 1},
+        });
+      final newer = openWith(policy)
+        ..send({'type': 'hello', 'secret': _secret('new'), 'protocol': 9});
+      await _settle();
+
+      expect(current.last('welcome'), isNotNull);
+      expect(newer.last('welcome'), isNotNull);
+      expect(current.last('error'), isNull);
+    });
+
+    test('a garbage protocol value counts as 0', () async {
+      final client = openWith(const ProtocolPolicy(minimum: 1))
+        ..send({'type': 'hello', 'secret': _secret('x'), 'protocol': 'abc'});
+      await _settle();
+      expect(client.last('error')?['code'], 'updateRequired');
+    });
+
+    test(
+      'checkHttp: 426 only for a declared version below the minimum',
+      () async {
+        const policy = ProtocolPolicy(minimum: 1);
+        expect(policy.checkHttp({'x-raen-protocol': '1'}), isNull);
+        expect(policy.checkHttp({'x-raen-protocol': '5'}), isNull);
+        final refused = policy.checkHttp({});
+        expect(refused!.statusCode, 426);
+        expect((await refused.json() as Map)['code'], 'updateRequired');
+        expect(const ProtocolPolicy().checkHttp({}), isNull);
+      },
+    );
   });
 
   group('grace period', () {

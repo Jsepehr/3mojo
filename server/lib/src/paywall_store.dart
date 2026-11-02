@@ -1,9 +1,19 @@
+import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
-/// Tiene in RAM gli sblocchi a pagamento attivi — un singleton come
-/// `SessionStore`/`EncounterStore`, stessa filosofia (nessuna persistenza:
-/// riavvii il server e ogni sblocco sparisce, un vero prodotto avrebbe
-/// bisogno di un database).
+import 'package:pointycastle/digests/sha256.dart';
+
+/// Tiene gli sblocchi a pagamento attivi — un singleton come
+/// `SessionStore`/`EncounterStore`. **In RAM e basta, salvo una
+/// eccezione voluta**: ciò che si è pagato non deve sparire a un riavvio
+/// del server (deploy notturno, crash). Per questo gli sblocchi attivi sono
+/// anche scritti su disco da `UnlockStatePersistence` — **solo** come
+/// SHA-256 del token e ora dello sblocco, finché vale (2 ore), cifrati; mai
+/// il token in chiaro né nulla della persona.
+///
+/// Anche in RAM le chiavi sono gli hash: il token in chiaro esiste solo nel
+/// client e nel momento in cui il server lo emette o lo riceve.
 ///
 /// **Token, non dispositivi**: a ogni acquisto il server emette un token
 /// casuale valido [unlockDuration]. Chi non paga non ha nessun token, quindi
@@ -31,21 +41,62 @@ class PaywallStore {
 
   final DateTime Function() _now;
   final Random _random;
-  final Map<String, DateTime> _unlockedAtByToken = {};
+  final Map<String, DateTime> _unlockedAtByTokenHash = {};
+
+  /// Chiamata a ogni cambiamento da salvare (emissione, revoca): la
+  /// imposta `UnlockStatePersistence`.
+  void Function()? onChanged;
+
+  /// SHA-256 esadecimale di [token]: la chiave con cui lo sblocco vive in
+  /// RAM e su disco.
+  static String hashToken(String token) => SHA256Digest()
+      .process(Uint8List.fromList(utf8.encode(token)))
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
 
   /// Registra un nuovo sblocco da ora (l'ora del server) e ritorna il token
   /// che lo rappresenta: 128 bit casuali, non derivati da nulla del client.
   String issueUnlockToken() {
     _dropExpired();
     final token = _newToken();
-    _unlockedAtByToken[token] = _now();
+    _unlockedAtByTokenHash[hashToken(token)] = _now();
+    onChanged?.call();
     return token;
   }
 
   /// Toglie subito lo sblocco rappresentato da [token] (es. acquisto
   /// rimborsato, `StoreNotifications`; o riscatto annullato perché il
   /// negozio non ha confermato, `UnlockPurchaseService`). `true` se valeva.
-  bool revoke(String token) => _unlockedAtByToken.remove(token) != null;
+  bool revoke(String token) => revokeHash(hashToken(token));
+
+  /// Come [revoke], da un hash (dopo un riavvio il registro delle
+  /// transazioni conosce solo l'hash del token).
+  bool revokeHash(String tokenHash) {
+    final removed = _unlockedAtByTokenHash.remove(tokenHash) != null;
+    if (removed) onChanged?.call();
+    return removed;
+  }
+
+  /// Gli sblocchi ancora validi, per il salvataggio: hash del token →
+  /// ora dello sblocco. Quelli scaduti non escono.
+  Map<String, DateTime> exportUnlocks() {
+    _dropExpired();
+    return Map.of(_unlockedAtByTokenHash);
+  }
+
+  /// Rimette in vita gli sblocchi salvati (all'avvio), scartando quelli già
+  /// scaduti. Non sostituisce quelli già presenti.
+  void restoreUnlocks(Map<String, DateTime> unlocks) {
+    for (final entry in unlocks.entries) {
+      if (_isExpired(entry.value)) continue;
+      _unlockedAtByTokenHash.putIfAbsent(entry.key, () => entry.value);
+    }
+  }
+
+  int get activeCount {
+    _dropExpired();
+    return _unlockedAtByTokenHash.length;
+  }
 
   /// Il token rappresenta uno sblocco ancora valido (entro le 2 ore)?
   bool isUnlocked(String token) => remainingFor(token) != null;
@@ -57,10 +108,11 @@ class PaywallStore {
   /// qualche ora non sposta la scadenza (e non decide nulla: il paywall lo
   /// applica sempre e solo il server).
   Duration? remainingFor(String token) {
-    final unlockedAt = _unlockedAtByToken[token];
+    final hash = hashToken(token);
+    final unlockedAt = _unlockedAtByTokenHash[hash];
     if (unlockedAt == null) return null;
     if (_isExpired(unlockedAt)) {
-      _unlockedAtByToken.remove(token);
+      _unlockedAtByTokenHash.remove(hash);
       return null;
     }
     return unlockDuration - _now().difference(unlockedAt);
@@ -76,8 +128,9 @@ class PaywallStore {
 
   /// Un token scaduto non serve più a nulla: tenerlo sarebbe solo un dato
   /// in più senza scopo.
-  void _dropExpired() =>
-      _unlockedAtByToken.removeWhere((_, unlockedAt) => _isExpired(unlockedAt));
+  void _dropExpired() => _unlockedAtByTokenHash.removeWhere(
+    (_, unlockedAt) => _isExpired(unlockedAt),
+  );
 
   String _newToken() {
     final buffer = StringBuffer();

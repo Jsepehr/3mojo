@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../paywall_store.dart';
 import 'receipt_verifier.dart';
 
 /// Il registro delle transazioni **già riscattate**: impedisce che lo stesso
@@ -23,14 +24,18 @@ import 'receipt_verifier.dart';
 /// rimborso, `StoreNotifications`); dopo resta solo "già riscattato", fino
 /// a [retention] dal riscatto.
 ///
-/// **In RAM**, come il resto del server: un riavvio lo svuota. Per Google
-/// non è un problema (l'acquisto è già consumato da Google stesso); per
-/// Apple, dopo un riavvio, la stessa transazione potrebbe essere riscattata
-/// di nuovo finché è più giovane di `UnlockPurchaseService.maxPurchaseAge`
-/// — solo da chi ha già pagato una volta. Per chiudere anche questo:
-/// stesso registro su disco/database (solo hash + data, cancellati dopo
-/// [retention]) con `PAYMENTS_TRANSACTION_HASH_KEY` fissa. Vedi
-/// `server/README.md`.
+/// **Persistenza**: il registro vive in RAM ma, con una
+/// `PAYMENTS_TRANSACTION_HASH_KEY` fissa, `UnlockStatePersistence` lo salva
+/// cifrato su disco — **solo** HMAC della transazione, data del riscatto e
+/// SHA-256 del token, per [retention] (8 giorni) — così un riavvio non
+/// permette di riscattare di nuovo la stessa transazione Apple (più giovane
+/// di `UnlockPurchaseService.maxPurchaseAge`). Senza chiave fissa (solo
+/// sviluppo) l'HMAC cambia a ogni processo e il registro resta in RAM.
+///
+/// Dopo un riavvio il token **in chiaro** non c'è più (su disco c'è solo il
+/// suo hash): un nuovo tentativo della stessa transazione riceve 409 anche
+/// se lo sblocco vale ancora — lo sblocco resta valido per il client, che
+/// ha già il token. Vedi `server/README.md`.
 class RedeemedTransactions {
   RedeemedTransactions({
     List<int>? hashKey,
@@ -63,8 +68,13 @@ class RedeemedTransactions {
     return mac.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
+  /// Chiamata a ogni cambiamento da salvare: la imposta
+  /// `UnlockStatePersistence`.
+  void Function()? onChanged;
+
   /// `null` se mai riscattata (o uscita dal registro); altrimenti il token
-  /// ancora associato (`null` dentro il record se non vale più).
+  /// ancora associato (`unlockToken` è `null` se non c'è più in chiaro:
+  /// dopo un riavvio, o dimenticato perché scaduto/revocato).
   ({String? unlockToken})? lookup(String transactionHash) {
     _prune();
     final entry = _entries[transactionHash];
@@ -74,20 +84,32 @@ class RedeemedTransactions {
 
   void record(String transactionHash, String unlockToken) {
     _prune();
-    _entries[transactionHash] = _Entry(_now(), unlockToken);
+    _entries[transactionHash] = _Entry(
+      _now(),
+      tokenHash: PaywallStore.hashToken(unlockToken),
+      unlockToken: unlockToken,
+    );
+    onChanged?.call();
   }
 
   /// Annulla un riscatto non andato a buon fine (es. Google non ha
   /// consumato): il client potrà riprovare.
-  void remove(String transactionHash) => _entries.remove(transactionHash);
+  void remove(String transactionHash) {
+    if (_entries.remove(transactionHash) != null) onChanged?.call();
+  }
 
   /// Dimentica il token (scaduto o revocato) ma ricorda che la transazione
-  /// è stata riscattata. Ritorna il token che c'era.
+  /// è stata riscattata. Ritorna l'**hash** del token che c'era (anche dopo
+  /// un riavvio, quando il chiaro non c'è più), per revocarlo.
   String? forgetToken(String transactionHash) {
     final entry = _entries[transactionHash];
-    final token = entry?.unlockToken;
-    entry?.unlockToken = null;
-    return token;
+    if (entry == null) return null;
+    final tokenHash = entry.tokenHash;
+    entry
+      ..unlockToken = null
+      ..tokenHash = null;
+    if (tokenHash != null) onChanged?.call();
+    return tokenHash;
   }
 
   /// Segna la transazione come riscattata senza token (es. un rimborso
@@ -95,10 +117,40 @@ class RedeemedTransactions {
   /// successivo è rifiutato.
   void markRedeemed(String transactionHash) {
     _prune();
-    _entries.putIfAbsent(transactionHash, () => _Entry(_now(), null));
+    if (_entries.containsKey(transactionHash)) return;
+    _entries[transactionHash] = _Entry(_now());
+    onChanged?.call();
   }
 
   int get length => _entries.length;
+
+  /// Il registro per il salvataggio: hash della transazione → data del
+  /// riscatto e hash del token (solo finché vale). Senza le voci scadute.
+  Map<String, ({DateTime redeemedAt, String? tokenHash})> exportEntries() {
+    _prune();
+    return {
+      for (final entry in _entries.entries)
+        entry.key: (
+          redeemedAt: entry.value.redeemedAt,
+          tokenHash: entry.value.tokenHash,
+        ),
+    };
+  }
+
+  /// Rimette le voci salvate (all'avvio), scartando quelle uscite dalla
+  /// [retention]. Non sostituisce quelle già presenti.
+  void restoreEntries(
+    Map<String, ({DateTime redeemedAt, String? tokenHash})> entries,
+  ) {
+    final now = _now();
+    for (final entry in entries.entries) {
+      if (now.difference(entry.value.redeemedAt) >= retention) continue;
+      _entries.putIfAbsent(
+        entry.key,
+        () => _Entry(entry.value.redeemedAt, tokenHash: entry.value.tokenHash),
+      );
+    }
+  }
 
   void _prune() {
     final now = _now();
@@ -109,8 +161,13 @@ class RedeemedTransactions {
 }
 
 class _Entry {
-  _Entry(this.redeemedAt, this.unlockToken);
+  _Entry(this.redeemedAt, {this.tokenHash, this.unlockToken});
 
   final DateTime redeemedAt;
+
+  /// SHA-256 del token: è ciò che si salva su disco.
+  String? tokenHash;
+
+  /// Il token in chiaro, **solo in RAM** e solo finché il processo vive.
   String? unlockToken;
 }

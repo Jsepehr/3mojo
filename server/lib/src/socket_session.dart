@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:threemojo_server/src/attestation/attestation_challenge.dart';
 import 'package:threemojo_server/src/attestation/attestation_gate.dart';
+import 'package:threemojo_server/src/log.dart';
+import 'package:threemojo_server/src/metrics.dart';
+import 'package:threemojo_server/src/protocol_version.dart';
 import 'package:threemojo_server/src/realtime_message_handler.dart';
 import 'package:threemojo_server/src/rate_limiters.dart';
 import 'package:threemojo_server/src/session_credentials.dart';
@@ -47,6 +49,7 @@ class SocketSession {
     RealtimeMessageHandler? handler,
     ConnectionRateLimiter? rateLimiter,
     AttestationGate? attestation,
+    ProtocolPolicy? protocol,
     this.helloTimeout = defaultHelloTimeout,
     this.attestationTimeout = defaultAttestationTimeout,
   }) : _incoming = incoming,
@@ -55,7 +58,8 @@ class SocketSession {
        _lifecycle = lifecycle ?? SessionLifecycle.instance,
        _handler = handler ?? RealtimeMessageHandler.instance,
        _rateLimiter = rateLimiter ?? ConnectionRateLimiter(),
-       _attestation = attestation ?? AttestationGate.instance;
+       _attestation = attestation ?? AttestationGate.instance,
+       _protocol = protocol ?? ProtocolPolicy.instance;
 
   static const defaultHelloTimeout = Duration(seconds: 10);
 
@@ -73,6 +77,9 @@ class SocketSession {
 
   /// Sessione nuova senza un'attestazione valida (`ATTESTATION_MODE=enforce`).
   static const closeAttestationRequired = 4011;
+
+  /// Il client parla un protocollo troppo vecchio (`ProtocolPolicy`).
+  static const closeUpdateRequired = ProtocolPolicy.closeCodeUpdateRequired;
   static const closeTooManyMessages = 4029;
 
   /// Dopo quanti messaggi scartati di fila per il limite di frequenza il
@@ -86,6 +93,7 @@ class SocketSession {
   final RealtimeMessageHandler _handler;
   final ConnectionRateLimiter _rateLimiter;
   final AttestationGate _attestation;
+  final ProtocolPolicy _protocol;
   final Duration helloTimeout;
   final Duration attestationTimeout;
 
@@ -123,11 +131,7 @@ class SocketSession {
     try {
       _process(raw);
     } catch (error, stackTrace) {
-      developer.log(
-        'Messaggio WebSocket non gestito',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      Log.error('ws.message_unhandled', error: error, stackTrace: stackTrace);
     }
   }
 
@@ -163,6 +167,8 @@ class SocketSession {
       return;
     }
 
+    Metrics.instance.message(type);
+
     final sessionId = _sessionId;
     if (sessionId == null) {
       if (_challenge == null) {
@@ -190,6 +196,19 @@ class SocketSession {
   void _handleHello(Object? type, Map<String, dynamic> message) {
     if (type != 'hello') {
       _close(closeHelloRequired, 'hello required');
+      return;
+    }
+    // Prima di tutto il resto: un client troppo vecchio non apre nulla e
+    // non consuma né limiti né verifiche.
+    if (!_protocol.isSupported(ProtocolPolicy.parse(message['protocol']))) {
+      Metrics.instance.connection('refusedUpdateRequired');
+      _send({
+        'type': 'error',
+        'code': 'updateRequired',
+        'minProtocol': _protocol.minimum,
+        'protocol': _protocol.current,
+      });
+      _close(closeUpdateRequired, 'update required');
       return;
     }
     final rawSecret = message['secret'];
@@ -240,19 +259,15 @@ class SocketSession {
         ip: _clientIp,
       );
     } catch (error, stackTrace) {
-      developer.log(
-        'Verifica del dispositivo non gestita',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      Log.error('attestation.unhandled', error: error, stackTrace: stackTrace);
       decision = AttestationDecision.deny;
     }
     _verifying = false;
     try {
       _onAttestationDecision(decision);
     } catch (error, stackTrace) {
-      developer.log(
-        'Hello dopo la verifica non gestito',
+      Log.error(
+        'ws.hello_after_attestation_unhandled',
         error: error,
         stackTrace: stackTrace,
       );
@@ -329,11 +344,7 @@ class SocketSession {
     try {
       _lifecycle.detach(sessionId, _outgoing, explicitEnd: _explicitEnd);
     } catch (error, stackTrace) {
-      developer.log(
-        'Chiusura del socket non gestita',
-        error: error,
-        stackTrace: stackTrace,
-      );
+      Log.error('ws.detach_unhandled', error: error, stackTrace: stackTrace);
     }
   }
 }

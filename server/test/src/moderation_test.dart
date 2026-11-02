@@ -15,6 +15,7 @@ import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/pseudonyms.dart';
 import 'package:threemojo_server/src/realtime_message_handler.dart';
 import 'package:threemojo_server/src/report_reason.dart';
+import 'package:threemojo_server/src/secure_file.dart';
 import 'package:threemojo_server/src/session_credentials.dart';
 import 'package:threemojo_server/src/session_lifecycle.dart';
 import 'package:threemojo_server/src/session_store.dart';
@@ -682,6 +683,19 @@ void main() {
       selfieBase64: base64Encode(_jpeg('z')),
     );
     const id = '0123456789abcdef0123456789abcdef';
+
+    test('record files are created 600 inside a 700 directory', () async {
+      final dir = Directory('${tempDir.path}/perms');
+      final store = ModerationRecordStore(directory: dir, key: _key);
+      await store.save(sample(id, DateTime.utc(2026)));
+
+      expect(await permissionsOf('${dir.path}/$id.rec'), '600');
+      expect(await permissionsOf(dir.path), '700');
+      expect(
+        dir.listSync().map((e) => e.path),
+        isNot(contains(endsWith('.tmp'))),
+      );
+    }, skip: Platform.isWindows ? 'no POSIX permissions' : null);
 
     test('only the right key decrypts a record', () async {
       final dir = Directory('${tempDir.path}/keys');

@@ -29,9 +29,9 @@ Future<Response> _post(Object? body) {
   when(() => request.method).thenReturn(HttpMethod.post);
   when(() => request.headers).thenReturn(const {});
   when(() => request.connectionInfo).thenReturn(connectionInfo);
-  when(
-    request.json,
-  ).thenAnswer((_) async => body is String ? jsonDecode(body) : body);
+  when(request.bytes).thenAnswer(
+    (_) => Stream.value(utf8.encode(body is String ? body : jsonEncode(body))),
+  );
   when(() => context.request).thenReturn(request);
   return route.onRequest(context);
 }
@@ -48,6 +48,18 @@ Future<Map<String, Object?>> _fakePurchase(String transactionId) async => {
 
 /// I test girano senza `PAYMENTS_MODE`: modalità finta, come in sviluppo.
 void main() {
+  test('a body over 64 KB is a 413 and reaches no verifier', () async {
+    final response = await _post({
+      'platform': 'fake',
+      'productId': FakeReceiptVerifier.productId,
+      'receipt': 'x' * (70 * 1024),
+      'transactionId': 't',
+    });
+
+    expect(response.statusCode, HttpStatus.requestEntityTooLarge);
+    expect((await response.json() as Map)['code'], 'bodyTooLarge');
+  });
+
   group('POST /paywall/purchase', () {
     test('a verified (simulated) purchase returns a token and the remaining '
         'time on the server clock', () async {

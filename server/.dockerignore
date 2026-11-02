@@ -1,0 +1,15 @@
+# Contesto di build dell'immagine (deploy/Dockerfile): niente di locale.
+.dart_tool/
+build/
+.dart_frog/
+coverage/
+data/
+moderation_records/
+test/
+tool/
+deploy/.env
+deploy/secrets/
+deploy/data/
+.git
+.vscode
+**/.DS_Store
