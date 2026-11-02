@@ -1,4 +1,4 @@
-package com.threemojo.app
+package com.raen.app
 
 import android.os.Bundle
 import android.view.WindowManager

@@ -1,0 +1,9 @@
+{
+  "API_BASE_URL": "https://TODO_REPLACE_server-address",
+  "REAL_PAYMENTS": true,
+  "IOS_UNLOCK_PRODUCT_ID": "TODO_REPLACE_ios_unlock_2h",
+  "ANDROID_UNLOCK_PRODUCT_ID": "TODO_REPLACE_android_unlock_2h",
+  "GOOGLE_CLOUD_PROJECT_NUMBER": 0,
+  "IOS_STORE_URL": "TODO_REPLACE_https://apps.apple.com/app/id...",
+  "ANDROID_STORE_URL": "TODO_REPLACE_https://play.google.com/store/apps/details?id=..."
+}

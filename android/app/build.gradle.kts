@@ -21,7 +21,7 @@ val keystoreProperties = Properties().apply {
 val releaseSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 
 android {
-    namespace = "com.threemojo.app"
+    namespace = "com.raen.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -35,8 +35,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.threemojo.app"
+        // Identificativo del pacchetto: resta così finché non si decide quello
+        // definitivo (cambiarlo dopo la pubblicazione crea un'app diversa).
+        applicationId = "com.raen.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -62,6 +63,13 @@ android {
             // Mai le chiavi di debug: un APK/AAB firmato così non si può
             // pubblicare né aggiornare con la chiave vera.
             signingConfig = signingConfigs.getByName("release")
+            // Simboli nativi nel bundle: Play Console li usa per
+            // simbolizzare i crash del codice nativo (libflutter, ecc.).
+            // Quelli di Dart (--obfuscate) stanno in symbols/, vedi
+            // scripts/build_release.sh.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
     }
 }

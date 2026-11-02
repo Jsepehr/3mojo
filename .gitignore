@@ -63,3 +63,9 @@ app.*.map.json
 
 # Claude Code agents (locali, non versionati)
 .claude/
+
+# Release: configurazione vera (config/release.example.json è il modello) e
+# simboli di debug di Dart (--split-debug-info): da archiviare fuori da git,
+# servono a simbolizzare i crash di quella versione precisa.
+/config/release.json
+/symbols/
