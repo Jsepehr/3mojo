@@ -21,7 +21,7 @@
 | User Content → **Photos or Videos** | Sì | **Sì** (vedi la nota 1) | No | App Functionality | Selfie della sessione; conservato fino a 30 giorni in un record di moderazione se la sessione viene segnalata |
 | User Content → **Emails or Text Messages** | Sì (prudente, vedi la nota 2) | **Sì** | No | App Functionality | Messaggi della chat, inoltrati dal server |
 | User Content → Other User Content | No | | | | Proposte d'incontro e motivi di segnalazione sono codici di liste chiuse, non contenuti creati dall'utente |
-| Purchases → **Purchase History** | Sì, **quando i pagamenti saranno reali** (vedi la nota 3) | **Sì** | No | App Functionality | Il server riceve la transazione e ne tiene un HMAC per 8 giorni |
+| Purchases → **Purchase History** | Sì, **quando i pagamenti saranno reali** (vedi la nota 3) | **Sì** | No | App Functionality | Il server riceve la transazione e ne tiene un HMAC (più lo SHA-256 del token di sblocco, per le 2 ore in cui vale) per 8 giorni, su disco cifrato |
 | Identifiers → User ID | No | | | | Nessun account. Il segreto di sessione cambia a ogni Start. Il token di sblocco (casuale, 2 ore) è un attributo dell'acquisto, già coperto da Purchase History |
 | Identifiers → Device ID | No | | | | Nessun IDFA o IDFV, nessun id salvato. App Attest (quando acceso) usa una **chiave nuova a ogni sessione** e il server non conserva `keyId` né la ricevuta: nessun identificativo stabile del dispositivo |
 | Usage Data, Diagnostics | No | | | | Nessun SDK di analytics o crash. Su iOS il volto lo controlla Apple Vision, senza rete (e da questa revisione anche su Android non c'è più ML Kit). I crash report che raccoglie Apple non vanno dichiarati |

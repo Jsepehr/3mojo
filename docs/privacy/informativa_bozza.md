@@ -18,7 +18,7 @@ Il titolare del trattamento è **[ragione sociale, sede, P.IVA]**. Per la privac
 ### In breve
 - Raen **non ha account**: niente nome, email, numero di telefono né password.
 - Sei visibile solo **mentre sei online**, tra **Start** e **Termina**.
-- Il nostro server tiene i dati della sessione **solo in memoria** e li dimentica alla fine della sessione. L'unica eccezione sono i **record di moderazione** (vedi sotto), conservati al massimo 30 giorni.
+- Il nostro server tiene i dati della sessione **solo in memoria** e li dimentica alla fine della sessione. Le uniche eccezioni sono i **record di moderazione** e i **record degli acquisti** (vedi sotto), conservati per un tempo limitato.
 - Non vendiamo dati, non facciamo pubblicità e non usiamo strumenti di analisi o di tracciamento.
 
 ### Cosa raccogliamo e perché
@@ -49,7 +49,7 @@ Il **profilo** (genere, chi cerchi, intento, lingue, conferma dei 18 anni) **res
 ### Per quanto tempo
 - **Sul nostro server**: per la durata della sessione. Premendo Termina si cancella subito. Se perdi la connessione, la sessione resta nascosta per 45 secondi in attesa che ti riconnetti, poi viene cancellata. Senza segnali dal telefono per 90 secondi viene chiusa.
 - **Record di moderazione**: al massimo **30 giorni** (vedi sotto).
-- **Acquisti**: il codice di sblocco vale 2 ore. Per evitare che lo stesso pagamento valga due volte teniamo per **8 giorni** solo un'impronta crittografica (non leggibile) della transazione.
+- **Acquisti**: il codice di sblocco vale 2 ore. Perché un pagamento non vada perso se il server si riavvia e non valga due volte, conserviamo su disco, cifrate, solo impronte crittografiche (non leggibili) del codice di sblocco (per le 2 ore in cui vale) e della transazione (per **8 giorni**). Nessun nome, nessun account, nessun dispositivo.
 - **Indirizzo IP**: da 1 a 30 minuti, secondo il limite. **[Log tecnici del fornitore di hosting: … giorni.]**
 - **Sul tuo telefono**: il profilo cifrato finché non lo cancelli o disinstalli l'app. Selfie, chat e foto degli altri solo in memoria, fino a Termina.
 

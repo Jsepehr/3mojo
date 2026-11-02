@@ -93,7 +93,7 @@
 | Base giuridica | Art. 6(1)(b) |
 | Categorie di dati | Piattaforma, prodotto, transazione firmata (iOS) o `purchaseToken` (Android); token di sblocco casuale |
 | Destinatari | Apple, Google (verifica, consumo, notifiche di rimborso) |
-| Conservazione | Token: 2 ore (telefono cifrato, server in RAM). Registro anti-doppio riscatto: **HMAC** della transazione più la data, 8 giorni in RAM |
+| Conservazione | Token: 2 ore sul telefono (cifrato). Sul server, **su disco in `DATA_DIR`** (file `unlocks.state`, cifrato AES-256-GCM, permessi `600`, scrittura atomica): solo lo **SHA-256 del token** e l'ora dello sblocco, finché vale (2 ore), e l'**HMAC** della transazione (più la data e lo SHA-256 del suo token) per **8 giorni**. Mai il token o la transazione in chiaro, né dati personali. Cancellazione: alla scadenza (all'avvio, a ogni salvataggio e ogni ora); non finiscono nei record di moderazione né nei log |
 | Stato | Oggi **simulato** (`PAYMENTS_MODE=fake`; in release, senza `REAL_PAYMENTS`, il pagamento non è disponibile) |
 
 ### T7. Verifica del dispositivo
