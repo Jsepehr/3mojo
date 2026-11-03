@@ -201,18 +201,22 @@ class ProEncounters extends ChangeNotifier {
     awaitingPersonIds: _awaitingPersonIds,
   );
 
-  /// Le proposte che la tendina offre: quelle del tuo luogo.
-  List<EncounterProposal> get availableProposals =>
-      _proposalsForPlaceUseCase(_ownPlace);
+  /// Le proposte che la tendina offre: quelle del tuo luogo, solo le neutre
+  /// se la persona ha dichiarato un luogo diverso ([otherPlace]).
+  List<EncounterProposal> availableProposals({
+    MeetPlace otherPlace = MeetPlace.fallback,
+  }) => _proposalsForPlaceUseCase(_ownPlace, otherPlace: otherPlace);
 
   /// La proposta già scelta (e in cima) aprendo la tendina: l'ultima
   /// mandata in questa sessione se è ancora prevista per il tuo luogo,
   /// altrimenti la prima del luogo.
-  EncounterProposal get preselectedProposal =>
-      _preselectEncounterProposalUseCase(
-        lastChosen: _lastProposal,
-        ownPlace: _ownPlace,
-      );
+  EncounterProposal preselectedProposal({
+    MeetPlace otherPlace = MeetPlace.fallback,
+  }) => _preselectEncounterProposalUseCase(
+    lastChosen: _lastProposal,
+    ownPlace: _ownPlace,
+    otherPlace: otherPlace,
+  );
 
   void sendRequest(
     String otherPersonId, {

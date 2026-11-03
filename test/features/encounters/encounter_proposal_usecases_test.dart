@@ -47,6 +47,47 @@ void main() {
       ]);
     });
 
+    test('a different declared place of the other person leaves only the '
+        'neutral proposals', () {
+      expect(useCase(MeetPlace.club, otherPlace: MeetPlace.cafe), [
+        EncounterProposal.getToKnow,
+      ]);
+      expect(useCase(MeetPlace.bar, otherPlace: MeetPlace.outdoors), [
+        EncounterProposal.chat,
+        EncounterProposal.getToKnow,
+      ]);
+      expect(useCase(MeetPlace.event, otherPlace: MeetPlace.bar), [
+        EncounterProposal.friendship,
+        EncounterProposal.getToKnow,
+      ]);
+    });
+
+    test('the same place, or one that is not declared, restricts nothing', () {
+      expect(
+        useCase(MeetPlace.club, otherPlace: MeetPlace.club),
+        useCase(MeetPlace.club),
+      );
+      expect(
+        useCase(MeetPlace.club, otherPlace: MeetPlace.other),
+        useCase(MeetPlace.club),
+      );
+      expect(
+        useCase(MeetPlace.other, otherPlace: MeetPlace.bar),
+        useCase(MeetPlace.other),
+      );
+    });
+
+    test('with a different place there is always something to offer', () {
+      for (final own in MeetPlace.values) {
+        for (final other in MeetPlace.values) {
+          expect(
+            useCase(own, otherPlace: other),
+            contains(EncounterProposal.getToKnow),
+          );
+        }
+      }
+    });
+
     test('every place offers something, and nothing outside the closed '
         'list', () {
       for (final place in MeetPlace.values) {
@@ -59,6 +100,18 @@ void main() {
 
   group('PreselectEncounterProposalUseCase', () {
     const useCase = PreselectEncounterProposalUseCase();
+
+    test('with a different place of the other person, the first neutral one '
+        'wins over a place-specific last choice', () {
+      expect(
+        useCase(
+          lastChosen: EncounterProposal.dance,
+          ownPlace: MeetPlace.club,
+          otherPlace: MeetPlace.cafe,
+        ),
+        EncounterProposal.getToKnow,
+      );
+    });
 
     test('the last proposal chosen wins while the own place still offers '
         'it', () {

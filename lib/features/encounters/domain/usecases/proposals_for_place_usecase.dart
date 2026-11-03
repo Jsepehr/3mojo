@@ -12,10 +12,37 @@ import '../entities/encounter_proposal.dart';
 /// prima che esistessero i luoghi: chi non dichiara nulla non ha
 /// restrizioni. Mai opzioni romantiche. Il server accetta comunque ogni codice della lista
 /// chiusa: questa è una guida per chi chiede, non un controllo di sicurezza.
+///
+/// Se la persona a cui scrivi ha dichiarato un luogo **diverso** dal tuo
+/// ([otherPlace], e anche il tuo è dichiarato: sono nello stesso raggio ma in
+/// locali diversi) le proposte legate al posto — [placeSpecific], ballare e
+/// bere qualcosa — non hanno senso per lei: restano solo quelle neutre. Se
+/// uno dei due non dichiara niente, o i luoghi coincidono, nessuna
+/// restrizione.
 class ProposalsForPlaceUseCase {
   const ProposalsForPlaceUseCase();
 
-  List<EncounterProposal> call(MeetPlace place) => switch (place) {
+  /// Le proposte che hanno senso solo nel posto giusto.
+  static const placeSpecific = {
+    EncounterProposal.dance,
+    EncounterProposal.drink,
+  };
+
+  List<EncounterProposal> call(
+    MeetPlace place, {
+    MeetPlace otherPlace = MeetPlace.fallback,
+  }) {
+    final proposals = _of(place);
+    final differentPlaces =
+        place.isDeclared && otherPlace.isDeclared && place != otherPlace;
+    if (!differentPlaces) return proposals;
+    return [
+      for (final proposal in proposals)
+        if (!placeSpecific.contains(proposal)) proposal,
+    ];
+  }
+
+  static List<EncounterProposal> _of(MeetPlace place) => switch (place) {
     MeetPlace.bar => const [
       EncounterProposal.drink,
       EncounterProposal.chat,

@@ -225,8 +225,8 @@ class _OnlineHome extends StatelessWidget {
     final proposal = await showProposalSheet(
       context,
       photoBytes: person.photoBytes,
-      preselected: proEncounters.preselectedProposal,
-      proposals: proEncounters.availableProposals,
+      preselected: proEncounters.preselectedProposal(otherPlace: person.place),
+      proposals: proEncounters.availableProposals(otherPlace: person.place),
     );
     if (proposal == null) return;
     HapticFeedback.lightImpact();

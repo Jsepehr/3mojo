@@ -400,30 +400,30 @@ void main() {
       sessions.start(_sessionWithPlace('s2', MeetPlace.club));
       await _settle();
 
-      expect(proEncounters.availableProposals, [
+      expect(proEncounters.availableProposals(), [
         EncounterProposal.dance,
         EncounterProposal.drink,
         EncounterProposal.getToKnow,
       ]);
-      expect(proEncounters.preselectedProposal, EncounterProposal.dance);
+      expect(proEncounters.preselectedProposal(), EncounterProposal.dance);
     });
 
     test('with no place declared (other), all four proposals and chat '
         'first', () async {
-      expect(proEncounters.availableProposals, hasLength(4));
-      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
+      expect(proEncounters.availableProposals(), hasLength(4));
+      expect(proEncounters.preselectedProposal(), EncounterProposal.chat);
     });
 
     test('a request carries its proposal, which becomes the next '
         'preselection while it is still offered', () async {
       sessions.start(_sessionWithPlace('s2', MeetPlace.bar));
       await _settle();
-      expect(proEncounters.preselectedProposal, EncounterProposal.drink);
+      expect(proEncounters.preselectedProposal(), EncounterProposal.drink);
 
       proEncounters.sendRequest('p1', proposal: EncounterProposal.chat);
 
       expect(encounters.sentProposals, [EncounterProposal.chat]);
-      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
+      expect(proEncounters.preselectedProposal(), EncounterProposal.chat);
     });
 
     test('a request that did not leave does not change the preselection', () {
@@ -431,7 +431,7 @@ void main() {
 
       proEncounters.sendRequest('p1', proposal: EncounterProposal.drink);
 
-      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
+      expect(proEncounters.preselectedProposal(), EncounterProposal.chat);
     });
 
     test('End forgets the last choice: the next session starts again from '
@@ -442,8 +442,8 @@ void main() {
       sessions.start(_sessionWithPlace('s3', MeetPlace.cafe));
       await _settle();
 
-      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
-      expect(proEncounters.availableProposals, [
+      expect(proEncounters.preselectedProposal(), EncounterProposal.chat);
+      expect(proEncounters.availableProposals(), [
         EncounterProposal.chat,
         EncounterProposal.getToKnow,
       ]);
