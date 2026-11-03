@@ -4,6 +4,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '../entities/geo_location.dart';
 import '../entities/nearby_person.dart';
 
@@ -17,7 +18,7 @@ abstract class NearbyRepository {
     GeoLocation location, {
     required String sessionId,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   });
 

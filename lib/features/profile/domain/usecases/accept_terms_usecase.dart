@@ -38,7 +38,6 @@ class AcceptTermsUseCase implements UseCase<Unit, NoParams> {
             isAdultConfirmed: value.isAdultConfirmed,
             acceptedSensitiveConsentVersion:
                 value.acceptedSensitiveConsentVersion,
-            defaultIntent: value.defaultIntent,
             languages: value.languages,
             showGender: value.showGender,
             acceptedTermsVersion: Profile.currentTermsVersion,

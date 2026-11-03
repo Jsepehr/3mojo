@@ -11,6 +11,7 @@ import '/core/utils/photo_bytes_cache.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/nearby/data/models/presence_profile_model.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import 'nearby_remote_data_source.dart';
 
 /// Implementazione **reale**: usa la connessione WebSocket condivisa
@@ -119,13 +120,13 @@ class NearbyRemoteDataSourceImpl implements NearbyRemoteDataSource {
     required double latitude,
     required double longitude,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   }) {
     final generation = ++_generation;
     _profileFields = PresenceProfileModel(
       profile: profile,
-      intent: intent,
+      place: place,
     ).toJson();
     _sessionId = sessionId;
     _lastLatitude = latitude;

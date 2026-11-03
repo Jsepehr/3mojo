@@ -19,11 +19,12 @@ class RespondToEncounterRequestParams extends Equatable {
 
 /// Azione: rispondi sì/no a una richiesta in arrivo. `Right` = la risposta
 /// è partita, `Left(ConnectionFailure)` = non è partita (offline). La
-/// regola di business "un solo match alla volta" (un sì cancella ogni
-/// altra richiesta pendente, per entrambe le parti) è applicata dal
-/// server: qui non c'è più nessun passo separato da orchestrare, arriva
-/// già risolta col prossimo snapshot (o rifiutata, es. `inMatch`, vedi
-/// `WatchEncounterRejectionsUseCase`).
+/// regola di business "un solo match alla volta" è applicata dal server:
+/// un sì cambia solo lo stato di quella richiesta (le altre pendenti
+/// restano pendenti) ed è rifiutato (`inMatch`, vedi
+/// `WatchEncounterRejectionsUseCase`) se una delle due parti è già in un
+/// match; il no è sempre possibile. Qui non c'è nessun passo separato da
+/// orchestrare.
 class RespondToEncounterRequestUseCase {
   const RespondToEncounterRequestUseCase(this._repository);
 

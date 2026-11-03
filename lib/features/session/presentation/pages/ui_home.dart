@@ -210,8 +210,8 @@ class _OnlineHome extends StatelessWidget {
 
   /// Tocco su una persona: si apre la tendina "Cosa vuoi proporre?" e
   /// toccare una proposta manda la richiesta (2 tap in tutto). La
-  /// preselezione e il segno "in linea con ciò che cerca" (dal suo intento
-  /// pubblico) li decidono gli use case dietro `ProEncounters`. L'esito
+  /// scelta di quali proposte offrire e la preselezione (dal tuo luogo)
+  /// le decidono gli use case dietro `ProEncounters`. L'esito
   /// (partita o rifiutata, e perché) arriva da `CmpEncounterNoticeListener`:
   /// qui nessun "Richiesta inviata" prima di saperlo.
   Future<void> _chooseProposalAndRequest(
@@ -223,7 +223,7 @@ class _OnlineHome extends StatelessWidget {
       context,
       photoBytes: person.photoBytes,
       preselected: proEncounters.preselectedProposal,
-      matchingTheirIntent: proEncounters.proposalMatchingIntent(person.intent),
+      proposals: proEncounters.availableProposals,
     );
     if (proposal == null) return;
     HapticFeedback.lightImpact();

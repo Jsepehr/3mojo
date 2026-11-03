@@ -167,7 +167,7 @@ void main() {
           profile: const PresenceProfile(
             gender: 'female',
             lookingFor: {'male'},
-            intent: 'chat',
+            place: 'cafe',
             languages: ['it', 'en'],
             showGender: true,
           ),
@@ -187,7 +187,7 @@ void main() {
       final payload =
           jsonDecode(bMessages.single as String) as Map<String, dynamic>;
       final incoming = (payload['incoming'] as List).single as Map;
-      expect(incoming['otherIntent'], 'chat');
+      expect(incoming['otherPlace'], 'cafe');
       expect(incoming['otherLanguages'], ['it', 'en']);
       expect(incoming['otherGender'], 'female');
       expect(incoming['otherPersonId'], isNot('a'));
@@ -207,7 +207,7 @@ void main() {
           lat: 0,
           lng: 0,
           selfieBase64: 'selfie-a',
-          profile: const PresenceProfile(intent: 'chat'),
+          profile: const PresenceProfile(place: 'cafe'),
         )
         ..upsertPosition(sessionId: 'b', lat: 0, lng: 0);
       final request = encounters.sendRequest(
@@ -235,7 +235,7 @@ void main() {
               as Map;
       expect(incoming['status'], 'declined');
       expect(incoming.keys, isNot(contains('otherSelfieBase64')));
-      expect(incoming.keys, isNot(contains('otherIntent')));
+      expect(incoming.keys, isNot(contains('otherPlace')));
     });
 
     test('the selfie of a request travels once per socket: later snapshots '
@@ -252,7 +252,7 @@ void main() {
           lat: 0,
           lng: 0,
           selfieBase64: 'selfie-a',
-          profile: const PresenceProfile(intent: 'chat'),
+          profile: const PresenceProfile(place: 'cafe'),
         )
         ..upsertPosition(sessionId: 'b', lat: 0, lng: 0);
       encounters.sendRequest(fromSessionId: 'a', toSessionId: 'b');
@@ -273,7 +273,7 @@ void main() {
       expect(repeated.keys, isNot(contains('otherSelfieBase64')));
       // Il resto (stato, profilo visibile) c'è sempre.
       expect(repeated['status'], 'pending');
-      expect(repeated['otherIntent'], 'chat');
+      expect(repeated['otherPlace'], 'cafe');
 
       // Riconnessione: un socket nuovo riparte da zero.
       final second = <dynamic>[];

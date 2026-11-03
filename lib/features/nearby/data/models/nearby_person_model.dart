@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '/core/utils/photo_bytes_cache.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 
 /// Versione di `NearbyPerson` che sa leggersi da un elemento di `people` nel
 /// messaggio `{"type": "nearby", ...}` del WebSocket `/ws` — il server
@@ -23,7 +24,7 @@ class NearbyPersonModel extends NearbyPerson {
     required super.meetingChance,
     super.photoBytes,
     super.isLocked,
-    super.intent,
+    super.place,
     super.languages,
     super.visibleGender,
   });
@@ -59,7 +60,8 @@ class NearbyPersonModel extends NearbyPerson {
       meetingChance: chance,
       isLocked: isLocked,
       photoBytes: photo,
-      intent: _enumOrNull(MeetIntent.values, json['intent']),
+      // Assente (`other`, o un server più vecchio) o sconosciuto: `other`.
+      place: _enumOrNull(MeetPlace.values, json['place']) ?? MeetPlace.fallback,
       languages: rawLanguages is List
           ? rawLanguages.whereType<String>().toList(growable: false)
           : const [],

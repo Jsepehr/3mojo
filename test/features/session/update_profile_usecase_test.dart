@@ -42,14 +42,12 @@ Profile _edit({
   bool showGender = false,
   int consent = Profile.currentSensitiveConsentVersion,
   List<String> languages = const [],
-  MeetIntent? defaultIntent,
   bool isAdultConfirmed = true,
 }) => Profile(
   gender: gender,
   lookingFor: lookingFor,
   isAdultConfirmed: isAdultConfirmed,
   acceptedSensitiveConsentVersion: consent,
-  defaultIntent: defaultIntent,
   languages: languages,
   showGender: showGender,
   acceptedTermsVersion: Profile.currentTermsVersion,
@@ -104,22 +102,20 @@ void main() {
     }
   });
 
-  test('online, languages and usual intent apply from the next Start: the '
-      'session stays', () async {
-    final edited = _edit(
-      languages: const ['it'],
-      defaultIntent: MeetIntent.chat,
-    );
+  test(
+    'online, languages apply from the next Start: the session stays',
+    () async {
+      final edited = _edit(languages: const ['it']);
 
-    expect(await update.endsSession(edited), isFalse);
-    final result = await update(edited);
+      expect(await update.endsSession(edited), isFalse);
+      final result = await update(edited);
 
-    expect(result.isRight(), isTrue);
-    expect(sessions.endSessionCalls, 0);
-    expect(sessions.current, isNotNull);
-    expect(profiles.saved!.languages, ['it']);
-    expect(profiles.saved!.defaultIntent, MeetIntent.chat);
-  });
+      expect(result.isRight(), isTrue);
+      expect(sessions.endSessionCalls, 0);
+      expect(sessions.current, isNotNull);
+      expect(profiles.saved!.languages, ['it']);
+    },
+  );
 
   test('offline, nothing to end: just saved', () async {
     final offline = _RecordingSessionRepository(profiles);

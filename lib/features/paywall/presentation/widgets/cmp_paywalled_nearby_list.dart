@@ -44,7 +44,7 @@ class CmpPaywalledNearbyList extends StatelessWidget {
   final CmpNearbyRequestState Function(String personId) requestStateOf;
 
   /// Tocco su una persona libera e non ancora richiesta: riceve la persona
-  /// intera (foto, intento pubblico), per chi apre la tendina della
+  /// intera (foto, luogo pubblico), per chi apre la tendina della
   /// proposta.
   final void Function(NearbyPerson person) onRequest;
   final VoidCallback? onEndSession;

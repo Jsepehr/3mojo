@@ -169,19 +169,19 @@ class EncounterStore {
       .where((r) => r.fromSessionId == sessionId)
       .toList(growable: false);
 
-  /// Risponde a una richiesta. Se accettata, applica da sola la regola di
-  /// esclusività — "un solo incontro attivo alla volta" per **entrambi** i
-  /// partecipanti — cancellando ogni altra richiesta pendente che coinvolga
-  /// l'uno o l'altro. Ritorna la richiesta aggiornata più quelle cancellate
-  /// come effetto collaterale, così chi chiama sa a chi altro notificare.
+  /// Risponde a una richiesta: un sì cambia lo stato **solo di quella**
+  /// (`accepted`), un no la porta a `declined`. Le altre richieste pendenti
+  /// dei due partecipanti restano pendenti: "un solo incontro attivo alla
+  /// volta" non si ottiene cancellandole, ma rifiutando ogni nuovo sì
+  /// ([EncounterRejectionReason.inMatch]) finché una delle due parti è in
+  /// un match; finito quello, le pendenti si possono ancora accettare.
   ///
   /// Solo il destinatario ([bySessionId] == `toSessionId`) può rispondere, e
   /// solo finché è pendente — senza questo controllo chiunque conoscesse un
   /// id potrebbe accettare o rifiutare le richieste degli altri. Accettare è
   /// rifiutato ([EncounterRejectionReason.inMatch]) se una delle due parti è
-  /// già in un match.
-  ({EncounterRequest request, List<EncounterRequest> alsoCancelled})
-  respondToRequest({
+  /// già in un match; il no è sempre possibile, anche in match.
+  EncounterRequest respondToRequest({
     required String requestId,
     required bool accepted,
     required String bySessionId,
@@ -214,21 +214,7 @@ class EncounterStore {
         ? EncounterRequestStatus.accepted
         : EncounterRequestStatus.declined;
 
-    final alsoCancelled = <EncounterRequest>[];
-    if (accepted) {
-      for (final other in _requests.values) {
-        if (other.id == request.id) continue;
-        if (other.status != EncounterRequestStatus.pending) continue;
-        if (!other.involves(request.fromSessionId) &&
-            !other.involves(request.toSessionId)) {
-          continue;
-        }
-        other.status = EncounterRequestStatus.cancelled;
-        alsoCancelled.add(other);
-      }
-    }
-
-    return (request: request, alsoCancelled: alsoCancelled);
+    return request;
   }
 
   /// Chiude un match. Solo uno dei due partecipanti ([bySessionId]) può
@@ -271,8 +257,9 @@ class EncounterStore {
     (r) => r.status == EncounterRequestStatus.accepted && r.involves(sessionId),
   );
 
-  /// Quando una sessione finisce, le sue richieste ancora pendenti non
-  /// hanno più senso: chi le ha ricevute non potrebbe comunque mai ottenere
+  /// Quando una sessione finisce (o dopo un blocco), le sue richieste ancora
+  /// pendenti non hanno più senso — **non** quando finisce un match: quelle
+  /// restano pendenti e si possono accettare dopo: chi le ha ricevute non potrebbe comunque mai ottenere
   /// risposta. Le cancella e ritorna quelle toccate, per notificare l'altra
   /// parte.
   List<EncounterRequest> cancelAllPendingFor(String sessionId) {

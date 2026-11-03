@@ -102,7 +102,7 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
       l10n.you_too_must_stay_put_for_a_minute,
       l10n.the_longer_someone_stays_in_one_place,
       l10n.no_names_no_public_profile,
-      l10n.accept_one_request_and_the_others_cancel_automatically,
+      l10n.one_match_at_a_time_tip,
     ];
 
     return Stack(

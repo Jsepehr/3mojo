@@ -1,5 +1,5 @@
 /// Il profilo che il client manda con la presenza (genere, chi cerca,
-/// intento, lingue, "mostra il mio genere") — validato qui, mai fidato così
+/// luogo, lingue, "mostra il mio genere") — validato qui, mai fidato così
 /// com'è: valori fuori dalle liste chiuse diventano neutri invece di finire
 /// nei payload verso gli altri utenti.
 ///
@@ -9,7 +9,7 @@ class PresenceProfile {
   const PresenceProfile({
     this.gender = unspecified,
     this.lookingFor = searchableGenders,
-    this.intent,
+    this.place = otherPlace,
     this.languages = const [],
     this.showGender = false,
   });
@@ -20,7 +20,20 @@ class PresenceProfile {
   static const unspecified = 'unspecified';
   static const searchableGenders = {'male', 'female', 'nonBinary'};
   static const genders = {...searchableGenders, unspecified};
-  static const intents = {'chat', 'friendship', 'meetPeople', 'openToAnything'};
+
+  /// Lista chiusa dei luoghi (fascia grossolana, mai il nome di un locale):
+  /// **la stessa** di `MeetPlace` nel client
+  /// (`lib/features/session/domain/entities/meet_place.dart`) — se cambia
+  /// una, va cambiata anche l'altra. È il luogo scelto allo Start, valido
+  /// solo per la sessione.
+  static const bar = 'bar';
+  static const discoPub = 'discoPub';
+  static const cafe = 'cafe';
+  static const club = 'club';
+  static const event = 'event';
+  static const outdoors = 'outdoors';
+  static const otherPlace = 'other';
+  static const places = {bar, discoPub, cafe, club, event, outdoors, otherPlace};
   static const maxLanguages = 2;
 
   /// Lista chiusa delle lingue accettate: **la stessa** di
@@ -43,7 +56,9 @@ class PresenceProfile {
 
   final String gender;
   final Set<String> lookingFor;
-  final String? intent;
+
+  /// Uno dei [places]; [otherPlace] = non dichiarato (non si mostra).
+  final String place;
   final List<String> languages;
   final bool showGender;
 
@@ -61,14 +76,15 @@ class PresenceProfile {
               .toSet()
         : <String>{};
 
-    final rawIntent = json['intent'];
+    final rawPlace = json['place'];
     final rawLanguages = json['languages'];
 
     return PresenceProfile(
       gender: gender,
       // Vuoto o assente: nessuna preferenza dichiarata, quindi "tutti".
       lookingFor: lookingFor.isEmpty ? searchableGenders : lookingFor,
-      intent: intents.contains(rawIntent) ? rawIntent as String : null,
+      // Mancante (client vecchi) o sconosciuto: `other`.
+      place: places.contains(rawPlace) ? rawPlace as String : otherPlace,
       languages: rawLanguages is List
           ? rawLanguages
                 .whereType<String>()

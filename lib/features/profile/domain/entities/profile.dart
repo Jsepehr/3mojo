@@ -3,19 +3,13 @@ import 'package:equatable/equatable.dart';
 /// Il genere dichiarato. `unspecified` = "preferisco non dirlo".
 enum Gender { male, female, nonBinary, unspecified }
 
-/// Cosa si cerca di solito, mostrato agli altri come icona nella lista
-/// "Vicinanze". Lista chiusa apposta: niente testo libero (da moderare, e
-/// che collegherebbe le sessioni tra loro).
-enum MeetIntent { chat, friendship, meetPeople, openToAnything }
-
 /// Il profilo, compilato una volta e tenuto **solo sul telefono** (cifrato,
 /// vedi `ProfileLocalDataSourceImpl`): a ogni Start l'app lo legge e lo
 /// manda al server insieme alla presenza, il server lo usa finché si è
 /// online e poi lo dimentica. Non è un account: nessun nome, nessun id,
 /// niente che sopravviva sul server.
 ///
-/// Agli altri si mostrano solo [defaultIntent] (come intento della
-/// sessione), [languages] e — solo se [showGender] — il genere. [lookingFor]
+/// Agli altri si mostrano solo [languages] e — solo se [showGender] — il genere. [lookingFor]
 /// non viene **mai** mostrato: serve solo al server per il matching
 /// reciproco.
 class Profile extends Equatable {
@@ -24,7 +18,6 @@ class Profile extends Equatable {
     required this.lookingFor,
     required this.isAdultConfirmed,
     this.acceptedSensitiveConsentVersion = 0,
-    this.defaultIntent,
     this.languages = const [],
     this.showGender = false,
     this.acceptedTermsVersion = 0,
@@ -82,7 +75,6 @@ class Profile extends Equatable {
   /// (0 = mai, o non serve: percorso neutro). Sta sull'entity perché lo
   /// leggono due regole di business: salvataggio e Start.
   final int acceptedSensitiveConsentVersion;
-  final MeetIntent? defaultIntent;
   final List<String> languages;
   final bool showGender;
 
@@ -119,7 +111,6 @@ class Profile extends Equatable {
     lookingFor,
     isAdultConfirmed,
     acceptedSensitiveConsentVersion,
-    defaultIntent,
     languages,
     showGender,
     acceptedTermsVersion,

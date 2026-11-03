@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:fpdart/fpdart.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/chat/domain/entities/chat_message.dart';
 import 'package:threemojo_app/features/chat/domain/entities/conversation.dart';
@@ -65,13 +66,13 @@ class FakeSessionRepository implements SessionRepository {
     required String sessionId,
     required Uint8List selfieBytes,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
   }) async {
     final session = OnlineSession(
       sessionId: sessionId,
       selfieBytes: selfieBytes,
       profile: profile,
-      intent: intent,
+      place: place,
     );
     start(session);
     return Right(session);

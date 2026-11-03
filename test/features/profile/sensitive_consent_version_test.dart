@@ -18,11 +18,20 @@ void main() {
     'lookingFor': ['male'],
     'isAdultConfirmed': true,
     'sensitiveDataConsent': ?consent,
-    'defaultIntent': null,
+    // Il vecchio intento predefinito (tolto) si ignora senza errori.
+    'defaultIntent': 'chat',
     'languages': <String>[],
     'showGender': false,
     'acceptedTermsVersion': Profile.currentTermsVersion,
   };
+
+  test('a profile saved with the old defaultIntent is read without errors, '
+      'and the field is gone at the next save', () {
+    final profile = ProfileModel.fromJson(legacyJson(consent: true));
+
+    expect(profile.gender.name, 'female');
+    expect(profile.toJson().containsKey('defaultIntent'), isFalse);
+  });
 
   group('migration of profiles saved with the old boolean', () {
     test('true becomes version 1 (the text of the time)', () {

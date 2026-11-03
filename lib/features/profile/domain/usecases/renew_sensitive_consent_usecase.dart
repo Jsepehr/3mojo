@@ -39,7 +39,6 @@ class RenewSensitiveConsentUseCase implements UseCase<Unit, NoParams> {
             isAdultConfirmed: value.isAdultConfirmed,
             acceptedSensitiveConsentVersion:
                 Profile.currentSensitiveConsentVersion,
-            defaultIntent: value.defaultIntent,
             languages: value.languages,
             showGender: value.showGender,
             acceptedTermsVersion: value.acceptedTermsVersion,

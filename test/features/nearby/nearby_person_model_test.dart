@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/features/nearby/data/models/nearby_person_model.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/nearby_person.dart';
 import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
@@ -13,7 +14,7 @@ void main() {
       'meetingChance': 'medium',
       'locked': false,
       'selfieBase64': base64Encode([1, 2, 3]),
-      'intent': 'friendship',
+      'place': 'club',
       'languages': ['it'],
       'gender': 'female',
     });
@@ -22,7 +23,7 @@ void main() {
     expect(person.meetingChance, MeetingChance.medium);
     expect(person.isLocked, isFalse);
     expect(person.photoBytes, [1, 2, 3]);
-    expect(person.intent, MeetIntent.friendship);
+    expect(person.place, MeetPlace.club);
     expect(person.visibleGender, Gender.female);
   });
 

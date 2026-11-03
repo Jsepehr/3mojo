@@ -7,14 +7,14 @@ void main() {
       final profile = PresenceProfile.fromJson({
         'gender': 'female',
         'lookingFor': ['male', 'nonBinary'],
-        'intent': 'friendship',
+        'place': 'club',
         'languages': ['it', 'en'],
         'showGender': true,
       });
 
       expect(profile.gender, 'female');
       expect(profile.lookingFor, {'male', 'nonBinary'});
-      expect(profile.intent, 'friendship');
+      expect(profile.place, 'club');
       expect(profile.languages, ['it', 'en']);
       expect(profile.visibleGender, 'female');
     });
@@ -23,17 +23,43 @@ void main() {
       final profile = PresenceProfile.fromJson({
         'gender': '<script>',
         'lookingFor': ['unspecified', 42, 'robots'],
-        'intent': 'call me at 333...',
+        'place': 'Bar Sport, via Roma 3',
         'languages': ['it', 'en', 'es', 'ENGLISH', 'xyz'],
         'showGender': true,
       });
 
       expect(profile.gender, PresenceProfile.unspecified);
       expect(profile.lookingFor, PresenceProfile.searchableGenders);
-      expect(profile.intent, isNull);
+      expect(profile.place, PresenceProfile.otherPlace);
       expect(profile.languages, ['it', 'en']);
       // "Show my gender" means nothing for an unspecified gender.
       expect(profile.visibleGender, isNull);
+    });
+
+    test(
+      'a missing place (older clients, or the old intent field) is other',
+      () {
+        expect(
+          PresenceProfile.fromJson({'intent': 'chat'}).place,
+          PresenceProfile.otherPlace,
+        );
+        expect(PresenceProfile.fromJson({}).place, PresenceProfile.otherPlace);
+      },
+    );
+
+    test('every place of the closed list is kept', () {
+      for (final place in PresenceProfile.places) {
+        expect(PresenceProfile.fromJson({'place': place}).place, place);
+      }
+      expect(PresenceProfile.places, {
+        'bar',
+        'discoPub',
+        'cafe',
+        'club',
+        'event',
+        'outdoors',
+        'other',
+      });
     });
 
     test('languages come only from the closed list shared with the app', () {

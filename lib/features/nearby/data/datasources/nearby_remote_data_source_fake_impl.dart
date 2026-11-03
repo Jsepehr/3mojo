@@ -7,6 +7,7 @@ import '/core/utils/illustrated_avatar.dart';
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import 'nearby_remote_data_source.dart';
 
 /// Implementazione **finta** (nessuna rete, nessun backend): simula 5
@@ -103,7 +104,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
         index: 1,
         distanceMeters: 4,
         arrivedAt: now.subtract(const Duration(minutes: 6)),
-        intent: MeetIntent.chat,
+        place: MeetPlace.cafe,
         languages: const ['it', 'en'],
         visibleGender: Gender.female,
       ),
@@ -111,14 +112,14 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
         index: 2,
         distanceMeters: 12.5,
         arrivedAt: now.subtract(const Duration(minutes: 4)),
-        intent: MeetIntent.openToAnything,
+        // Nessun luogo dichiarato (`other`): niente etichetta.
         languages: const ['it'],
       ),
       _FakePresence(
         index: 3,
         distanceMeters: 19,
         arrivedAt: now.subtract(const Duration(minutes: 2)),
-        intent: MeetIntent.friendship,
+        place: MeetPlace.bar,
         languages: const ['es', 'en'],
         visibleGender: Gender.male,
       ),
@@ -134,24 +135,24 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
         index: 5,
         distanceMeters: 80,
         arrivedAt: now.subtract(const Duration(minutes: 10)),
-        intent: MeetIntent.meetPeople,
+        place: MeetPlace.outdoors,
         languages: const ['fr'],
       ),
       if (crowded) ...[
-        for (final (index, meters, minutes, intent, languages) in const [
-          (6, 8.0, 7, MeetIntent.friendship, ['it', 'de']),
-          (7, 15.0, 3, MeetIntent.chat, ['en']),
-          (8, 27.0, 5, null, ['it']),
-          (9, 33.0, 2, MeetIntent.openToAnything, ['ar', 'en']),
-          (10, 52.0, 8, MeetIntent.meetPeople, ['es']),
-          (11, 66.0, 4, MeetIntent.chat, ['it', 'fr']),
-          (12, 91.0, 1, MeetIntent.friendship, <String>[]),
+        for (final (index, meters, minutes, place, languages) in const [
+          (6, 8.0, 7, MeetPlace.club, ['it', 'de']),
+          (7, 15.0, 3, MeetPlace.cafe, ['en']),
+          (8, 27.0, 5, MeetPlace.other, ['it']),
+          (9, 33.0, 2, MeetPlace.event, ['ar', 'en']),
+          (10, 52.0, 8, MeetPlace.discoPub, ['es']),
+          (11, 66.0, 4, MeetPlace.club, ['it', 'fr']),
+          (12, 91.0, 1, MeetPlace.outdoors, <String>[]),
         ])
           _FakePresence(
             index: index,
             distanceMeters: meters,
             arrivedAt: now.subtract(Duration(minutes: minutes, seconds: 20)),
-            intent: intent,
+            place: place,
             languages: languages,
           ),
       ],
@@ -164,7 +165,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
     required double latitude,
     required double longitude,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   }) {
     final prefix = idPrefix ?? 'fake${sessionId.hashCode.toRadixString(16)}';
@@ -292,7 +293,7 @@ class NearbyRemoteDataSourceFakeImpl implements NearbyRemoteDataSource {
           photoBytes: freeIndexes.contains(visible[i].index)
               ? illustratedAvatarPng(avatarSeedOf(visible[i].index))
               : null,
-          intent: visible[i].intent,
+          place: visible[i].place,
           languages: visible[i].languages,
           visibleGender: visible[i].visibleGender,
         ),
@@ -312,7 +313,7 @@ class _FakePresence {
     required this.index,
     required this.distanceMeters,
     required this.arrivedAt,
-    this.intent,
+    this.place = MeetPlace.fallback,
     this.languages = const [],
     this.visibleGender,
   });
@@ -321,7 +322,7 @@ class _FakePresence {
 
   /// Solo interna: ordina la lista e decide il paywall, mai esposta.
   final double distanceMeters;
-  final MeetIntent? intent;
+  final MeetPlace place;
   final List<String> languages;
   final Gender? visibleGender;
   DateTime arrivedAt;

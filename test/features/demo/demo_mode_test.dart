@@ -575,7 +575,7 @@ void main() {
           .first,
     );
     await _advance(tester, const Duration(milliseconds: 600));
-    await tester.tap(find.byKey(const ValueKey('proposal-sayHi')));
+    await tester.tap(find.byKey(const ValueKey('proposal-chat')));
     await _advance(tester, const Duration(milliseconds: 300));
     expect(find.text(l10n.request_sent), findsWidgets);
 

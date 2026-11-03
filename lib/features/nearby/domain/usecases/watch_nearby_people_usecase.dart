@@ -93,7 +93,7 @@ class WatchNearbyPeopleUseCase {
         location,
         sessionId: session.sessionId,
         profile: session.profile,
-        intent: session.intent,
+        place: session.place,
         selfieBytes: session.selfieBytes,
       );
     } finally {

@@ -12,29 +12,36 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: child),
 );
 
+const _all = [
+  EncounterProposal.chat,
+  EncounterProposal.friendship,
+  EncounterProposal.getToKnow,
+  EncounterProposal.drink,
+];
+
 Finder _row(EncounterProposal proposal) =>
     find.byKey(ValueKey('proposal-${proposal.name}'));
 
 void main() {
   testWidgets('the preselected proposal comes first, then the others in the '
-      'order of the closed list — none hidden', (tester) async {
+      'order given — none hidden', (tester) async {
     await tester.pumpWidget(
       _wrap(
         CmpProposalSheet(
           photoBytes: null,
           preselected: EncounterProposal.drink,
+          proposals: _all,
           onChoose: (_) {},
         ),
       ),
     );
 
     final tops = [
-      for (final proposal in EncounterProposal.values)
+      for (final proposal in _all)
         (proposal, tester.getTopLeft(_row(proposal)).dy),
     ]..sort((a, b) => a.$2.compareTo(b.$2));
     expect(tops.map((entry) => entry.$1), [
       EncounterProposal.drink,
-      EncounterProposal.sayHi,
       EncounterProposal.chat,
       EncounterProposal.friendship,
       EncounterProposal.getToKnow,
@@ -42,43 +49,29 @@ void main() {
     expect(find.text('Bere qualcosa'), findsOneWidget);
     expect(find.text('Vedrà la tua foto e questa frase'), findsOneWidget);
     // Righe grandi da toccare.
-    for (final proposal in EncounterProposal.values) {
+    for (final proposal in _all) {
       expect(tester.getSize(_row(proposal)).height, greaterThanOrEqualTo(48));
     }
   });
 
-  testWidgets('"in line with what they look for" marks only the proposal '
-      'matching their public intent', (tester) async {
+  testWidgets('only the proposals of the own place are offered, none of '
+      'the others', (tester) async {
     await tester.pumpWidget(
       _wrap(
         CmpProposalSheet(
           photoBytes: null,
-          preselected: EncounterProposal.getToKnow,
-          matchingTheirIntent: EncounterProposal.chat,
+          preselected: EncounterProposal.dance,
+          proposals: const [EncounterProposal.dance, EncounterProposal.drink],
           onChoose: (_) {},
         ),
       ),
     );
 
-    final mark = find.text('In linea con ciò che cerca');
-    expect(mark, findsOneWidget);
-    expect(
-      find.descendant(of: _row(EncounterProposal.chat), matching: mark),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('without a public intent there is no mark', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        CmpProposalSheet(
-          photoBytes: null,
-          preselected: EncounterProposal.getToKnow,
-          onChoose: (_) {},
-        ),
-      ),
-    );
-
+    expect(_row(EncounterProposal.dance), findsOneWidget);
+    expect(_row(EncounterProposal.drink), findsOneWidget);
+    expect(_row(EncounterProposal.chat), findsNothing);
+    expect(_row(EncounterProposal.friendship), findsNothing);
+    expect(find.text('Ballare'), findsOneWidget);
     expect(find.text('In linea con ciò che cerca'), findsNothing);
   });
 
@@ -90,17 +83,18 @@ void main() {
       _wrap(
         CmpProposalSheet(
           photoBytes: null,
-          preselected: EncounterProposal.sayHi,
+          preselected: EncounterProposal.chat,
+          proposals: _all,
           onChoose: (_) {},
         ),
       ),
     );
 
-    expect(find.bySemanticsLabel(RegExp('👋')), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('☕')), findsNothing);
     expect(
-      tester.getSemantics(_row(EncounterProposal.sayHi)),
+      tester.getSemantics(_row(EncounterProposal.chat)),
       matchesSemantics(
-        label: 'Salutare',
+        label: 'Due chiacchiere',
         isButton: true,
         hasSelectedState: true,
         isSelected: true,
@@ -127,6 +121,7 @@ void main() {
                 context,
                 photoBytes: null,
                 preselected: EncounterProposal.getToKnow,
+                proposals: _all,
               );
               closed = true;
             },

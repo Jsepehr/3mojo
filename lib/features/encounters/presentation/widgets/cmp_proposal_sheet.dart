@@ -17,7 +17,7 @@ Future<EncounterProposal?> showProposalSheet(
   BuildContext context, {
   required Uint8List? photoBytes,
   required EncounterProposal preselected,
-  EncounterProposal? matchingTheirIntent,
+  required List<EncounterProposal> proposals,
 }) {
   final reduceMotion = MediaQuery.disableAnimationsOf(context);
   return showModalBottomSheet<EncounterProposal>(
@@ -29,40 +29,36 @@ Future<EncounterProposal?> showProposalSheet(
     builder: (sheetContext) => CmpProposalSheet(
       photoBytes: photoBytes,
       preselected: preselected,
-      matchingTheirIntent: matchingTheirIntent,
+      proposals: proposals,
       onChoose: (proposal) => Navigator.of(sheetContext).pop(proposal),
     ),
   );
 }
 
 /// Contenuto della tendina della richiesta d'incontro: in alto la foto
-/// piccola della persona, poi le cinque proposte (lista chiusa) come righe
+/// piccola della persona, poi le proposte previste per il **tuo** luogo (`ProposalsForPlaceUseCase`) come righe
 /// grandi da toccare — la [preselected] in cima ed evidenziata — e in fondo
 /// cosa vedrà l'altra persona. Toccare una riga **è** l'invio (2 tap in
 /// tutto, dalla lista "Vicinanze"): [onChoose].
 ///
-/// [matchingTheirIntent] è la proposta abbinata all'intento **pubblico**
-/// della persona (quello che mostra in "Vicinanze"): ha un segno leggero "In
-/// linea con ciò che cerca", ma nessuna opzione viene nascosta né
-/// riordinata per questo. Mai dati privati (chi cerca, genere).
 class CmpProposalSheet extends StatelessWidget {
   const CmpProposalSheet({
     super.key,
     required this.photoBytes,
     required this.preselected,
     required this.onChoose,
-    this.matchingTheirIntent,
+    required this.proposals,
   });
 
   final Uint8List? photoBytes;
   final EncounterProposal preselected;
-  final EncounterProposal? matchingTheirIntent;
+  final List<EncounterProposal> proposals;
   final ValueChanged<EncounterProposal> onChoose;
 
-  /// La preselezionata in cima, le altre nell'ordine della lista chiusa.
+  /// La preselezionata in cima, le altre nell'ordine di [proposals].
   List<EncounterProposal> get orderedProposals => [
     preselected,
-    for (final proposal in EncounterProposal.values)
+    for (final proposal in proposals)
       if (proposal != preselected) proposal,
   ];
 
@@ -106,7 +102,6 @@ class CmpProposalSheet extends StatelessWidget {
               key: ValueKey('proposal-${proposal.name}'),
               proposal: proposal,
               isPreselected: proposal == preselected,
-              matchesTheirIntent: proposal == matchingTheirIntent,
               onTap: () => onChoose(proposal),
             ),
             const SizedBox(height: 8),
@@ -137,13 +132,11 @@ class _ProposalRow extends StatelessWidget {
     super.key,
     required this.proposal,
     required this.isPreselected,
-    required this.matchesTheirIntent,
     required this.onTap,
   });
 
   final EncounterProposal proposal;
   final bool isPreselected;
-  final bool matchesTheirIntent;
   final VoidCallback onTap;
 
   @override
@@ -195,31 +188,6 @@ class _ProposalRow extends StatelessWidget {
                             color: foreground,
                           ),
                         ),
-                        if (matchesTheirIntent) ...[
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              ExcludeSemantics(
-                                child: Icon(
-                                  Icons.check_circle_outline,
-                                  size: 14,
-                                  color: isPreselected
-                                      ? foreground
-                                      : colorScheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  l10n.proposal_matches_their_intent,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: muted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),

@@ -8,18 +8,22 @@ import '/core/errors/failures.dart';
 import '/core/usecases/usecase.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/domain/usecases/get_profile_usecase.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/repositories/session_repository.dart';
 import 'check_selfie_has_face_usecase.dart';
 
 class StartSessionParams extends Equatable {
-  const StartSessionParams({required this.selfieBytes, this.intent});
+  const StartSessionParams({
+    required this.selfieBytes,
+    this.place = MeetPlace.fallback,
+  });
 
   final Uint8List selfieBytes;
-  final MeetIntent? intent;
+  final MeetPlace place;
 
   @override
-  List<Object?> get props => [selfieBytes, intent];
+  List<Object?> get props => [selfieBytes, place];
 }
 
 /// Azione: vai online. Valida che ci sia un selfie e che contenga un volto
@@ -83,7 +87,7 @@ class StartSessionUseCase
         sessionId: const Uuid().v4(),
         selfieBytes: params.selfieBytes,
         profile: profile,
-        intent: params.intent,
+        place: params.place,
       );
     });
   }

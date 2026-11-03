@@ -1,3 +1,4 @@
+import '/features/session/domain/entities/meet_place.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -194,7 +195,7 @@ class DemoScope extends StatelessWidget {
   static List<FakeIncomingRequester> _incomingRequesters() => [
     FakeIncomingRequester(
       personId: _personId(4),
-      proposal: EncounterProposal.sayHi,
+      proposal: EncounterProposal.chat,
       selfieBytes: _avatarOf(_personId(4)),
       visibleGender: Gender.nonBinary,
     ),
@@ -202,7 +203,7 @@ class DemoScope extends StatelessWidget {
       personId: _personId(1),
       proposal: EncounterProposal.drink,
       selfieBytes: _avatarOf(_personId(1)),
-      intent: MeetIntent.chat,
+      place: MeetPlace.cafe,
       languages: const ['it', 'en'],
       visibleGender: Gender.female,
     ),

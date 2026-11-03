@@ -99,7 +99,7 @@ class Session {
   /// "Vicinanze" finché non si riconnette.
   bool connected = true;
 
-  /// Genere, chi cerca, intento, lingue, "mostra il mio genere" — già
+  /// Genere, chi cerca, luogo, lingue, "mostra il mio genere" — già
   /// validati (`PresenceProfile.fromJson`). **Fissati alla nascita della
   /// sessione**: le presenze successive non li cambiano. Altrimenti chi vuole
   /// scoprire la preferenza di qualcuno potrebbe cambiare il proprio genere a
@@ -128,7 +128,7 @@ class Session {
 /// resta interna (serve solo all'ordine per fasce e al paywall) — un
 /// numero preciso a ogni push, insieme a qualche spostamento, basterebbe a
 /// trilaterare la posizione di una persona. Del profilo solo ciò che la persona mostra:
-/// intento, lingue e il genere solo se ha scelto di renderlo visibile —
+/// luogo, lingue e il genere solo se ha scelto di renderlo visibile —
 /// **mai** chi cerca.
 class NearbyPersonResult {
   NearbyPersonResult({
@@ -137,7 +137,7 @@ class NearbyPersonResult {
     required this.meetingChance,
     required this.selfieBase64,
     this.locked = false,
-    this.intent,
+    this.place = PresenceProfile.otherPlace,
     this.languages = const [],
     this.visibleGender,
   });
@@ -154,7 +154,7 @@ class NearbyPersonResult {
 
   /// Dietro il paywall per chi guarda: [selfieBase64] è vuoto.
   final bool locked;
-  final String? intent;
+  final String place;
   final List<String> languages;
   final String? visibleGender;
 
@@ -165,7 +165,7 @@ class NearbyPersonResult {
     'meetingChance': meetingChance.name,
     'locked': locked,
     if (!locked && selfieBase64.isNotEmpty) 'selfieBase64': selfieBase64,
-    if (intent != null) 'intent': intent,
+    if (place != PresenceProfile.otherPlace) 'place': place,
     if (languages.isNotEmpty) 'languages': languages,
     if (visibleGender != null) 'gender': visibleGender,
   };
@@ -635,7 +635,7 @@ class SessionStore {
           distanceMeters: distance,
           meetingChance: meetingChanceFor(dwell),
           selfieBase64: other.selfieBase64,
-          intent: other.profile.intent,
+          place: other.profile.place,
           languages: other.profile.languages,
           visibleGender: other.profile.visibleGender,
         ),
@@ -728,7 +728,7 @@ List<NearbyPersonResult> _withPaywallVisibility(
           meetingChance: person.meetingChance,
           selfieBase64: '',
           locked: true,
-          intent: person.intent,
+          place: person.place,
           languages: person.languages,
           visibleGender: person.visibleGender,
         ),

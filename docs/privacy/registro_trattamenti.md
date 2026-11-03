@@ -32,8 +32,8 @@
 | Finalità | Mostrare all'utente le persone fisicamente vicine e compatibili, e mostrare lui a loro |
 | Base giuridica | Art. 6(1)(b). Per genere e "chi cerca": art. 9(2)(a), consenso esplicito in app (salvo il percorso neutro) |
 | Interessati | Utenti dell'app (dichiarati maggiorenni) |
-| Categorie di dati | Posizione precisa; selfie della sessione; genere, "chi cerca" (categoria particolare), intento, lingue, scelta di mostrare il genere; stadio di permanenza; segreto e id interno di sessione; pseudonimi |
-| Destinatari | Altri utenti compatibili entro 100 m (o nello stesso posto affollato): pseudonimo, selfie (se non dietro il paywall), intento, lingue, genere se mostrato, stadio. **Mai** coordinate, distanze né "chi cerca". Hosting |
+| Categorie di dati | Posizione precisa; selfie della sessione; genere, "chi cerca" (categoria particolare), luogo (fascia grossolana, auto-dichiarata, per sessione), lingue, scelta di mostrare il genere; stadio di permanenza; segreto e id interno di sessione; pseudonimi |
+| Destinatari | Altri utenti compatibili entro 100 m (o nello stesso posto affollato): pseudonimo, selfie (se non dietro il paywall), luogo, lingue, genere se mostrato, stadio. **Mai** coordinate, distanze né "chi cerca". Hosting |
 | Trasferimenti extra UE | Nessuno, se l'hosting è nell'UE |
 | Conservazione | RAM del server per la durata della sessione (fino a End; 45 s di grazia dopo una caduta; chiusura dopo 90 s senza messaggi). Il profilo resta solo sul telefono, cifrato, fino alla cancellazione |
 | Misure di sicurezza | TLS; ancore, osservatore fermo, fasce di 25 m, nessuna distanza al client; pseudonimi per osservatore; matching reciproco; profilo fissato alla nascita della sessione; limiti per IP e per connessione; cifratura del profilo sul telefono; EXIF rimosso (DPIA §5, M1-M14, M20-M21, M25) |

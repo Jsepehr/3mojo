@@ -9,22 +9,23 @@ import '/core/widgets/cmp_busy_filled_button.dart';
 import '/core/widgets/cmp_inline_error.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
-import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
-import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
 import '/features/profile/presentation/widgets/cmp_sensitive_consent_renewal_dialog.dart';
 import '/features/safety/presentation/widgets/cmp_terms_acceptance_dialog.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '/features/session/domain/usecases/start_session_usecase.dart';
+import '/features/session/presentation/meet_place_labels.dart';
 import '/features/session/presentation/providers/pro_session.dart';
 import '/features/session/presentation/session_failure_texts.dart';
 import '/l10n/generated/app_localizations.dart';
 
-/// Wizard aperto da "Start": prima il selfie (scatta e confermi — un
-/// controllo sul dispositivo verifica al volo che ci sia un volto,
-/// altrimenti blocca il passo), poi cosa si cerca adesso (facoltativo,
-/// precompilato dal profilo). Genere e "chi cerchi" non si chiedono più qui:
-/// vengono dal profilo salvato sul telefono. Alla fine avvia la sessione e
-/// torna alla home.
+/// Pagina aperta da "Start": il selfie (scatta; al "Vai online" un controllo
+/// sul dispositivo verifica che ci sia un volto, altrimenti si ferma lì) e,
+/// subito sotto l'anteprima, un menu a tendina "Dove ti trovi?" (facoltativo,
+/// di partenza "Altro / preferisco non dirlo"): il luogo vale solo per
+/// questa sessione e non si cambia da online (per cambiarlo, End e Start).
+/// Genere e "chi cerchi" non si chiedono qui: vengono dal profilo salvato sul
+/// telefono. Alla fine avvia la sessione e torna alla home.
 ///
 /// Il selfie vive solo qui, in memoria ([_selfieBytes]): scatto e
 /// ribaltamento passano da `ProSession` (use case), nessun file resta su
@@ -37,11 +38,10 @@ class UiStartSession extends StatefulWidget {
 }
 
 class _UiStartSessionState extends State<UiStartSession> {
-  int _step = 0;
   Uint8List? _selfieBytes;
-  // Cosa si cerca in questa sessione: parte dall'intento predefinito del
-  // profilo, si cambia qui con un tap.
-  late MeetIntent? _intent = context.read<ProProfile>().profile?.defaultIntent;
+  // Dove ci si trova in questa sessione: mai ricordato tra una sessione e
+  // l'altra (non sta nel profilo), parte sempre da "Altro".
+  MeetPlace _place = MeetPlace.fallback;
   bool _isCheckingFace = false;
   bool _isFlipping = false;
   bool _isStarting = false;
@@ -90,20 +90,6 @@ class _UiStartSessionState extends State<UiStartSession> {
     });
   }
 
-  Future<void> _confirmSelfie() async {
-    final bytes = _selfieBytes;
-    if (bytes == null) return;
-
-    setState(() => _isCheckingFace = true);
-    final hasFace = await context.read<ProSession>().checkSelfieHasFace(bytes);
-    if (!mounted) return;
-
-    setState(() {
-      _isCheckingFace = false;
-      if (hasFace) _step = 1;
-    });
-  }
-
   /// Si chiude solo a sessione già avviata: chiudendo subito, durante la
   /// transizione si vedeva per un attimo la home ancora offline (e un
   /// eventuale errore finiva su una pagina già chiusa). Così, quando la
@@ -114,10 +100,16 @@ class _UiStartSessionState extends State<UiStartSession> {
 
     final proSession = context.read<ProSession>();
     final proProfile = context.read<ProProfile>();
-    final params = StartSessionParams(
-      selfieBytes: selfieBytes,
-      intent: _intent,
-    );
+    final params = StartSessionParams(selfieBytes: selfieBytes, place: _place);
+
+    // Feedback immediato sul volto (tutto sul dispositivo), prima di
+    // avviare: senza volto resta qui, con l'errore a schermo.
+    setState(() => _isCheckingFace = true);
+    final hasFace = await proSession.checkSelfieHasFace(selfieBytes);
+    if (!mounted) return;
+    setState(() => _isCheckingFace = false);
+    if (!hasFace) return;
+
     setState(() => _isStarting = true);
     await proSession.start(params);
     if (!mounted) return;
@@ -172,71 +164,28 @@ class _UiStartSessionState extends State<UiStartSession> {
         ? null
         : SessionFailureTexts.of(l10n, failure);
 
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-
     return Scaffold(
       appBar: AppBar(title: Text(l10n.go_online_title)),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        // Dal selfie all'intento: il passo nuovo entra da destra sfumando.
-        // Con le animazioni ridotte di sistema il cambio è immediato.
-        child: AnimatedSwitcher(
-          duration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 280),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          // Una closure nuova a ogni build (non il tear-off, che sarebbe
-          // uguale): così AnimatedSwitcher ricostruisce anche la
-          // transizione del passo che esce, con la direzione giusta.
-          transitionBuilder: (child, animation) =>
-              _stepTransition(child, animation),
-          layoutBuilder: (current, previous) =>
-              Stack(fit: StackFit.expand, children: [...previous, ?current]),
-          child: KeyedSubtree(
-            key: ValueKey(_step),
-            child: _scrollable(
-              _step == 0
-                  ? _buildSelfieStep(l10n, errorMessage)
-                  : _buildIntentStep(l10n, errorMessage),
-            ),
-          ),
-        ),
+        child: _scrollable(_buildContent(l10n, errorMessage)),
       ),
     );
   }
 
-  /// Il passo scorre se non ci sta (testo grande, orizzontale); altrimenti
+  /// La pagina scorre se non ci sta (testo grande, orizzontale); altrimenti
   /// occupa tutta l'altezza, così il bottone resta in fondo (`Spacer`).
-  Widget _scrollable(Widget step) => LayoutBuilder(
+  Widget _scrollable(Widget content) => LayoutBuilder(
     builder: (context, constraints) => SingleChildScrollView(
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: constraints.maxHeight),
-        child: IntrinsicHeight(child: step),
+        child: IntrinsicHeight(child: content),
       ),
     ),
   );
 
-  /// Il passo che entra arriva da destra, quello che esce scivola a
-  /// sinistra (la sua animazione gira all'indietro, da 1 a 0): sempre in
-  /// avanti, sfumando.
-  Widget _stepTransition(Widget child, Animation<double> animation) {
-    final isIncoming = child.key == ValueKey(_step);
-    // "Avanti" è verso sinistra in arabo (RTL).
-    final forward = Directionality.of(context) == TextDirection.rtl ? -1 : 1;
-    return FadeTransition(
-      opacity: animation,
-      child: SlideTransition(
-        position: Tween(
-          begin: Offset(forward * (isIncoming ? 0.08 : -0.08), 0),
-          end: Offset.zero,
-        ).animate(animation),
-        child: child,
-      ),
-    );
-  }
-
-  Widget _buildSelfieStep(AppLocalizations l10n, String? errorMessage) {
+  Widget _buildContent(AppLocalizations l10n, String? errorMessage) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -292,62 +241,58 @@ class _UiStartSessionState extends State<UiStartSession> {
             ),
           ),
         ),
-        if (errorMessage != null) ...[
-          const SizedBox(height: 16),
-          CmpInlineError(message: errorMessage),
-        ],
-        const Spacer(),
-        CmpBusyFilledButton(
-          label: l10n.i_like_it_continue,
-          isBusy: _isCheckingFace,
-          onPressed: _selfieBytes == null || _isFlipping
+        const SizedBox(height: 16),
+        // Il luogo, sotto l'anteprima. Il tap target è alto almeno 48 dp
+        // (il campo di Material); le emoji sono decorative, il testo dice
+        // già tutto allo screen reader; `isExpanded` + ellipsis: niente
+        // overflow a 360 dp né con testo grande, e in RTL si specchia da sé.
+        DropdownButtonFormField<MeetPlace>(
+          key: const ValueKey('place-dropdown'),
+          initialValue: _place,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: l10n.where_are_you,
+            border: const OutlineInputBorder(),
+          ),
+          items: [
+            for (final place in MeetPlace.values)
+              DropdownMenuItem(
+                value: place,
+                child: Row(
+                  children: [
+                    ExcludeSemantics(child: Text(MeetPlaceLabels.emoji(place))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        MeetPlaceLabels.label(l10n, place),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          onChanged: _isStarting
               ? null
-              : _confirmSelfie,
+              : (place) => setState(() => _place = place ?? MeetPlace.fallback),
         ),
-      ],
-    );
-  }
-
-  Widget _buildIntentStep(AppLocalizations l10n, String? errorMessage) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+        const SizedBox(height: 8),
         Text(
-          l10n.what_are_you_looking_for_right_now,
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          l10n.optional_shown_to_people_nearby,
+          l10n.where_are_you_hint,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final intent in MeetIntent.values)
-              CmpIntentChip(
-                intent: intent,
-                selected: _intent == intent,
-                // Un secondo tap deseleziona: l'intento è facoltativo.
-                onSelected: (selected) =>
-                    setState(() => _intent = selected ? intent : null),
-              ),
-          ],
-        ),
         if (errorMessage != null) ...[
           const SizedBox(height: 16),
           CmpInlineError(message: errorMessage),
         ],
         const Spacer(),
+        const SizedBox(height: 16),
         CmpBusyFilledButton(
           label: l10n.go_online_button,
-          isBusy: _isStarting,
-          onPressed: _submit,
+          isBusy: _isCheckingFace || _isStarting,
+          onPressed: _selfieBytes == null || _isFlipping ? null : _submit,
         ),
       ],
     );

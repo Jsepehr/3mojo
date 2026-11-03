@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_rejection.dart';
 import '../../domain/entities/encounter_request.dart';
@@ -14,8 +15,10 @@ import 'encounter_remote_data_source.dart';
 /// memoria le richieste in entrata/uscita, ogni tanto fa arrivare una
 /// richiesta finta in entrata, e simula una risposta dopo qualche secondo a
 /// quelle in uscita — applicando da sola le stesse regole del server vero:
-/// "un solo incontro alla volta" quando è "l'altro" ad accettare, niente
-/// seconda richiesta alla stessa persona, niente richieste a match in corso.
+/// "un solo incontro alla volta" (un sì è rifiutato con `inMatch` finché una
+/// delle due parti è in un match, ma **non** cancella le altre pendenti:
+/// restano in attesa e si possono accettare a match finito), niente seconda
+/// richiesta alla stessa persona, niente richieste a match in corso.
 /// Le richieste in uscita conservano la proposta scelta; quelle finte in
 /// entrata ne hanno una a caso dalla lista chiusa.
 ///
@@ -171,22 +174,32 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
     _outgoing.add(request);
     _emit();
 
+    _scheduleResponse(request.id);
+  }
+
+  /// La risposta finta della persona. Come sul server, un sì non è possibile
+  /// finché una delle due parti è in un match (`inMatch`): la richiesta
+  /// resta in attesa e si riprova dopo [responseDelay]. Le altre pendenti
+  /// non si toccano mai: un sì cambia solo quella richiesta.
+  void _scheduleResponse(String requestId) {
     late final Timer timer;
     timer = Timer(responseDelay, () {
       _responseTimers.remove(timer);
-      final index = _outgoing.indexWhere((r) => r.id == request.id);
+      final index = _outgoing.indexWhere((r) => r.id == requestId);
       if (index == -1 ||
           _outgoing[index].status != EncounterRequestStatus.pending) {
         return;
       }
-      final accepted =
-          !_hasActiveMatch && _random.nextDouble() < acceptProbability;
+      if (_hasActiveMatch) {
+        _scheduleResponse(requestId);
+        return;
+      }
+      final accepted = _random.nextDouble() < acceptProbability;
       _outgoing[index] = _outgoing[index].withStatus(
         accepted
             ? EncounterRequestStatus.accepted
             : EncounterRequestStatus.declined,
       );
-      if (accepted) _cancelOtherPending(exceptId: request.id);
       _emit();
     });
     _responseTimers.add(timer);
@@ -213,7 +226,6 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
           ? EncounterRequestStatus.accepted
           : EncounterRequestStatus.declined,
     );
-    if (accepted) _cancelOtherPending(exceptId: requestId);
     _emit();
   }
 
@@ -252,8 +264,8 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
         status: EncounterRequestStatus.pending,
         proposal: EncounterProposal
             .values[_random.nextInt(EncounterProposal.values.length)],
-        otherIntent:
-            MeetIntent.values[_fakeIncomingCounter % MeetIntent.values.length],
+        otherPlace:
+            MeetPlace.values[_fakeIncomingCounter % MeetPlace.values.length],
         otherLanguages: _fakeIncomingCounter.isEven
             ? const ['it', 'en']
             : const ['it'],
@@ -283,23 +295,12 @@ class EncounterRemoteDataSourceFakeImpl implements EncounterRemoteDataSource {
         status: EncounterRequestStatus.pending,
         proposal: requester.proposal,
         otherSelfieBytes: requester.selfieBytes,
-        otherIntent: requester.intent,
+        otherPlace: requester.place,
         otherLanguages: requester.languages,
         otherVisibleGender: requester.visibleGender,
       ),
     );
     _emit();
-  }
-
-  void _cancelOtherPending({required String exceptId}) {
-    for (final list in [_incoming, _outgoing]) {
-      for (var i = 0; i < list.length; i++) {
-        if (list[i].id != exceptId &&
-            list[i].status == EncounterRequestStatus.pending) {
-          list[i] = list[i].withStatus(EncounterRequestStatus.cancelled);
-        }
-      }
-    }
   }
 
   void _emit() {
@@ -321,7 +322,7 @@ class FakeIncomingRequester {
     required this.personId,
     required this.proposal,
     this.selfieBytes,
-    this.intent,
+    this.place = MeetPlace.fallback,
     this.languages = const [],
     this.visibleGender,
   });
@@ -329,7 +330,7 @@ class FakeIncomingRequester {
   final String personId;
   final EncounterProposal proposal;
   final Uint8List? selfieBytes;
-  final MeetIntent? intent;
+  final MeetPlace place;
   final List<String> languages;
   final Gender? visibleGender;
 }

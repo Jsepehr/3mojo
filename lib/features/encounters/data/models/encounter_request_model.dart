@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '/core/utils/photo_bytes_cache.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '../../domain/entities/encounter_proposal.dart';
 import '../../domain/entities/encounter_request.dart';
 
@@ -21,7 +22,7 @@ class EncounterRequestModel extends EncounterRequest {
     required super.status,
     super.proposal,
     super.otherSelfieBytes,
-    super.otherIntent,
+    super.otherPlace,
     super.otherLanguages,
     super.otherVisibleGender,
   });
@@ -50,7 +51,9 @@ class EncounterRequestModel extends EncounterRequest {
       otherSelfieBytes: (photos ?? PhotoBytesCache(maxEntries: 0)).decode(
         json['otherSelfieBase64'],
       ),
-      otherIntent: _enumOrNull(MeetIntent.values, json['otherIntent']),
+      otherPlace:
+          _enumOrNull(MeetPlace.values, json['otherPlace']) ??
+          MeetPlace.fallback,
       otherLanguages: rawLanguages is List
           ? rawLanguages.whereType<String>().toList(growable: false)
           : const [],
@@ -83,7 +86,7 @@ class EncounterRequestModel extends EncounterRequest {
         otherSelfieBytes: bytes,
         status: status,
         proposal: proposal,
-        otherIntent: otherIntent,
+        otherPlace: otherPlace,
         otherLanguages: otherLanguages,
         otherVisibleGender: otherVisibleGender,
       );
@@ -96,7 +99,7 @@ class EncounterRequestModel extends EncounterRequest {
         otherSelfieBytes: otherSelfieBytes,
         status: status,
         proposal: proposal,
-        otherIntent: otherIntent,
+        otherPlace: otherPlace,
         otherLanguages: otherLanguages,
         otherVisibleGender: otherVisibleGender,
       );

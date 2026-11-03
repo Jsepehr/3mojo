@@ -1,23 +1,27 @@
-import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '../entities/encounter_proposal.dart';
-import 'proposal_for_intent_usecase.dart';
+import 'proposals_for_place_usecase.dart';
 
 /// Regola: quale proposta trovi già scelta (in cima) aprendo la tendina
 /// della richiesta. Prima l'**ultima che hai scelto in questa sessione**
-/// ([lastChosen], tenuta solo in memoria e dimenticata a End); se non ce
-/// n'è, quella abbinata al tuo intento di sessione
-/// (`ProposalForIntentUseCase`): ☕ → due chiacchiere, 🤝 → amicizia, 🙂/✨
-/// o nessun intento → "conoscerti".
+/// ([lastChosen], tenuta solo in memoria e dimenticata a End) **se è ancora
+/// tra quelle previste per il tuo luogo** (`ProposalsForPlaceUseCase`);
+/// altrimenti la prima di quelle del luogo.
 class PreselectEncounterProposalUseCase {
   const PreselectEncounterProposalUseCase({
-    ProposalForIntentUseCase proposalForIntentUseCase =
-        const ProposalForIntentUseCase(),
-  }) : _proposalForIntentUseCase = proposalForIntentUseCase;
+    ProposalsForPlaceUseCase proposalsForPlaceUseCase =
+        const ProposalsForPlaceUseCase(),
+  }) : _proposalsForPlaceUseCase = proposalsForPlaceUseCase;
 
-  final ProposalForIntentUseCase _proposalForIntentUseCase;
+  final ProposalsForPlaceUseCase _proposalsForPlaceUseCase;
 
   EncounterProposal call({
     EncounterProposal? lastChosen,
-    MeetIntent? ownIntent,
-  }) => lastChosen ?? _proposalForIntentUseCase(ownIntent);
+    MeetPlace ownPlace = MeetPlace.fallback,
+  }) {
+    final available = _proposalsForPlaceUseCase(ownPlace);
+    return lastChosen != null && available.contains(lastChosen)
+        ? lastChosen
+        : available.first;
+  }
 }

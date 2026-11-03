@@ -25,22 +25,6 @@ class ProfileLabels {
         Gender.unspecified => l10n.everyone,
       };
 
-  static String intent(AppLocalizations l10n, MeetIntent intent) =>
-      switch (intent) {
-        MeetIntent.chat => l10n.a_quick_chat,
-        MeetIntent.friendship => l10n.friendship,
-        MeetIntent.meetPeople => l10n.meeting_new_people,
-        MeetIntent.openToAnything => l10n.open_to_anything,
-      };
-
-  /// Niente cuore né rosso: quelli restano riservati al match.
-  static String intentEmoji(MeetIntent intent) => switch (intent) {
-    MeetIntent.chat => '☕',
-    MeetIntent.friendship => '🤝',
-    MeetIntent.meetPeople => '🙂',
-    MeetIntent.openToAnything => '✨',
-  };
-
   /// Il testo per un errore di salvataggio/lettura/cancellazione del
   /// profilo, scelto dal **tipo** di [failure] — mai il suo `message`.
   static String failure(AppLocalizations l10n, Failure failure) =>

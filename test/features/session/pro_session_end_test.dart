@@ -7,6 +7,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/geo_location.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/nearby_person.dart';
@@ -50,7 +51,7 @@ class _StuckNearbyRepository implements NearbyRepository {
     GeoLocation location, {
     required String sessionId,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   }) => const Stream.empty();
 

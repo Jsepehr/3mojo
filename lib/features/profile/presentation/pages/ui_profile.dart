@@ -8,7 +8,6 @@ import '/features/demo/presentation/widgets/cmp_try_demo_link.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/profile/presentation/providers/pro_profile.dart';
 import '/features/profile/presentation/profile_labels.dart';
-import '/features/profile/presentation/widgets/cmp_intent_chip.dart';
 import '/features/safety/presentation/pages/ui_privacy_policy.dart';
 import '/features/safety/presentation/pages/ui_terms_of_use.dart';
 import '/features/session/presentation/providers/pro_session.dart';
@@ -32,7 +31,7 @@ import '/l10n/generated/app_localizations.dart';
 ///
 /// Da online, cambiare genere, chi cerchi o "mostra il mio genere" chiude
 /// prima la sessione (`UpdateProfileUseCase`): la pagina lo chiede con una
-/// conferma prima di salvare. Lingue e intento predefinito valgono dal
+/// conferma prima di salvare. Le lingue valgono dal
 /// prossimo Start.
 ///
 /// "Tutti" è la prima scelta di "chi vuoi incontrare" apposta: insieme a
@@ -51,7 +50,6 @@ class _UiProfileState extends State<UiProfile> {
   Gender? _gender;
   Set<Gender> _lookingFor = {};
   bool _showGender = false;
-  MeetIntent? _defaultIntent;
   List<String> _languages = [];
   bool _isAdultConfirmed = false;
   bool _sensitiveDataConsent = false;
@@ -75,7 +73,6 @@ class _UiProfileState extends State<UiProfile> {
       _gender = existing.gender;
       _lookingFor = {...existing.lookingFor};
       _showGender = existing.showGender;
-      _defaultIntent = existing.defaultIntent;
       _languages = [...existing.languages];
       _isAdultConfirmed = existing.isAdultConfirmed;
       _sensitiveDataConsent = existing.hasCurrentSensitiveConsent;
@@ -93,7 +90,6 @@ class _UiProfileState extends State<UiProfile> {
       acceptedSensitiveConsentVersion: _sensitiveDataConsent
           ? Profile.currentSensitiveConsentVersion
           : 0,
-      defaultIntent: _defaultIntent,
       languages: _languages,
       showGender: _showGender,
       acceptedTermsVersion: _termsAccepted ? Profile.currentTermsVersion : 0,
@@ -318,25 +314,6 @@ class _UiProfileState extends State<UiProfile> {
                     selected: _lookingFor.contains(gender),
                     onSelected: (selected) =>
                         _toggleLookingFor(gender, selected),
-                  ),
-              ],
-            ),
-            section(
-              l10n.what_are_you_usually_looking_for,
-              hint: l10n.optional_shown_to_people_nearby,
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final intent in MeetIntent.values)
-                  CmpIntentChip(
-                    intent: intent,
-                    selected: _defaultIntent == intent,
-                    // Un secondo tap deseleziona: l'intento è facoltativo.
-                    onSelected: (selected) => setState(
-                      () => _defaultIntent = selected ? intent : null,
-                    ),
                   ),
               ],
             ),

@@ -14,7 +14,7 @@
   },
   "start": "Start",
   "@start": {
-    "description": "Button on the offline home page that opens the Start flow (selfie, then intent). Keep it as \"Start\" in every language: other strings refer to this button by name"
+    "description": "Button on the offline home page that opens the Start flow (selfie and place). Keep it as \"Start\" in every language: other strings refer to this button by name"
   },
   "end_session": "End",
   "@end_session": {
@@ -22,11 +22,11 @@
   },
   "go_online_title": "Go online",
   "@go_online_title": {
-    "description": "Title of the Start flow page (selfie step, then intent step)"
+    "description": "Title of the Start flow page"
   },
   "go_online_button": "Go online",
   "@go_online_button": {
-    "description": "Final button of the Start flow, on the intent step: actually goes online"
+    "description": "Button of the Start flow: checks the selfie has a face, then goes online"
   },
   "take_a_selfie": "Take a selfie",
   "@take_a_selfie": {
@@ -39,10 +39,6 @@
   "flip_photo": "Flip photo",
   "@flip_photo": {
     "description": "Button shown over the selfie to manually mirror it horizontally, for cameras that save it flipped"
-  },
-  "i_like_it_continue": "I like it, continue",
-  "@i_like_it_continue": {
-    "description": "Button confirming the selfie and moving to the intent step of the Start flow"
   },
   "you_are": "You are",
   "@you_are": {
@@ -100,13 +96,13 @@
   "@the_longer_someone_stays_in_one_place": {
     "description": "Waiting/empty-state tip: the three meeting chance stages, based on how long the person has stayed in one place"
   },
-  "no_names_no_public_profile": "No names, no public profile: others only see today's selfie, intent and languages — gender only if you choose.",
+  "no_names_no_public_profile": "No names, no public profile: others only see today's selfie, place and languages — gender only if you choose.",
   "@no_names_no_public_profile": {
-    "description": "Waiting/empty-state tip: what others can see (this session's selfie, intent, languages, gender only if shown; never who you want to meet). Max 4 short lines"
+    "description": "Waiting/empty-state tip: what others can see (this session's selfie, place, languages, gender only if shown; never who you want to meet). Max 4 short lines"
   },
-  "accept_one_request_and_the_others_cancel_automatically": "Accept one request and the others cancel automatically — one match at a time.",
-  "@accept_one_request_and_the_others_cancel_automatically": {
-    "description": "Waiting/empty-state tip: only one match at a time"
+  "one_match_at_a_time_tip": "One match at a time: while you're in one, other requests wait until it ends.",
+  "@one_match_at_a_time_tip": {
+    "description": "Waiting/empty-state tip: only one match at a time; other pending requests are not cancelled, they wait until the match ends"
   },
   "the_closest_profiles_are_blurred": "The closest profiles are blurred — unlock to see everyone nearby.",
   "@the_closest_profiles_are_blurred": {
@@ -172,9 +168,9 @@
   "@declined": {
     "description": "Status label for an outgoing encounter request the other person declined: gentle, not a verdict"
   },
-  "cancelled_you_have_another_match": "Cancelled (you matched with someone else)",
-  "@cancelled_you_have_another_match": {
-    "description": "Status label for an outgoing request auto-cancelled because a match with someone else started"
+  "request_cancelled": "Cancelled",
+  "@request_cancelled": {
+    "description": "Status label for an outgoing request that was cancelled (the other person ended their session or a block happened). Not shown for an accepted request elsewhere"
   },
   "ended": "Ended",
   "@ended": {
@@ -312,33 +308,41 @@
   "@show_my_gender_to_others": {
     "description": "Profile switch, off by default"
   },
-  "what_are_you_usually_looking_for": "What are you usually looking for?",
-  "@what_are_you_usually_looking_for": {
-    "description": "Profile question about the default intent, optional"
+  "where_are_you": "Where are you?",
+  "@where_are_you": {
+    "description": "Label of the place dropdown under the selfie in the Start flow"
   },
-  "what_are_you_looking_for_right_now": "What are you looking for right now?",
-  "@what_are_you_looking_for_right_now": {
-    "description": "Title of the intent step of the Start flow"
+  "where_are_you_hint": "Optional. People nearby see it next to your photo: a type of place, never a venue's name.",
+  "@where_are_you_hint": {
+    "description": "Hint under the place dropdown: optional, shown to people nearby next to your photo (a type of place, never a venue's name)"
   },
-  "optional_shown_to_people_nearby": "Optional — people nearby see it next to your photo.",
-  "@optional_shown_to_people_nearby": {
-    "description": "Hint under the intent question (Start flow and profile): the intent is shown to people nearby next to your photo"
+  "place_bar": "Bar or pub",
+  "@place_bar": {
+    "description": "Place option (Start dropdown and small label in Nearby): bar or pub"
   },
-  "a_quick_chat": "A quick chat",
-  "@a_quick_chat": {
-    "description": "Intent option"
+  "place_disco_pub": "Dance bar",
+  "@place_disco_pub": {
+    "description": "Place option (Start dropdown and small label in Nearby): a bar or pub where people also dance (Italian \"disco pub\")"
   },
-  "friendship": "Friendship",
-  "@friendship": {
-    "description": "Intent option"
+  "place_cafe": "Café",
+  "@place_cafe": {
+    "description": "Place option: café / coffee shop"
   },
-  "meeting_new_people": "Meeting new people",
-  "@meeting_new_people": {
-    "description": "Intent option"
+  "place_club": "Club or disco",
+  "@place_club": {
+    "description": "Place option: nightclub or disco"
   },
-  "open_to_anything": "Open to anything",
-  "@open_to_anything": {
-    "description": "Intent option"
+  "place_event": "Concert or event",
+  "@place_event": {
+    "description": "Place option: concert or event"
+  },
+  "place_outdoors": "Park or outdoors",
+  "@place_outdoors": {
+    "description": "Place option: park or outdoors"
+  },
+  "place_other": "Other / prefer not to say",
+  "@place_other": {
+    "description": "Place option, the default: not declared. Never shown to others (nothing is displayed for it)"
   },
   "languages_you_speak_up_to_2": "Languages you speak (up to 2)",
   "@languages_you_speak_up_to_2": {
@@ -585,10 +589,6 @@
   "@its_a_match_title": {
     "description": "Title above the two photos when the chat of a new encounter has no messages yet"
   },
-  "match_icebreaker_say_hi": "You're both nearby. Start with a hello and say where you are.",
-  "@match_icebreaker_say_hi": {
-    "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
-  },
   "match_icebreaker_chat": "You're both nearby. Suggest a quiet spot for a quick chat.",
   "@match_icebreaker_chat": {
     "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
@@ -604,6 +604,10 @@
   "match_icebreaker_drink": "You're both nearby. Suggest where to grab something to drink.",
   "@match_icebreaker_drink": {
     "description": "Hint under the match subtitle in the empty chat of a new encounter, tailored to what was suggested; informal tone"
+  },
+  "match_icebreaker_dance": "You're both nearby. Suggest where to dance.",
+  "@match_icebreaker_dance": {
+    "description": "Hint for the first message of a match that started from a dance proposal"
   },
   "chat_message_too_long": "Message too long: at most {max} characters. Shorten it and send it again.",
   "@chat_message_too_long": {
@@ -630,10 +634,6 @@
   "@proposal_sheet_title": {
     "description": "Title of the bottom sheet opened by tapping a person in Nearby: choose what to suggest with the encounter request. Informal \"you\""
   },
-  "proposal_label_say_hi": "Say hi",
-  "@proposal_label_say_hi": {
-    "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
-  },
   "proposal_label_chat": "A quick chat",
   "@proposal_label_chat": {
     "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
@@ -650,9 +650,9 @@
   "@proposal_label_drink": {
     "description": "Short label of an encounter proposal, as the sender picks it in the proposal sheet and sees it on their sent request. Never romantic; for \"drink\" never alcohol nor \"buying\" a drink"
   },
-  "proposal_received_say_hi": "Wants to say hi",
-  "@proposal_received_say_hi": {
-    "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
+  "proposal_label_dance": "Dance",
+  "@proposal_label_dance": {
+    "description": "Encounter proposal the sender picks (neutral, never romantic)"
   },
   "proposal_received_chat": "Would like a quick chat with you",
   "@proposal_received_chat": {
@@ -670,9 +670,9 @@
   "@proposal_received_drink": {
     "description": "Main line of an incoming encounter request card: what the sender suggests, shown next to an emoji under their photo. Subject is the (unnamed) sender: MUST be neutral about the sender's gender (e.g. in Arabic use a noun form such as \"invitation: ...\", never a verb conjugated in masculine or feminine)"
   },
-  "match_proposal_say_hi": "Saying hi",
-  "@match_proposal_say_hi": {
-    "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
+  "proposal_received_dance": "Would like to dance with you",
+  "@proposal_received_dance": {
+    "description": "Neutral about the gender of the person who asks"
   },
   "match_proposal_chat": "A quick chat",
   "@match_proposal_chat": {
@@ -690,9 +690,9 @@
   "@match_proposal_drink": {
     "description": "Subtitle under its_a_match_title in the empty chat of a new encounter: what was suggested with the request, next to its emoji. Neutral about who suggested it and about gender"
   },
-  "proposal_matches_their_intent": "Matches what they're looking for",
-  "@proposal_matches_their_intent": {
-    "description": "Small mark on the proposal that fits the intent the other person shows publicly in Nearby (never their gender or who they look for). Neutral about their gender where possible"
+  "match_proposal_dance": "Dancing together",
+  "@match_proposal_dance": {
+    "description": "Subtitle of the match header, same for both sides"
   },
   "proposal_sheet_footer": "They'll see your photo and this line",
   "@proposal_sheet_footer": {
@@ -1199,13 +1199,13 @@
   "@privacy_data_gender_body": {
     "description": "Privacy policy, data item: gender and who you want to meet (sensitive data). Quotes the 'Show my gender to others' switch of the profile"
   },
-  "privacy_data_intent_title": "Intent and languages (up to 2)",
-  "@privacy_data_intent_title": {
+  "privacy_data_place_title": "Place and languages (up to 2)",
+  "@privacy_data_place_title": {
     "description": "Privacy policy, data item title"
   },
-  "privacy_data_intent_body": "To say what you're up for tonight and which languages you speak. Seen by compatible people nearby, in requests and by your match.",
-  "@privacy_data_intent_body": {
-    "description": "Privacy policy, data item: intent and languages"
+  "privacy_data_place_body": "To say roughly where you are (a type of place, like a bar or a park, never a venue's name: you choose it when you Start, and it's optional) and which languages you speak. Seen by compatible people nearby, in requests and by your match. The place is kept only in memory, for this session.",
+  "@privacy_data_place_body": {
+    "description": "Privacy policy, data item: the place (chosen at Start, per session, only in memory, public like the old intent) and languages"
   },
   "privacy_data_stay_title": "How long you've stayed put, in three levels",
   "@privacy_data_stay_title": {
@@ -1267,7 +1267,7 @@
   "@privacy_face_check_body": {
     "description": "Privacy policy: the on-device face check of the selfie (Android's built-in face detector, Apple Vision on iPhone)"
   },
-  "privacy_profile_on_phone_body": "Your profile (gender, who you want to meet, intent, languages, 18+ confirmation) stays on your phone, encrypted. We only send it to the server while you're online.",
+  "privacy_profile_on_phone_body": "Your profile (gender, who you want to meet, languages, 18+ confirmation) stays on your phone, encrypted. We only send it to the server while you're online.",
   "@privacy_profile_on_phone_body": {
     "description": "Privacy policy: where the profile is kept"
   },
@@ -1375,9 +1375,9 @@
   "@privacy_rights_server": {
     "description": "Privacy policy, rights: delete data from the server by tapping End"
   },
-  "privacy_rights_withdraw": "Withdraw consent: Menu → My profile, then choose \"Prefer not to say\" and \"Everyone\", or Delete profile. If you're online we end your session first, so the server stops using your gender and preferences right away. The same happens if you change your gender, who you want to meet or \"Show my gender to others\" while online. Languages and what you're usually looking for apply from your next Start.",
+  "privacy_rights_withdraw": "Withdraw consent: Menu → My profile, then choose \"Prefer not to say\" and \"Everyone\", or Delete profile. If you're online we end your session first, so the server stops using your gender and preferences right away. The same happens if you change your gender, who you want to meet or \"Show my gender to others\" while online. Languages apply from your next Start.",
   "@privacy_rights_withdraw": {
-    "description": "Privacy policy, rights: withdraw consent. Changing gender, who you want to meet or 'Show my gender' while online ends the session first; languages and usual intent apply from the next Start"
+    "description": "Privacy policy, rights: withdraw consent. Changing gender, who you want to meet or 'Show my gender' while online ends the session first; languages apply from the next Start"
   },
   "privacy_rights_phone": "Delete everything from your phone: uninstall the app.",
   "@privacy_rights_phone": {
@@ -1456,7 +1456,7 @@
   "@location_permission_needed_to_go_online": {
     "description": "Snackbar when the location permission was not granted after the notice: the Start doesn't begin"
   },
-  "profile_online_changes_hint": "You're online: languages and what you're usually looking for apply from your next Start. If you change your gender, who you want to meet or \"Show my gender to others\", we'll end your session first.",
+  "profile_online_changes_hint": "You're online: languages apply from your next Start. If you change your gender, who you want to meet or \"Show my gender to others\", we'll end your session first.",
   "@profile_online_changes_hint": {
     "description": "Shown at the top of the profile page while online"
   },

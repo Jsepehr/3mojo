@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 
 /// I tre stadi (e soli tre) della probabilità d'incontro: `low` da 1 minuto
 /// di permanenza, `medium` da 3, `high` da 5 — calcolato lato server dalla
@@ -13,7 +14,7 @@ enum MeetingChance { low, medium, high }
 /// Una persona vista nella lista "Vicinanze": niente nome (l'app non lo
 /// chiede mai), solo una foto, quanto è probabile incontrarla (in base a
 /// quanto è rimasta ferma lì), e ciò che ha scelto di mostrare dal proprio
-/// profilo: cosa cerca stasera, le lingue, e il genere solo se ha attivato
+/// profilo: dove si trova (il luogo scelto allo Start; `other` = non lo dice), le lingue, e il genere solo se ha attivato
 /// "mostra il mio genere" (altrimenti `null`). Cosa cerca in termini di
 /// genere non arriva mai: serve solo al server.
 ///
@@ -36,7 +37,7 @@ class NearbyPerson extends Equatable {
     required this.meetingChance,
     this.photoBytes,
     this.isLocked = false,
-    this.intent,
+    this.place = MeetPlace.fallback,
     this.languages = const [],
     this.visibleGender,
   });
@@ -47,7 +48,7 @@ class NearbyPerson extends Equatable {
   final Uint8List? photoBytes;
   final MeetingChance meetingChance;
   final bool isLocked;
-  final MeetIntent? intent;
+  final MeetPlace place;
   final List<String> languages;
   final Gender? visibleGender;
 
@@ -57,7 +58,7 @@ class NearbyPerson extends Equatable {
     photoBytes,
     meetingChance,
     isLocked,
-    intent,
+    place,
     languages,
     visibleGender,
   ];

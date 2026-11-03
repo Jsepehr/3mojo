@@ -48,7 +48,7 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   le riconnessioni di una sessione viva non la richiedono. Nulla
 ///   dell'attestazione viene conservato (vedi `AttestationGate`);
 /// - `{"type": "presence", "lat": ..., "lng": ..., "gender": ...,
-///   "lookingFor": [...], "intent": ..., "languages": [...],
+///   "lookingFor": [...], "place": ..., "languages": [...],
 ///   "showGender": bool, "selfieBase64": ..., "unlockToken": ...}` — dopo
 ///   ogni `welcome` e poi a ogni aggiornamento di posizione. Profilo e
 ///   selfie (JPEG, ≤ ~230 KB) contano solo alla nascita della sessione:
@@ -59,10 +59,13 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   né chiusura;
 /// - `{"type": "sendEncounterRequest", "toPersonId": ..., "proposal": ...}`
 ///   — `proposal` è cosa si propone, un codice della lista chiusa
-///   `EncounterProposal` (`sayHi`, `chat`, `friendship`, `getToKnow`,
+///   `EncounterProposal` (`chat`, `friendship`, `getToKnow`,
 ///   `drink`): mancante (client vecchi) o sconosciuto vale `getToKnow`. Mai
 ///   testo libero: la frase la traduce il client di chi riceve;
-/// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`;
+/// - `{"type": "respondToEncounterRequest", "requestId": ..., "accepted": bool}`
+///   — un sì cambia **solo** quella richiesta (le altre pendenti restano
+///   pendenti) ed è rifiutato con `inMatch` se una delle due parti è già in
+///   un match; un no è sempre possibile;
 /// - `{"type": "endMatch", "requestId": ...}`;
 /// - `{"type": "chatMessage", "toPersonId": ..., "text": ...,
 ///   "clientMessageId": ...}` (l'ultimo facoltativo) — inoltrato solo con un
@@ -101,7 +104,7 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   "protocol": 1}` — dopo un hello valido; `resumed: true` = stessa sessione di prima (stessa
 ///   permanenza, richieste e match), `false` = sessione nuova;
 /// - `{"type": "nearby", "people": [{"personId", "meetingChance", "locked",
-///   "selfieBase64"?, "intent"?, "languages"?, "gender"?}]}` — ordinata per
+///   "selfieBase64"?, "place"?, "languages"?, "gender"?}]}` — ordinata per
 ///   fasce di distanza di 25 m (dentro una fascia, un ordine fisso per chi
 ///   guarda), **senza distanze**; `locked` = dietro il paywall (niente
 ///   selfie). **Il selfie di una persona parte una volta sola per socket**:
@@ -115,7 +118,7 @@ import 'package:threemojo_server/src/socket_session.dart';
 ///   (`ConnectionHub.nearbyPushMinInterval`);
 /// - `{"type": "encounters", "incoming": [...], "outgoing": [...]}`, ogni
 ///   richiesta `{"id", "otherPersonId", "status", "proposal",
-///   "otherSelfieBase64"?, "otherIntent"?, "otherLanguages"?,
+///   "otherSelfieBase64"?, "otherPlace"?, "otherLanguages"?,
 ///   "otherGender"?}` (`proposal` sempre, per entrambi i lati e in ogni
 ///   stato: cosa ha proposto chi ha chiesto; selfie e profilo solo per
 ///   `pending`/`accepted`; il selfie solo la prima volta per richiesta su

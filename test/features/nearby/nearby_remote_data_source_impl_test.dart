@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/errors/exceptions.dart';
 import 'package:threemojo_app/core/unlock/unlock_token_store.dart';
 import 'package:threemojo_app/features/nearby/data/datasources/nearby_remote_data_source_impl.dart';
@@ -59,7 +60,7 @@ void main() {
     latitude: 45,
     longitude: 9,
     profile: _profile,
-    intent: MeetIntent.chat,
+    place: MeetPlace.cafe,
     selfieBytes: selfie,
   );
 
@@ -78,7 +79,7 @@ void main() {
     final full = presences(server.last).single;
     expect(full['lat'], 45.0001);
     expect(full['gender'], 'female');
-    expect(full['intent'], 'chat');
+    expect(full['place'], 'cafe');
     expect(full['selfieBase64'], base64Encode(selfie));
 
     dataSource.updatePosition(latitude: 45.0002, longitude: 9);

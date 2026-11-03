@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/get_profile_usecase.dart';
@@ -139,17 +140,17 @@ void main() {
       expect(sessions.current, isNull);
     });
 
-    test('goes online with the checked selfie, the profile and the intent of '
+    test('goes online with the checked selfie, the profile and the place of '
         'this session', () async {
       final result = await startSession(
-        StartSessionParams(selfieBytes: _selfie, intent: MeetIntent.chat),
+        StartSessionParams(selfieBytes: _selfie, place: MeetPlace.cafe),
       );
 
       final session = result.getRight().toNullable()!;
       expect(faces.checked.single, _selfie);
       expect(session.selfieBytes, _selfie);
       expect(session.profile, testProfile);
-      expect(session.intent, MeetIntent.chat);
+      expect(session.place, MeetPlace.cafe);
       expect(session.sessionId, isNotEmpty);
       expect(sessions.current, session);
     });

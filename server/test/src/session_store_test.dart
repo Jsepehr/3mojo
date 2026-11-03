@@ -233,7 +233,7 @@ void main() {
       });
     });
 
-    test('nearby results expose intent and languages, the gender only when '
+    test('nearby results expose place and languages, the gender only when '
         'shown, and never what the person looks for', () {
       store.upsertPosition(sessionId: 'a', lat: 0, lng: 0);
       store.upsertPosition(
@@ -242,7 +242,7 @@ void main() {
         lng: 0,
         profile: const PresenceProfile(
           gender: 'nonBinary',
-          intent: 'chat',
+          place: 'cafe',
           languages: ['it', 'en'],
           showGender: true,
         ),
@@ -263,10 +263,12 @@ void main() {
           .firstWhere((p) => p.sessionId == 'c')
           .toJson(personId: 'pseudo-c');
 
-      expect(b['intent'], 'chat');
+      expect(b['place'], 'cafe');
       expect(b['languages'], ['it', 'en']);
       expect(b['gender'], 'nonBinary');
       expect(c.containsKey('gender'), isFalse);
+      // `other` is not a declaration: nothing goes on the wire.
+      expect(c.containsKey('place'), isFalse);
       for (final json in [b, c]) {
         expect(json.containsKey('lookingFor'), isFalse);
       }
@@ -363,18 +365,18 @@ void main() {
         lat: 0,
         lng: 0,
         selfieBase64: 'first',
-        profile: const PresenceProfile(intent: 'chat'),
+        profile: const PresenceProfile(place: 'cafe'),
       );
       store.upsertPosition(
         sessionId: 'b',
         lat: 0,
         lng: 0,
         selfieBase64: 'second',
-        profile: const PresenceProfile(intent: 'friendship'),
+        profile: const PresenceProfile(place: 'club'),
       );
 
       expect(store.selfieBase64For('b'), 'first');
-      expect(store.profileFor('b')!.intent, 'chat');
+      expect(store.profileFor('b')!.place, 'cafe');
     });
 
     test('nearby people come sorted from the closest distance band', () {

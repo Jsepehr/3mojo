@@ -322,10 +322,9 @@ class RealtimeMessageHandler {
     final accepted = message['accepted'];
     if (requestId is! String || accepted is! bool) return;
 
-    final ({EncounterRequest request, List<EncounterRequest> alsoCancelled})
-    result;
+    final EncounterRequest request;
     try {
-      result = _encounters.respondToRequest(
+      request = _encounters.respondToRequest(
         requestId: requestId,
         accepted: accepted,
         bySessionId: sessionId,
@@ -341,17 +340,9 @@ class RealtimeMessageHandler {
       return;
     }
 
-    final touchedSessionIds = {
-      result.request.fromSessionId,
-      result.request.toSessionId,
-      for (final cancelled in result.alsoCancelled) ...[
-        cancelled.fromSessionId,
-        cancelled.toSessionId,
-      ],
-    };
-    for (final id in touchedSessionIds) {
-      _hub.pushEncounterSnapshot(id);
-    }
+    _hub
+      ..pushEncounterSnapshot(request.fromSessionId)
+      ..pushEncounterSnapshot(request.toSessionId);
   }
 
   void _handleEndMatch(String sessionId, Map<String, dynamic> message) {

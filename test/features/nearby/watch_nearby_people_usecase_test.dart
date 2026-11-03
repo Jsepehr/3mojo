@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/background_location_notice.dart';
 import 'package:threemojo_app/features/nearby/domain/entities/geo_location.dart';
@@ -71,7 +72,7 @@ class _FakeNearbyRepository implements NearbyRepository {
     GeoLocation location, {
     required String sessionId,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   }) {
     lastSessionId = sessionId;

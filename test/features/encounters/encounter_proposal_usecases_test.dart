@@ -3,55 +3,85 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_request.dart';
 import 'package:threemojo_app/features/encounters/domain/usecases/preselect_encounter_proposal_usecase.dart';
-import 'package:threemojo_app/features/encounters/domain/usecases/proposal_for_intent_usecase.dart';
+import 'package:threemojo_app/features/encounters/domain/usecases/proposals_for_place_usecase.dart';
 import 'package:threemojo_app/features/encounters/domain/usecases/send_encounter_request_usecase.dart';
-import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 
 import '../../support/fake_repositories.dart';
 
 void main() {
-  group('ProposalForIntentUseCase', () {
-    const useCase = ProposalForIntentUseCase();
+  group('ProposalsForPlaceUseCase', () {
+    const useCase = ProposalsForPlaceUseCase();
 
-    test('☕ and 🤝 have their own proposal', () {
-      expect(useCase(MeetIntent.chat), EncounterProposal.chat);
-      expect(useCase(MeetIntent.friendship), EncounterProposal.friendship);
+    test('every place offers the proposals of the agreed map, in order', () {
+      expect(useCase(MeetPlace.bar), [
+        EncounterProposal.drink,
+        EncounterProposal.chat,
+      ]);
+      expect(useCase(MeetPlace.cafe), [
+        EncounterProposal.chat,
+        EncounterProposal.getToKnow,
+      ]);
+      expect(useCase(MeetPlace.club), [
+        EncounterProposal.dance,
+        EncounterProposal.drink,
+      ]);
+      expect(useCase(MeetPlace.discoPub), useCase(MeetPlace.club));
+      expect(useCase(MeetPlace.event), [
+        EncounterProposal.dance,
+        EncounterProposal.friendship,
+      ]);
+      expect(useCase(MeetPlace.outdoors), [
+        EncounterProposal.chat,
+        EncounterProposal.friendship,
+      ]);
+      expect(useCase(MeetPlace.other), [
+        EncounterProposal.chat,
+        EncounterProposal.friendship,
+        EncounterProposal.getToKnow,
+        EncounterProposal.drink,
+      ]);
     });
 
-    test('🙂, ✨ and no intent fall back to getToKnow', () {
-      expect(useCase(MeetIntent.meetPeople), EncounterProposal.getToKnow);
-      expect(useCase(MeetIntent.openToAnything), EncounterProposal.getToKnow);
-      expect(useCase(null), EncounterProposal.getToKnow);
+    test('every place offers something, and nothing outside the closed '
+        'list', () {
+      for (final place in MeetPlace.values) {
+        expect(useCase(place), isNotEmpty);
+        expect(useCase(place).toSet(), hasLength(useCase(place).length));
+      }
     });
   });
 
   group('PreselectEncounterProposalUseCase', () {
     const useCase = PreselectEncounterProposalUseCase();
 
-    test('the last proposal chosen in this session wins over the intent', () {
+    test('the last proposal chosen wins while the own place still offers '
+        'it', () {
       expect(
-        useCase(
-          lastChosen: EncounterProposal.drink,
-          ownIntent: MeetIntent.chat,
-        ),
-        EncounterProposal.drink,
+        useCase(lastChosen: EncounterProposal.chat, ownPlace: MeetPlace.bar),
+        EncounterProposal.chat,
       );
     });
 
-    test('without a last choice, the one paired with the own intent', () {
-      expect(useCase(ownIntent: MeetIntent.chat), EncounterProposal.chat);
+    test('a last choice the place does not offer is ignored: the first of '
+        'the place', () {
       expect(
-        useCase(ownIntent: MeetIntent.friendship),
-        EncounterProposal.friendship,
+        useCase(lastChosen: EncounterProposal.dance, ownPlace: MeetPlace.cafe),
+        EncounterProposal.chat,
       );
       expect(
-        useCase(ownIntent: MeetIntent.openToAnything),
-        EncounterProposal.getToKnow,
+        useCase(lastChosen: EncounterProposal.chat, ownPlace: MeetPlace.club),
+        EncounterProposal.dance,
       );
     });
 
-    test('with neither, getToKnow', () {
-      expect(useCase(), EncounterProposal.getToKnow);
+    test('without a last choice, the first of the own place', () {
+      expect(useCase(ownPlace: MeetPlace.bar), EncounterProposal.drink);
+      expect(useCase(ownPlace: MeetPlace.event), EncounterProposal.dance);
+    });
+
+    test('with neither, the first of "other": chat', () {
+      expect(useCase(), EncounterProposal.chat);
     });
   });
 
@@ -63,13 +93,13 @@ void main() {
         const SendEncounterRequestParams(
           otherPersonId: 'p1',
           knownRequests: [],
-          proposal: EncounterProposal.sayHi,
+          proposal: EncounterProposal.chat,
         ),
       );
 
       expect(result.isRight(), isTrue);
       expect(repository.sentTo, ['p1']);
-      expect(repository.sentProposals, [EncounterProposal.sayHi]);
+      expect(repository.sentProposals, [EncounterProposal.chat]);
     });
 
     test('an already requested person is refused before any proposal '

@@ -105,7 +105,7 @@ class CmpNearbyPersonTile extends StatelessWidget {
                     if (_hasDetails) ...[
                       const SizedBox(height: 8),
                       CmpProfileDetails(
-                        intent: person.intent,
+                        place: person.place,
                         languages: person.languages,
                         visibleGender: person.visibleGender,
                       ),
@@ -122,7 +122,7 @@ class CmpNearbyPersonTile extends StatelessWidget {
   }
 
   bool get _hasDetails => CmpProfileDetails.hasAny(
-    intent: person.intent,
+    place: person.place,
     languages: person.languages,
     visibleGender: person.visibleGender,
   );

@@ -8,6 +8,8 @@ import 'package:threemojo_app/features/encounters/data/datasources/encounter_rem
 import 'package:threemojo_app/features/encounters/data/datasources/encounter_remote_data_source_impl.dart';
 import 'package:threemojo_app/features/encounters/data/repositories/encounter_repository_impl.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
+import 'package:threemojo_app/features/encounters/domain/entities/encounter_rejection.dart';
+import 'package:threemojo_app/features/encounters/domain/entities/encounter_request.dart';
 
 import '../../support/fake_realtime_socket.dart';
 
@@ -33,7 +35,7 @@ void main() {
 
       final result = repository.sendRequest(
         otherPersonId: 'p',
-        proposal: EncounterProposal.sayHi,
+        proposal: EncounterProposal.chat,
       );
 
       expect(result.getLeft().toNullable(), isA<ConnectionFailure>());
@@ -110,7 +112,7 @@ void main() {
               'id': 'r3',
               'otherPersonId': 's',
               'status': 'declined',
-              'proposal': 'sayHi',
+              'proposal': 'chat',
             },
           ],
         });
@@ -121,7 +123,7 @@ void main() {
         EncounterProposal.drink,
         EncounterProposal.getToKnow,
       ]);
-      expect(snapshot.outgoing.single.proposal, EncounterProposal.sayHi);
+      expect(snapshot.outgoing.single.proposal, EncounterProposal.chat);
     });
   });
 
@@ -252,6 +254,120 @@ void main() {
 
       expect(snapshots.last.outgoing.single.proposal, EncounterProposal.drink);
       await fake.reset();
+    });
+    group('one match at a time without cancelling the others (like the '
+        'server)', () {
+      EncounterRemoteDataSourceFakeImpl build({
+        List<FakeIncomingRequester>? requesters,
+      }) => EncounterRemoteDataSourceFakeImpl(
+        incomingTickInterval: const Duration(milliseconds: 10),
+        responseDelay: const Duration(milliseconds: 40),
+        newIncomingProbability: 1,
+        acceptProbability: 1,
+        incomingRequesters: requesters,
+      );
+
+      EncounterRequestStatus statusOf(
+        EncounterSnapshotModel snapshot,
+        String personId,
+      ) => [
+        ...snapshot.incoming,
+        ...snapshot.outgoing,
+      ].firstWhere((r) => r.otherPersonId == personId).status;
+
+      Future<void> wait([int ms = 120]) =>
+          Future<void>.delayed(Duration(milliseconds: ms));
+
+      test('an accepted request leaves the other pending ones pending, and '
+          'once the match ends they get answered', () async {
+        final fake = build(requesters: const []);
+        final snapshots = <EncounterSnapshotModel>[];
+        fake.watchRequests('s').listen(snapshots.add);
+
+        fake.sendRequest(otherPersonId: 'a', proposal: EncounterProposal.chat);
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        fake.sendRequest(otherPersonId: 'b', proposal: EncounterProposal.chat);
+        await wait();
+
+        // 'a' said yes first: match. 'b' cannot say yes during it, and it is
+        // not cancelled nor declined: it waits.
+        expect(statusOf(snapshots.last, 'a'), EncounterRequestStatus.accepted);
+        expect(statusOf(snapshots.last, 'b'), EncounterRequestStatus.pending);
+
+        fake.endMatch(
+          snapshots.last.outgoing.firstWhere((r) => r.otherPersonId == 'a').id,
+        );
+        await wait();
+
+        expect(statusOf(snapshots.last, 'a'), EncounterRequestStatus.ended);
+        expect(statusOf(snapshots.last, 'b'), EncounterRequestStatus.accepted);
+        await fake.reset();
+      });
+
+      test('accepting an incoming request while in a match is refused with '
+          'inMatch, declining is still possible; after the match it can be '
+          'accepted', () async {
+        final fake = build(
+          requesters: const [
+            FakeIncomingRequester(
+              personId: 'q',
+              proposal: EncounterProposal.drink,
+            ),
+          ],
+        );
+        final snapshots = <EncounterSnapshotModel>[];
+        final rejections = <EncounterRejection>[];
+        fake
+          ..watchRequests('s').listen(snapshots.add)
+          ..watchRejections('s').listen(rejections.add);
+        await wait(40);
+        expect(statusOf(snapshots.last, 'q'), EncounterRequestStatus.pending);
+        final incomingId = snapshots.last.incoming.single.id;
+
+        fake.sendRequest(otherPersonId: 'a', proposal: EncounterProposal.chat);
+        await wait();
+        expect(statusOf(snapshots.last, 'a'), EncounterRequestStatus.accepted);
+        // The pending one was not cancelled by the match.
+        expect(statusOf(snapshots.last, 'q'), EncounterRequestStatus.pending);
+
+        fake.respondToRequest(requestId: incomingId, accepted: true);
+        await pumpEvents();
+        expect(rejections.single.reason, EncounterRejectionReason.inMatch);
+        expect(rejections.single.action, EncounterAction.respondToRequest);
+        expect(statusOf(snapshots.last, 'q'), EncounterRequestStatus.pending);
+
+        fake.endMatch(
+          snapshots.last.outgoing.firstWhere((r) => r.otherPersonId == 'a').id,
+        );
+        fake.respondToRequest(requestId: incomingId, accepted: true);
+        await pumpEvents();
+        expect(statusOf(snapshots.last, 'q'), EncounterRequestStatus.accepted);
+        await fake.reset();
+      });
+
+      test('"no" is always possible, also during a match', () async {
+        final fake = build(
+          requesters: const [
+            FakeIncomingRequester(
+              personId: 'q',
+              proposal: EncounterProposal.drink,
+            ),
+          ],
+        );
+        final snapshots = <EncounterSnapshotModel>[];
+        fake.watchRequests('s').listen(snapshots.add);
+        await wait(40);
+        final incomingId = snapshots.last.incoming.single.id;
+        fake.sendRequest(otherPersonId: 'a', proposal: EncounterProposal.chat);
+        await wait();
+
+        fake.respondToRequest(requestId: incomingId, accepted: false);
+        await pumpEvents();
+
+        expect(statusOf(snapshots.last, 'q'), EncounterRequestStatus.declined);
+        expect(statusOf(snapshots.last, 'a'), EncounterRequestStatus.accepted);
+        await fake.reset();
+      });
     });
   });
 }

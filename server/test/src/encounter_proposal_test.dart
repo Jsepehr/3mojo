@@ -15,18 +15,18 @@ void main() {
 
     test('an unknown code, free text or a non-string falls back to '
         'getToKnow', () {
-      for (final raw in <Object?>['dance', 'Wants to dance', '', 42, true]) {
+      for (final raw in <Object?>['salsa', 'Wants to dance', '', 42, true]) {
         expect(EncounterProposal.parse(raw), EncounterProposal.getToKnow);
       }
     });
 
     test('the closed list is exactly the five codes shared with the app', () {
       expect(EncounterProposal.values, {
-        'sayHi',
         'chat',
         'friendship',
         'getToKnow',
         'drink',
+        'dance',
       });
     });
   });

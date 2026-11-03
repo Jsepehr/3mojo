@@ -103,7 +103,7 @@ class UiPrivacyPolicy extends StatelessWidget {
                 ),
                 (l10n.privacy_data_selfie_title, l10n.privacy_data_selfie_body),
                 (l10n.privacy_data_gender_title, l10n.privacy_data_gender_body),
-                (l10n.privacy_data_intent_title, l10n.privacy_data_intent_body),
+                (l10n.privacy_data_place_title, l10n.privacy_data_place_body),
                 (l10n.privacy_data_stay_title, l10n.privacy_data_stay_body),
                 (
                   l10n.privacy_data_requests_title,

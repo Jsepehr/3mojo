@@ -28,7 +28,7 @@ Il titolare del trattamento è **[ragione sociale, sede, P.IVA]**. Per la privac
 | **Posizione precisa**, mentre sei online | Mostrarti chi è entro 100 metri (o nello stesso posto affollato) e mostrare te a loro | **Nessuno**: gli altri non ricevono mai la tua posizione né la distanza da te. Sanno solo che sei abbastanza vicino da comparire. Su Android resti visibile **anche con l'app in background**, finché premi Termina (lo indica una notifica fissa). Su iPhone la posizione si usa **solo mentre Raen è aperta sullo schermo** |
 | **Selfie** della sessione | Farti riconoscere di persona | Le persone vicine compatibili, chi riceve o manda una tua richiesta, il tuo match. Togliamo dalla foto i metadati (per esempio il luogo dello scatto) |
 | **Genere e chi vuoi incontrare** | Mostrarti solo persone compatibili, e mostrarti solo a loro (in entrambe le direzioni) | **Chi vuoi incontrare: nessuno.** Il genere solo se attivi "Mostra il mio genere agli altri". **Attenzione**: chi ti vede può intuire che rientra in ciò che cerchi |
-| Intento, lingue (al massimo 2) | Far sapere cosa cerchi stasera e che lingua parli | Le persone vicine compatibili, le richieste, il match |
+| Luogo (un tipo di luogo scelto allo Start, per esempio bar o parco: mai il nome di un locale; facoltativo), lingue (al massimo 2) | Far sapere più o meno dove sei e che lingua parli; il luogo adatta anche le proposte | Le persone vicine compatibili, le richieste, il match |
 | Da quanto sei fermo, in tre livelli (basso, medio, alto) | Indicare la probabilità d'incontro | Le persone vicine compatibili |
 | Richieste d'incontro, risposte | Proporre e accettare un incontro | L'altra persona (un "no" è visibile a chi ha chiesto) |
 | **Messaggi della chat** | Parlare con il tuo match | Solo il tuo match. Il server li inoltra e **non li conserva**. Sul telefono spariscono quando finisce il match |
@@ -39,7 +39,7 @@ Il titolare del trattamento è **[ragione sociale, sede, P.IVA]**. Per la privac
 
 Il **controllo del volto** sul selfie avviene **solo sul telefono**: nessun dato biometrico viene creato, salvato o inviato. Su Android e iPhone lo fa il sistema operativo del telefono, senza rete.
 
-Il **profilo** (genere, chi cerchi, intento, lingue, conferma dei 18 anni) **resta sul telefono, cifrato**. Lo mandiamo al server solo mentre sei online.
+Il **profilo** (genere, chi cerchi, lingue, conferma dei 18 anni) **resta sul telefono, cifrato**. Lo mandiamo al server solo mentre sei online.
 
 ### Su che basi
 - **Contratto** (art. 6(1)(b) GDPR): posizione, selfie, profilo, richieste, chat e acquisti servono a darti il servizio che chiedi premendo Start.
@@ -106,7 +106,7 @@ The data controller is **[company name, address, VAT number]**. For privacy matt
 | **Precise location**, while you are online | To show you people within 100 metres (or in the same busy place) and to show you to them | **No one**: other people never receive your location or how far you are. They only know you are close enough to appear. On Android you stay visible **even with the app in the background**, until you tap End (a persistent notification shows this). On iPhone your location is **only used while Raen is open on screen** |
 | Session **selfie** | So people can recognise you in person | Compatible people nearby, people you send a request to or receive one from, your match. We remove the photo's metadata (such as where it was taken) |
 | **Gender and who you want to meet** | To show you only compatible people, and to show you only to them (both ways) | **Who you want to meet: no one.** Your gender only if you turn on "Show my gender to others". **Note**: people who can see you may guess that they fit what you're looking for |
-| Intent, languages (up to 2) | To say what you're up for tonight and which languages you speak | Compatible people nearby, requests, your match |
+| Place (a type of place chosen at Start, such as bar or park: never a venue's name; optional), languages (up to 2) | To say roughly where you are and which languages you speak; the place also adapts the proposals | Compatible people nearby, requests, your match |
 | How long you've stayed put, in three levels (low, medium, high) | To show how likely a meeting is | Compatible people nearby |
 | Meeting requests and replies | To propose and accept a meeting | The other person (a "no" is visible to whoever asked) |
 | **Chat messages** | To talk to your match | Only your match. The server relays them and **does not keep them**. On your phone they disappear when the match ends |
@@ -117,7 +117,7 @@ The data controller is **[company name, address, VAT number]**. For privacy matt
 
 The **face check** on your selfie happens **only on your phone**: no biometric data is created, saved or sent. On Android and iPhone it is done by your phone's operating system, with no network.
 
-Your **profile** (gender, who you want to meet, intent, languages, 18+ confirmation) **stays on your phone, encrypted**. We only send it to the server while you are online.
+Your **profile** (gender, who you want to meet, languages, 18+ confirmation) **stays on your phone, encrypted**. We only send it to the server while you are online.
 
 ### Legal bases
 - **Contract** (Art. 6(1)(b) GDPR): location, selfie, profile, requests, chat and purchases are needed to provide the service you ask for when you tap Start.

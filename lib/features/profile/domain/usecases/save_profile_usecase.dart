@@ -70,7 +70,6 @@ class SaveProfileUseCase implements UseCase<Unit, Profile> {
         acceptedSensitiveConsentVersion: profile.needsSensitiveDataConsent
             ? profile.acceptedSensitiveConsentVersion
             : 0,
-        defaultIntent: profile.defaultIntent,
         languages: languages.toList(),
         showGender: profile.showGender && profile.gender != Gender.unspecified,
         acceptedTermsVersion: profile.acceptedTermsVersion,

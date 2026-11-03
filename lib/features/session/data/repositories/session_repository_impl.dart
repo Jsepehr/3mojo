@@ -5,6 +5,7 @@ import 'package:fpdart/fpdart.dart';
 import '/core/errors/failures.dart';
 import '/features/profile/domain/entities/profile.dart';
 import '/features/session/data/datasources/session_local_data_source.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '/features/session/domain/entities/online_session.dart';
 import '/features/session/domain/repositories/session_repository.dart';
 
@@ -28,7 +29,7 @@ class SessionRepositoryImpl implements SessionRepository {
     required String sessionId,
     required Uint8List selfieBytes,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
   }) async {
     try {
       final session = await _localDataSource.startSession(
@@ -36,7 +37,7 @@ class SessionRepositoryImpl implements SessionRepository {
           sessionId: sessionId,
           selfieBytes: selfieBytes,
           profile: profile,
-          intent: intent,
+          place: place,
         ),
       );
       return Right(session);

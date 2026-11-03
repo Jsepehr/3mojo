@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/core/utils/photo_bytes_cache.dart';
 import 'package:threemojo_app/features/encounters/data/models/encounter_request_model.dart';
 import 'package:threemojo_app/features/encounters/domain/entities/encounter_proposal.dart';
@@ -25,9 +26,16 @@ void main() {
       );
     });
 
+    test('dance is part of the closed list', () {
+      expect(
+        EncounterRequestModel.tryFromJson(json('dance'))?.proposal,
+        EncounterProposal.dance,
+      );
+    });
+
     test('an unknown code (newer server) or a missing one is getToKnow, '
         'without skipping the request', () {
-      final unknown = EncounterRequestModel.tryFromJson(json('dance'));
+      final unknown = EncounterRequestModel.tryFromJson(json('salsa'));
       final missing = EncounterRequestModel.tryFromJson(json(null));
       final notAString = EncounterRequestModel.tryFromJson(json(7));
 
@@ -37,15 +45,15 @@ void main() {
     });
 
     test('withStatus and withOtherSelfie keep it', () {
-      final request = EncounterRequestModel.fromJson(json('sayHi'));
+      final request = EncounterRequestModel.fromJson(json('chat'));
 
       expect(
         request.withStatus(EncounterRequestStatus.declined).proposal,
-        EncounterProposal.sayHi,
+        EncounterProposal.chat,
       );
       expect(
         request.withOtherSelfie(Uint8List.fromList([1])).proposal,
-        EncounterProposal.sayHi,
+        EncounterProposal.chat,
       );
     });
   });
@@ -55,12 +63,12 @@ void main() {
       'id': 'req-1',
       'otherPersonId': 'p',
       'status': 'pending',
-      'otherIntent': 'friendship',
+      'otherPlace': 'bar',
       'otherLanguages': ['it', 'en'],
       'otherGender': 'nonBinary',
     });
 
-    expect(request.otherIntent, MeetIntent.friendship);
+    expect(request.otherPlace, MeetPlace.bar);
     expect(request.otherLanguages, ['it', 'en']);
     expect(request.otherVisibleGender, Gender.nonBinary);
   });
@@ -70,10 +78,10 @@ void main() {
       'id': 'req-1',
       'otherPersonId': 'p',
       'status': 'pending',
-      'otherIntent': 'something-new',
+      'otherPlace': 'something-new',
     });
 
-    expect(request.otherIntent, isNull);
+    expect(request.otherPlace, MeetPlace.other);
     expect(request.otherLanguages, isEmpty);
     expect(request.otherVisibleGender, isNull);
   });
@@ -83,14 +91,14 @@ void main() {
       id: 'req-1',
       otherPersonId: 'p',
       status: EncounterRequestStatus.pending,
-      otherIntent: MeetIntent.chat,
+      otherPlace: MeetPlace.cafe,
       otherLanguages: ['it'],
     );
 
     final accepted = request.withStatus(EncounterRequestStatus.accepted);
 
     expect(accepted.status, EncounterRequestStatus.accepted);
-    expect(accepted.otherIntent, MeetIntent.chat);
+    expect(accepted.otherPlace, MeetPlace.cafe);
     expect(accepted.otherLanguages, ['it']);
   });
 

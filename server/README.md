@@ -125,6 +125,12 @@ sconosciuti. Si aggiungono campi e messaggi senza alzare la versione; la si alza
 solo cambiando il *significato* di qualcosa che esiste. Oggi N = 1, minimo 0: passano
 tutti. `MIN_PROTOCOL_VERSION` forza l'aggiornamento senza toccare il codice.
 
+Cambi compatibili già fatti senza alzare la versione: il campo `place` (luogo,
+lista chiusa; mancante o sconosciuto → `other`) al posto di `intent`
+(`otherPlace` nelle richieste), la proposta `dance` (un server vecchio la legge
+come `getToKnow`) e un sì che non cancella più le altre richieste pendenti (solo
+meno messaggi `cancelled`; un sì in match → `rejected` `inMatch`).
+
 ### Spegnimento ordinato
 
 Con SIGTERM o SIGINT (`docker stop`, deploy): smette di accettare connessioni,

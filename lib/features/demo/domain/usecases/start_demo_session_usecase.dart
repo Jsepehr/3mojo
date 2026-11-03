@@ -32,7 +32,6 @@ class StartDemoSessionUseCase implements UseCase<OnlineSession, NoParams> {
     gender: Gender.unspecified,
     lookingFor: Profile.searchableGenders,
     isAdultConfirmed: true,
-    defaultIntent: MeetIntent.chat,
     acceptedTermsVersion: Profile.currentTermsVersion,
   );
 
@@ -52,7 +51,6 @@ class StartDemoSessionUseCase implements UseCase<OnlineSession, NoParams> {
           sessionId: 'demo-${const Uuid().v4()}',
           selfieBytes: value,
           profile: demoProfile,
-          intent: demoProfile.defaultIntent,
         );
     }
   }

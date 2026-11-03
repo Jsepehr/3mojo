@@ -5,7 +5,6 @@ import '/core/demo/demo_mode.dart';
 import '/core/utils/photo_data_uri.dart';
 import '/core/widgets/cmp_demo_badge.dart';
 import '/core/widgets/cmp_photo.dart';
-import '/features/profile/presentation/profile_labels.dart';
 import '/features/profile/presentation/widgets/cmp_profile_details.dart';
 import '/l10n/generated/app_localizations.dart';
 import '../../domain/entities/encounter_request.dart';
@@ -46,15 +45,6 @@ class CmpIncomingRequestTile extends StatelessWidget {
     final theme = Theme.of(context);
     final photo = imageProviderForPhoto(request.otherSelfieBytes);
     final proposal = request.proposal;
-    // Se l'intento che mostra ha la stessa emoji della proposta (☕, 🤝, 🙂)
-    // direbbe due volte la stessa cosa: resta solo la proposta.
-    final intent = request.otherIntent;
-    final shownIntent =
-        intent != null &&
-            ProfileLabels.intentEmoji(intent) ==
-                EncounterProposalLabels.emoji(proposal)
-        ? null
-        : intent;
 
     final content = Padding(
       padding: const EdgeInsets.all(16),
@@ -88,13 +78,13 @@ class CmpIncomingRequestTile extends StatelessWidget {
           // Ciò che la persona mostra dal proprio profilo, per decidere
           // sapendo cosa cerca — mai chi cerca.
           if (CmpProfileDetails.hasAny(
-            intent: shownIntent,
+            place: request.otherPlace,
             languages: request.otherLanguages,
             visibleGender: request.otherVisibleGender,
           )) ...[
             const SizedBox(height: 8),
             CmpProfileDetails(
-              intent: shownIntent,
+              place: request.otherPlace,
               languages: request.otherLanguages,
               visibleGender: request.otherVisibleGender,
               alignment: WrapAlignment.center,

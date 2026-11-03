@@ -135,8 +135,18 @@ void main() {
         expect(find.text(l10n.take_a_selfie), findsOneWidget);
 
         await tapVisible(tester, find.text(l10n.take_a_selfie));
-        expect(find.text(l10n.i_like_it_continue), findsOneWidget);
-        await tapVisible(tester, find.text(l10n.i_like_it_continue));
+        // Il menu del luogo, aperto: la voce più lunga non deve andare in
+        // overflow nemmeno con testo grande o in arabo (RTL).
+        expect(find.text(l10n.where_are_you), findsOneWidget);
+        await tapVisible(tester, find.byKey(const ValueKey('place-dropdown')));
+        await advance(tester);
+        expect(find.text(l10n.place_other), findsWidgets);
+        await tester.tap(find.text(l10n.place_other).last);
+        await advance(tester);
+        expect(
+          find.widgetWithText(FilledButton, l10n.go_online_button),
+          findsOneWidget,
+        );
       });
 
       testWidgets('privacy policy, terms of use and safety pages', (
@@ -187,7 +197,7 @@ void main() {
               body: CmpProposalSheet(
                 photoBytes: null,
                 preselected: EncounterProposal.drink,
-                matchingTheirIntent: EncounterProposal.chat,
+                proposals: EncounterProposal.values,
                 onChoose: (_) {},
               ),
             ),

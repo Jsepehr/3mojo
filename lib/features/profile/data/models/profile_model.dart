@@ -9,7 +9,6 @@ class ProfileModel extends Profile {
     required super.lookingFor,
     required super.isAdultConfirmed,
     super.acceptedSensitiveConsentVersion,
-    super.defaultIntent,
     super.languages,
     super.showGender,
     super.acceptedTermsVersion,
@@ -20,14 +19,14 @@ class ProfileModel extends Profile {
     lookingFor: profile.lookingFor,
     isAdultConfirmed: profile.isAdultConfirmed,
     acceptedSensitiveConsentVersion: profile.acceptedSensitiveConsentVersion,
-    defaultIntent: profile.defaultIntent,
     languages: profile.languages,
     showGender: profile.showGender,
     acceptedTermsVersion: profile.acceptedTermsVersion,
   );
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
-    final intent = json['defaultIntent'] as String?;
+    // Il vecchio `defaultIntent` (l'intento predefinito, tolto: ora c'è il
+    // luogo, per sessione) si ignora; sparisce al prossimo salvataggio.
     return ProfileModel(
       gender: Gender.values.byName(json['gender'] as String),
       lookingFor: (json['lookingFor'] as List<dynamic>)
@@ -35,7 +34,6 @@ class ProfileModel extends Profile {
           .toSet(),
       isAdultConfirmed: json['isAdultConfirmed'] as bool,
       acceptedSensitiveConsentVersion: _sensitiveConsentVersionFrom(json),
-      defaultIntent: intent == null ? null : MeetIntent.values.byName(intent),
       languages: (json['languages'] as List<dynamic>).cast<String>(),
       showGender: json['showGender'] as bool,
       // Assente nei profili salvati prima dei termini d'uso: 0, da
@@ -61,7 +59,6 @@ class ProfileModel extends Profile {
     'lookingFor': lookingFor.map((g) => g.name).toList(),
     'isAdultConfirmed': isAdultConfirmed,
     'acceptedSensitiveConsentVersion': acceptedSensitiveConsentVersion,
-    'defaultIntent': defaultIntent?.name,
     'languages': languages,
     'showGender': showGender,
     'acceptedTermsVersion': acceptedTermsVersion,

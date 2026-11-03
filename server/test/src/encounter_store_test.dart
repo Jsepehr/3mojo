@@ -27,56 +27,107 @@ void main() {
         bySessionId: 'b',
       );
 
-      expect(result.request.status, EncounterRequestStatus.declined);
-      expect(result.alsoCancelled, isEmpty);
+      expect(result.status, EncounterRequestStatus.declined);
       expect(
         store.outgoingFor('a').firstWhere((r) => r.id == untouched.id).status,
         EncounterRequestStatus.pending,
       );
     });
 
-    test(
-      'accepting cancels every other pending request for both participants',
-      () {
-        final accepted = store.sendRequest(
-          fromSessionId: 'a',
-          toSessionId: 'b',
-        );
-        // 'a' has another outgoing request to 'c'.
-        final aToC = store.sendRequest(fromSessionId: 'a', toSessionId: 'c');
-        // 'b' has another incoming request from 'd'.
-        final dToB = store.sendRequest(fromSessionId: 'd', toSessionId: 'b');
-        // Unrelated to either 'a' or 'b': must survive untouched.
-        final unrelated = store.sendRequest(
-          fromSessionId: 'e',
-          toSessionId: 'f',
-        );
+    test('accepting changes only that request: the other pending ones of '
+        'both participants stay pending', () {
+      final accepted = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+      final aToC = store.sendRequest(fromSessionId: 'a', toSessionId: 'c');
+      final dToB = store.sendRequest(fromSessionId: 'd', toSessionId: 'b');
 
-        final result = store.respondToRequest(
-          requestId: accepted.id,
+      final result = store.respondToRequest(
+        requestId: accepted.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
+
+      expect(result.status, EncounterRequestStatus.accepted);
+      expect(aToC.status, EncounterRequestStatus.pending);
+      expect(dToB.status, EncounterRequestStatus.pending);
+    });
+
+    test('while one side is in a match, accepting another request is '
+        'rejected with inMatch, declining is still possible', () {
+      final match = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+      final dToB = store.sendRequest(fromSessionId: 'd', toSessionId: 'b');
+      final eToB = store.sendRequest(fromSessionId: 'e', toSessionId: 'b');
+      store.respondToRequest(
+        requestId: match.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
+
+      expect(
+        () => store.respondToRequest(
+          requestId: dToB.id,
           accepted: true,
           bySessionId: 'b',
-        );
+        ),
+        throwsA(
+          isA<EncounterRejected>().having(
+            (e) => e.reason,
+            'reason',
+            EncounterRejectionReason.inMatch,
+          ),
+        ),
+      );
+      expect(dToB.status, EncounterRequestStatus.pending);
 
-        expect(result.request.status, EncounterRequestStatus.accepted);
-        expect(
-          result.alsoCancelled.map((r) => r.id),
-          containsAll([aToC.id, dToB.id]),
-        );
-        expect(
-          store.outgoingFor('a').firstWhere((r) => r.id == aToC.id).status,
-          EncounterRequestStatus.cancelled,
-        );
-        expect(
-          store.incomingFor('b').firstWhere((r) => r.id == dToB.id).status,
-          EncounterRequestStatus.cancelled,
-        );
-        expect(
-          store.outgoingFor('e').firstWhere((r) => r.id == unrelated.id).status,
-          EncounterRequestStatus.pending,
-        );
-      },
-    );
+      final declined = store.respondToRequest(
+        requestId: eToB.id,
+        accepted: false,
+        bySessionId: 'b',
+      );
+      expect(declined.status, EncounterRequestStatus.declined);
+    });
+
+    test('after the match ends, the request left pending can be accepted '
+        '(also when only the sender was in the match)', () {
+      final match = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+      final cToB = store.sendRequest(fromSessionId: 'c', toSessionId: 'b');
+      final bToD = store.sendRequest(fromSessionId: 'b', toSessionId: 'd');
+      store.respondToRequest(
+        requestId: match.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
+      store.endMatch(match.id, bySessionId: 'a');
+
+      expect(cToB.status, EncounterRequestStatus.pending);
+      final accepted = store.respondToRequest(
+        requestId: cToB.id,
+        accepted: true,
+        bySessionId: 'b',
+      );
+      expect(accepted.status, EncounterRequestStatus.accepted);
+      expect(bToD.status, EncounterRequestStatus.pending);
+    });
+
+    test('a request for a pair that already had one is still refused for '
+        'the whole session', () {
+      final first = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
+      store.respondToRequest(
+        requestId: first.id,
+        accepted: false,
+        bySessionId: 'b',
+      );
+
+      expect(
+        () => store.sendRequest(fromSessionId: 'b', toSessionId: 'a'),
+        throwsA(
+          isA<EncounterRejected>().having(
+            (e) => e.reason,
+            'reason',
+            EncounterRejectionReason.alreadyRequested,
+          ),
+        ),
+      );
+    });
 
     test('endMatch marks a request as ended', () {
       final request = store.sendRequest(fromSessionId: 'a', toSessionId: 'b');
@@ -208,12 +259,18 @@ void main() {
       final unknown = store.sendRequest(
         fromSessionId: 'a',
         toSessionId: 'c',
+        proposal: 'salsa',
+      );
+      final dance = store.sendRequest(
+        fromSessionId: 'a',
+        toSessionId: 'e',
         proposal: 'dance',
       );
       final missing = store.sendRequest(fromSessionId: 'a', toSessionId: 'd');
 
       expect(drink.proposal, 'drink');
       expect(store.incomingFor('b').single.proposal, 'drink');
+      expect(dance.proposal, 'dance');
       expect(unknown.proposal, 'getToKnow');
       expect(missing.proposal, 'getToKnow');
     });

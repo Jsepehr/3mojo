@@ -7,8 +7,9 @@ import '../entities/encounter_request.dart';
 
 /// Contratto per inviare/ricevere/rispondere a richieste d'interesse.
 /// L'esclusività ("un solo match attivo alla volta") è applicata dal
-/// server: qui non c'è nessun passo separato per cancellare le altre
-/// richieste, arriva già risolta nel prossimo snapshot.
+/// server rifiutando ogni nuovo sì (`inMatch`) finché una delle due parti è
+/// in un match: le altre richieste pendenti non vengono cancellate, restano
+/// in attesa e si possono accettare a match finito.
 ///
 /// Le azioni ritornano subito: `Right(unit)` se sono partite verso il
 /// server, `Left(ConnectionFailure)` se in questo momento non si può

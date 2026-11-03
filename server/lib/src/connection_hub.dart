@@ -6,6 +6,7 @@ import 'package:threemojo_server/src/encounter_store.dart';
 import 'package:threemojo_server/src/hotspot_store.dart';
 import 'package:threemojo_server/src/log.dart';
 import 'package:threemojo_server/src/paywall_store.dart';
+import 'package:threemojo_server/src/presence_profile.dart';
 import 'package:threemojo_server/src/pseudonyms.dart';
 import 'package:threemojo_server/src/session_store.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -439,7 +440,7 @@ class ConnectionHub {
           p['meetingChance'],
           p['locked'],
           p.containsKey('selfieBase64'),
-          p['intent'],
+          p['place'],
           Object.hashAll(p['languages'] as List? ?? const []),
           p['gender'],
         ),
@@ -469,7 +470,7 @@ class ConnectionHub {
   /// aggiornate, con selfie e profilo visibile della controparte presi da
   /// `SessionStore` — niente da conservare nella richiesta stessa, sempre
   /// fresco. Del profilo solo ciò che la persona mostra anche in
-  /// "Vicinanze" (intento, lingue, genere se scelto): mai chi cerca. Per le
+  /// "Vicinanze" (luogo, lingue, genere se scelto): mai chi cerca. Per le
   /// richieste finite (rifiutate, annullate, terminate) niente selfie né
   /// profilo: non servono più, e non devono continuare a circolare.
   ///
@@ -508,12 +509,13 @@ class ConnectionHub {
           : _sessionStore.selfieBase64For(otherId) ?? '';
       if (selfie.isNotEmpty) selfiesSent.add(r.id);
       final profile = _sessionStore.profileFor(otherId);
-      final intent = profile?.intent;
+      final place = profile?.place;
       final languages = profile?.languages ?? const <String>[];
       final gender = profile?.visibleGender;
       return json..addAll({
         if (selfie.isNotEmpty) 'otherSelfieBase64': selfie,
-        if (intent != null) 'otherIntent': intent,
+        if (place != null && place != PresenceProfile.otherPlace)
+          'otherPlace': place,
         if (languages.isNotEmpty) 'otherLanguages': languages,
         if (gender != null) 'otherGender': gender,
       });

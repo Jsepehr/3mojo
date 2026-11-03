@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '/features/nearby/data/models/nearby_person_model.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 
 /// Contratto verso il backend `server/` (dart_frog): un canale persistente
 /// (WebSocket) invece di richieste separate — la presenza (con profilo e
@@ -20,7 +21,7 @@ abstract class NearbyRemoteDataSource {
     required double latitude,
     required double longitude,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   });
 

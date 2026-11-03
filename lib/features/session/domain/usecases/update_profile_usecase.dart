@@ -17,9 +17,8 @@ import 'get_current_session_usecase.dart';
 ///
 /// Sensibile ([changesSensitiveData]) = genere, chi cerchi, "mostra il mio
 /// genere" o la perdita del consenso al testo attuale, confrontati con la
-/// copia del profilo **che la sessione sta usando**. Lingue e intento
-/// predefinito no: non sono dati art. 9, l'intento predefinito serve solo a
-/// precompilare il prossimo Start e le lingue non valgono la perdita di
+/// copia del profilo **che la sessione sta usando**. Le lingue
+/// no: non sono dati art. 9 e non valgono la perdita di
 /// selfie, richieste e match in corso — valgono dal prossimo Start.
 ///
 /// Prima si valida (le stesse regole di [SaveProfileUseCase]), poi si

@@ -9,7 +9,7 @@ import 'package:threemojo_app/features/encounters/domain/entities/encounter_requ
 import 'package:threemojo_app/features/encounters/domain/usecases/find_lost_encounter_requests_usecase.dart';
 import 'package:threemojo_app/features/encounters/presentation/encounter_notice.dart';
 import 'package:threemojo_app/features/encounters/presentation/providers/pro_encounters.dart';
-import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/features/session/domain/entities/online_session.dart';
 import 'package:threemojo_app/features/session/domain/entities/server_handshake.dart';
 
@@ -18,13 +18,12 @@ import '../../support/fake_repositories.dart';
 
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
-OnlineSession _sessionWithIntent(String id, MeetIntent? intent) =>
-    OnlineSession(
-      sessionId: id,
-      selfieBytes: testSession(id).selfieBytes,
-      profile: testProfile,
-      intent: intent,
-    );
+OnlineSession _sessionWithPlace(String id, MeetPlace place) => OnlineSession(
+  sessionId: id,
+  selfieBytes: testSession(id).selfieBytes,
+  profile: testProfile,
+  place: place,
+);
 
 void main() {
   late FakeSessionRepository sessions;
@@ -396,27 +395,34 @@ void main() {
   });
 
   group('proposal', () {
-    test('without a choice yet, the preselection follows the own session '
-        'intent', () async {
-      sessions.start(_sessionWithIntent('s2', MeetIntent.friendship));
+    test('without a choice yet, the preselection and the offered proposals '
+        'follow the own session place', () async {
+      sessions.start(_sessionWithPlace('s2', MeetPlace.club));
       await _settle();
 
-      expect(proEncounters.preselectedProposal, EncounterProposal.friendship);
+      expect(proEncounters.availableProposals, [
+        EncounterProposal.dance,
+        EncounterProposal.drink,
+      ]);
+      expect(proEncounters.preselectedProposal, EncounterProposal.dance);
     });
 
-    test('with no intent at all, getToKnow', () async {
-      expect(proEncounters.preselectedProposal, EncounterProposal.getToKnow);
+    test('with no place declared (other), all four proposals and chat '
+        'first', () async {
+      expect(proEncounters.availableProposals, hasLength(4));
+      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
     });
 
     test('a request carries its proposal, which becomes the next '
-        'preselection', () async {
-      sessions.start(_sessionWithIntent('s2', MeetIntent.chat));
+        'preselection while it is still offered', () async {
+      sessions.start(_sessionWithPlace('s2', MeetPlace.bar));
       await _settle();
-
-      proEncounters.sendRequest('p1', proposal: EncounterProposal.drink);
-
-      expect(encounters.sentProposals, [EncounterProposal.drink]);
       expect(proEncounters.preselectedProposal, EncounterProposal.drink);
+
+      proEncounters.sendRequest('p1', proposal: EncounterProposal.chat);
+
+      expect(encounters.sentProposals, [EncounterProposal.chat]);
+      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
     });
 
     test('a request that did not leave does not change the preselection', () {
@@ -424,30 +430,22 @@ void main() {
 
       proEncounters.sendRequest('p1', proposal: EncounterProposal.drink);
 
-      expect(proEncounters.preselectedProposal, EncounterProposal.getToKnow);
-    });
-
-    test('End forgets the last choice: the next session starts again from '
-        'its own intent', () async {
-      proEncounters.sendRequest('p1', proposal: EncounterProposal.drink);
-      sessions.end();
-      await _settle();
-      sessions.start(_sessionWithIntent('s3', MeetIntent.chat));
-      await _settle();
-
       expect(proEncounters.preselectedProposal, EncounterProposal.chat);
     });
 
-    test('the proposal matching the other person\'s public intent', () {
-      expect(
-        proEncounters.proposalMatchingIntent(MeetIntent.chat),
+    test('End forgets the last choice: the next session starts again from '
+        'its own place', () async {
+      proEncounters.sendRequest('p1', proposal: EncounterProposal.drink);
+      sessions.end();
+      await _settle();
+      sessions.start(_sessionWithPlace('s3', MeetPlace.cafe));
+      await _settle();
+
+      expect(proEncounters.preselectedProposal, EncounterProposal.chat);
+      expect(proEncounters.availableProposals, [
         EncounterProposal.chat,
-      );
-      expect(
-        proEncounters.proposalMatchingIntent(MeetIntent.meetPeople),
         EncounterProposal.getToKnow,
-      );
-      expect(proEncounters.proposalMatchingIntent(null), isNull);
+      ]);
     });
   });
 }

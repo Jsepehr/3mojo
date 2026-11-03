@@ -9,6 +9,7 @@ import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interfac
 
 import 'package:threemojo_app/core/errors/failures.dart';
 import 'package:threemojo_app/features/profile/domain/entities/profile.dart';
+import 'package:threemojo_app/features/session/domain/entities/meet_place.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/delete_profile_usecase.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/get_profile_usecase.dart';
 import 'package:threemojo_app/features/profile/domain/usecases/save_profile_usecase.dart';
@@ -143,7 +144,7 @@ void main() {
   Future<void> shootAndConfirm(WidgetTester tester) async {
     await tester.tap(find.text(l10n.take_a_selfie));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(l10n.i_like_it_continue));
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
     await tester.pumpAndSettle();
   }
 
@@ -181,13 +182,49 @@ void main() {
     await openWizard(tester);
 
     await shootAndConfirm(tester);
-    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
-    await tester.pumpAndSettle();
 
     expect(proSession.isOnline, isTrue);
     expect(find.byType(UiStartSession), findsNothing);
     // Lo stesso selfie scattato è quello controllato e messo in sessione.
     expect(faces.checked.last, sessions.current!.selfieBytes);
+  });
+
+  testWidgets('the place dropdown starts on "Other", can be left alone, and '
+      'the chosen place goes into the session', (tester) async {
+    faces.result = const Right(true);
+    await pumpHost(tester);
+    await openWizard(tester);
+
+    final dropdown = find.byKey(const ValueKey('place-dropdown'));
+    expect(
+      find.descendant(of: dropdown, matching: find.text(l10n.place_other)),
+      findsOneWidget,
+    );
+    // Tap target alto almeno 48 dp.
+    expect(tester.getSize(dropdown).height, greaterThanOrEqualTo(48));
+
+    await tester.tap(find.text(l10n.take_a_selfie));
+    await tester.pumpAndSettle();
+    await tester.tap(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.place_club).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
+    await tester.pumpAndSettle();
+
+    expect(proSession.isOnline, isTrue);
+    expect(sessions.current!.place, MeetPlace.club);
+  });
+
+  testWidgets('without touching the dropdown the place is "other"', (
+    tester,
+  ) async {
+    faces.result = const Right(true);
+    await pumpHost(tester);
+    await openWizard(tester);
+    await shootAndConfirm(tester);
+
+    expect(sessions.current!.place, MeetPlace.other);
   });
 
   testWidgets('a profile saved before the terms of use existed is asked to '
@@ -202,9 +239,6 @@ void main() {
     await pumpHost(tester);
     await openWizard(tester);
     await shootAndConfirm(tester);
-
-    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
-    await tester.pumpAndSettle();
 
     expect(proSession.isOnline, isFalse);
     expect(find.text(l10n.terms_accept_dialog_body), findsOneWidget);
@@ -235,8 +269,6 @@ void main() {
     await pumpHost(tester);
     await openWizard(tester);
     await shootAndConfirm(tester);
-    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
-    await tester.pumpAndSettle();
 
     await tester.tap(find.text(l10n.cancel));
     await tester.pumpAndSettle();
@@ -260,9 +292,6 @@ void main() {
     await pumpHost(tester);
     await openWizard(tester);
     await shootAndConfirm(tester);
-
-    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
-    await tester.pumpAndSettle();
 
     expect(proSession.isOnline, isFalse);
     expect(find.text(l10n.consent_renewal_body), findsOneWidget);
@@ -296,8 +325,6 @@ void main() {
     await pumpHost(tester);
     await openWizard(tester);
     await shootAndConfirm(tester);
-    await tester.tap(find.widgetWithText(FilledButton, l10n.go_online_button));
-    await tester.pumpAndSettle();
 
     await tester.tap(find.text(l10n.cancel));
     await tester.pumpAndSettle();

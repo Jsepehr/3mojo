@@ -4,6 +4,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '/core/errors/failures.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 import '../entities/online_session.dart';
 
 /// Contratto per leggere/avviare/terminare la sessione online corrente.
@@ -14,7 +15,7 @@ abstract class SessionRepository {
     required String sessionId,
     required Uint8List selfieBytes,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
   });
 
   Future<Either<Failure, Unit>> endSession();

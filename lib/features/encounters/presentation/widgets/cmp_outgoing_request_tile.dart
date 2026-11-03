@@ -97,7 +97,7 @@ class CmpOutgoingRequestTile extends StatelessWidget {
       case EncounterRequestStatus.declined:
         return closed(l10n.declined);
       case EncounterRequestStatus.cancelled:
-        return closed(l10n.cancelled_you_have_another_match);
+        return closed(l10n.request_cancelled);
       case EncounterRequestStatus.ended:
         return closed(l10n.ended);
     }

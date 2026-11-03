@@ -11,6 +11,7 @@ import '/features/nearby/domain/entities/geo_location.dart';
 import '/features/nearby/domain/entities/nearby_person.dart';
 import '/features/nearby/domain/repositories/nearby_repository.dart';
 import '/features/profile/domain/entities/profile.dart';
+import '/features/session/domain/entities/meet_place.dart';
 
 /// Apre la connessione persistente verso il backend reale e traduce ciò che
 /// arriva. Non rifiltra più per raggio lato client: da quando esistono le
@@ -29,7 +30,7 @@ class NearbyRepositoryImpl implements NearbyRepository {
     GeoLocation location, {
     required String sessionId,
     required Profile profile,
-    MeetIntent? intent,
+    MeetPlace place = MeetPlace.fallback,
     required Uint8List selfieBytes,
   }) {
     final upstream = _remoteDataSource.connect(
@@ -37,7 +38,7 @@ class NearbyRepositoryImpl implements NearbyRepository {
       latitude: location.latitude,
       longitude: location.longitude,
       profile: profile,
-      intent: intent,
+      place: place,
       selfieBytes: selfieBytes,
     );
 

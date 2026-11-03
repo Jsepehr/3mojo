@@ -89,7 +89,7 @@
 1. App aperta offline, con il permesso di posizione **non ancora concesso** (installazione nuova, o permesso tolto dalle impostazioni: altrimenti l'avviso non compare): "Start" in evidenza.
 2. Tap su Start → **avviso in evidenza** "La tua posizione mentre sei online" (lasciarlo leggere qualche secondo, si vede la riga sul background) → **Continua**.
 3. Richiesta di sistema del permesso di posizione **"Mentre usi l'app"** → concessa.
-4. Selfie, poi intento → online.
+4. Selfie, poi (facoltativo) il luogo dal menu a tendina → online.
 5. Richiesta del permesso per le notifiche (Android 13+) → concessa. Compare la notifica "Raen è online".
 6. Lista "Vicinanze" (con un secondo telefono vicino, dopo un minuto fermi).
 7. Tasto Home: la notifica resta. Aprire la tendina delle notifiche e mostrarla.
@@ -109,7 +109,7 @@
 
 **Testo proposto per "Notes for review" (EN)**
 
-> **No account needed.** Raen has no sign-up and no login: tap **Start**, read the short notice about location and tap **Continue**, allow location "While Using the App", take a selfie (front camera; the app checks on-device that there is a face), pick an intent, and you are online. Tap **End** (red, top right) to go offline: everything about the session is deleted from our server.
+> **No account needed.** Raen has no sign-up and no login: tap **Start**, read the short notice about location and tap **Continue**, allow location "While Using the App", take a selfie (front camera; the app checks on-device that there is a face), optionally pick where you are from the dropdown under the selfie, and you are online. Tap **End** (red, top right) to go offline: everything about the session is deleted from our server.
 >
 > **Try it with one device: the built-in, declared demo.** Raen only shows people who are physically near you, so with a single device the real list is empty by design. To see the whole flow in a few minutes, tap **"How does it work? Try the demo"** under the Start button (also in the Menu → **Try the demo**, and on the first profile page, so it works before filling in the profile). The demo:
 > - is always labelled: a fixed banner on every demo screen says **"Demo — demo people, not real"** with an **Exit demo** button, and every demo person, request and chat carries a **"Demo"** badge (read by VoiceOver as "Demo person");
@@ -119,7 +119,7 @@
 >
 > **How to see real people.** Raen only shows people who are physically within 100 m, online at the same time, compatible both ways (gender / who they want to meet, set once in the profile) and who have **both stayed put for at least one minute**. To test the real service: use two devices side by side, with compatible profiles (e.g. both "Everyone"), tap Start on both and wait about one minute without moving. You will then see each other, can send a meeting request (tap the photo → choose a proposal), accept it on the other device and chat. **[If available: a video of the real flow is at <link>, and we can keep test sessions online near Apple Park during the review window — contact <email/phone>.]**
 >
-> **User-generated content and safety (Guideline 1.2).** Users must accept the Terms of Use (zero tolerance for objectionable content and abusive users) before going online. Content is limited: a selfie (front camera only, must contain a face), choices from closed lists (intent, languages, meeting proposals: no free text, no romantic or sexual options), and chat text that is only possible after **both** people accepted a meeting. Every person, request and match has a ⋯ menu with **Block** (immediate, both ways) and **Report** (closed list of reasons, including "Seems to be under 18"; reporting also blocks). Sessions reported by several people are closed automatically; each reported session creates an encrypted moderation record (photo, reasons, time) reviewed by our team, who act on reports within 24 hours. Contact: **[safety@…]**, shown in Menu → Safety & reports.
+> **User-generated content and safety (Guideline 1.2).** Users must accept the Terms of Use (zero tolerance for objectionable content and abusive users) before going online. Content is limited: a selfie (front camera only, must contain a face), choices from closed lists (place, languages, meeting proposals: no free text, no romantic or sexual options), and chat text that is only possible after **both** people accepted a meeting. Every person, request and match has a ⋯ menu with **Block** (immediate, both ways) and **Report** (closed list of reasons, including "Seems to be under 18"; reporting also blocks). Sessions reported by several people are closed automatically; each reported session creates an encrypted moderation record (photo, reasons, time) reviewed by our team, who act on reports within 24 hours. Contact: **[safety@…]**, shown in Menu → Safety & reports.
 >
 > **18+ only.** Users must confirm they are at least 18 to create a profile; the age rating is 18+.
 >
