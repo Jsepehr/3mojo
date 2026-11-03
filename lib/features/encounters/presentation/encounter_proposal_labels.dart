@@ -21,6 +21,12 @@ class EncounterProposalLabels {
     EncounterProposal.dance => '💃',
   };
 
+  /// Le emoji di tutte le proposte, per chi le usa come decorazione (lo
+  /// sfondo radar).
+  static List<String> get allEmojis => [
+    for (final proposal in EncounterProposal.values) emoji(proposal),
+  ];
+
   /// Come la sceglie chi chiede ("Bere qualcosa"), e come la rivede sulla
   /// propria richiesta in uscita.
   static String label(AppLocalizations l10n, EncounterProposal proposal) =>

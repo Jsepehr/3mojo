@@ -8,6 +8,7 @@ import '/core/widgets/cmp_end_button.dart';
 import '/core/widgets/cmp_loading_indicator.dart';
 import '/core/widgets/cmp_photo.dart';
 import '/core/widgets/cmp_radar_background.dart';
+import '/features/encounters/presentation/encounter_proposal_labels.dart';
 import '/features/demo/presentation/widgets/cmp_demo_nearby_note.dart';
 import '/features/demo/presentation/widgets/cmp_try_demo_link.dart';
 import '/features/encounters/domain/entities/encounter_request.dart';
@@ -124,12 +125,14 @@ class _OfflineHome extends StatelessWidget {
           drawer: Theme(data: appTheme, child: const CmpAppDrawer()),
           body: Stack(
             children: [
-              const PositionedDirectional(
+              PositionedDirectional(
                 start: 0,
                 end: 0,
                 top: -_radarLift,
                 bottom: _radarLift,
-                child: CmpRadarBackground(),
+                child: CmpRadarBackground(
+                  emojis: EncounterProposalLabels.allEmojis,
+                ),
               ),
               SafeArea(
                 // Scorrevole: con testo grande o in orizzontale il contenuto
@@ -154,7 +157,7 @@ class _OfflineHome extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              l10n.discover_people_within_100_meters_in_real_time,
+                              l10n.discover_people_nearby_in_real_time,
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),

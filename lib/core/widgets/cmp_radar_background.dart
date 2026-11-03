@@ -17,8 +17,9 @@ import '/core/theme/raen_colors.dart';
 ///   allontanandosi (easing non lineare) e si assottigliano mentre svaniscono,
 ///   ognuna con una scia morbida dietro il fronte;
 /// - pochi cuoricini (rosso-cuore di `RaenColors`, dentro il disco bianco
-///   quando il rosso sullo sfondo non si leggerebbe, come nell'icona) e
-///   segnaposti (`primary`) che compaiono e spariscono con dissolvenze di
+///   quando il rosso sullo sfondo non si leggerebbe, come nell'icona),
+///   segnaposti (`primary`) ed emoji (quelle di [emojis]: chi usa il widget
+///   passa quelle delle proposte d'incontro, `core/` non le conosce) che compaiono e spariscono con dissolvenze di
 ///   diversi secondi, lontani dal centro (dove c'è il contenuto) e tra loro;
 ///   quando uno sparisce ne nasce un altro altrove.
 ///
@@ -27,7 +28,11 @@ import '/core/theme/raen_colors.dart';
 /// [RepaintBoundary]). Con le animazioni disattivate dal sistema
 /// (`MediaQuery.disableAnimations`) resta un fotogramma fermo.
 class CmpRadarBackground extends StatefulWidget {
-  const CmpRadarBackground({super.key});
+  const CmpRadarBackground({super.key, this.emojis = const []});
+
+  /// Emoji che compaiono e spariscono come cuori e segnaposti, a caso tra
+  /// queste. Vuota: solo cuori e segnaposti.
+  final List<String> emojis;
 
   @override
   State<CmpRadarBackground> createState() => _CmpRadarBackgroundState();
@@ -35,13 +40,19 @@ class CmpRadarBackground extends StatefulWidget {
 
 class _CmpRadarBackgroundState extends State<CmpRadarBackground>
     with SingleTickerProviderStateMixin {
-  final _scene = _RadarScene(math.Random());
+  late final _scene = _RadarScene(math.Random(), widget.emojis);
   late final Ticker _ticker = createTicker(_onTick);
 
   /// Tempo della scena all'avvio del ticker: `elapsed` riparte da zero a
   /// ogni `start()`, la scena no.
   double _timeBase = 0;
   bool? _reduceMotion;
+
+  @override
+  void didUpdateWidget(covariant CmpRadarBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scene.emojis = widget.emojis;
+  }
 
   @override
   void didChangeDependencies() {
@@ -123,6 +134,9 @@ const List<double> _waveWeights = [1, 0.55, 0.85, 0.45];
 /// visibili nello stesso istante: alcuni stanno comparendo o svanendo).
 const int _glyphCount = 6;
 
+/// Con le emoji gli elementi sono di più, perché i tipi sono tre.
+const int _glyphCountWithEmojis = 8;
+
 /// Durata di vita di un elemento: [_glyphMinLife] + fino a [_glyphLifeJitter].
 const double _glyphMinLife = 8;
 const double _glyphLifeJitter = 3;
@@ -144,12 +158,13 @@ const double _frozenTime = 2.4;
 
 // --- Stato animato -----------------------------------------------------------
 
-enum _GlyphKind { heart, pin }
+enum _GlyphKind { heart, pin, emoji }
 
 @immutable
 class _Glyph {
   const _Glyph({
     required this.kind,
+    required this.emoji,
     required this.unit,
     required this.bornAt,
     required this.lifetime,
@@ -159,6 +174,9 @@ class _Glyph {
   });
 
   final _GlyphKind kind;
+
+  /// La emoji, solo per [_GlyphKind.emoji].
+  final String? emoji;
 
   /// Posizione normalizzata rispetto al centro: (±1, ±1) = bordo dell'area.
   final Offset unit;
@@ -178,6 +196,7 @@ class _Glyph {
 
   _Glyph withBornAt(double value) => _Glyph(
     kind: kind,
+    emoji: emoji,
     unit: unit,
     bornAt: value,
     lifetime: lifetime,
@@ -190,9 +209,10 @@ class _Glyph {
 /// Orologio della scena + elementi vivi. Avvisa il painter a ogni tick
 /// (fa da `repaint` del [CustomPainter]), senza ricostruire widget.
 class _RadarScene extends ChangeNotifier {
-  _RadarScene(this._random);
+  _RadarScene(this._random, this.emojis);
 
   final math.Random _random;
+  List<String> emojis;
   final List<_Glyph> glyphs = [];
   double time = 0;
 
@@ -201,9 +221,10 @@ class _RadarScene extends ChangeNotifier {
   void populate(double now) {
     time = now;
     glyphs.clear();
-    for (var i = 0; i < _glyphCount; i++) {
+    final count = _count;
+    for (var i = 0; i < count; i++) {
       final glyph = _spawn(0);
-      glyphs.add(glyph.withBornAt(now - glyph.lifetime * i / _glyphCount));
+      glyphs.add(glyph.withBornAt(now - glyph.lifetime * i / count));
     }
     notifyListeners();
   }
@@ -212,12 +233,14 @@ class _RadarScene extends ChangeNotifier {
   void freeze() {
     time = _frozenTime;
     glyphs.clear();
-    for (var i = 0; i < _glyphCount - 1; i++) {
+    for (var i = 0; i < _count - 1; i++) {
       final glyph = _spawn(0);
       glyphs.add(glyph.withBornAt(time - glyph.lifetime / 2));
     }
     notifyListeners();
   }
+
+  int get _count => emojis.isEmpty ? _glyphCount : _glyphCountWithEmojis;
 
   void advance(double now) {
     // Ticker silenziato (pagina coperta) e poi ripreso: invece di far
@@ -266,26 +289,41 @@ class _RadarScene extends ChangeNotifier {
     final kind = _nextKind();
     final outward = best / best.distance;
     final isHeart = kind == _GlyphKind.heart;
+    final isEmoji = kind == _GlyphKind.emoji;
     return _Glyph(
       kind: kind,
+      emoji: isEmoji ? emojis[_random.nextInt(emojis.length)] : null,
       unit: best,
       bornAt: bornAt,
       lifetime: _glyphMinLife + _random.nextDouble() * _glyphLifeJitter,
-      size: (isHeart ? 13 : 15) + _random.nextDouble() * 6,
-      // Cuori che salgono piano, segnaposti che si allontanano appena.
-      drift: isHeart ? Offset(outward.dx * 4, -10) : outward * 6,
-      tilt: (_random.nextDouble() - 0.5) * (isHeart ? 0.5 : 0.16),
+      size: (isHeart ? 13 : (isEmoji ? 17 : 15)) + _random.nextDouble() * 6,
+      // Cuori ed emoji che salgono piano, segnaposti che si allontanano
+      // appena.
+      drift: isHeart || isEmoji
+          ? Offset(outward.dx * 4, isEmoji ? -8 : -10)
+          : outward * 6,
+      tilt:
+          (_random.nextDouble() - 0.5) *
+          (isHeart ? 0.5 : (isEmoji ? 0.4 : 0.16)),
     );
   }
 
-  /// Tiene bilanciati cuori e segnaposti.
+  /// Tiene bilanciati i tipi: nasce uno di quelli meno presenti (a caso tra
+  /// pari). Le emoji solo se ce ne sono.
   _GlyphKind _nextKind() {
-    final hearts = glyphs.where((g) => g.kind == _GlyphKind.heart).length;
-    final pins = glyphs.length - hearts;
-    if (hearts != pins) {
-      return hearts < pins ? _GlyphKind.heart : _GlyphKind.pin;
-    }
-    return _random.nextBool() ? _GlyphKind.heart : _GlyphKind.pin;
+    final kinds = emojis.isEmpty
+        ? const [_GlyphKind.heart, _GlyphKind.pin]
+        : _GlyphKind.values;
+    final counts = {
+      for (final kind in kinds)
+        kind: glyphs.where((g) => g.kind == kind).length,
+    };
+    final fewest = counts.values.reduce(math.min);
+    final candidates = [
+      for (final kind in kinds)
+        if (counts[kind] == fewest) kind,
+    ];
+    return candidates[_random.nextInt(candidates.length)];
   }
 }
 
@@ -309,6 +347,10 @@ class _RadarPainter extends CustomPainter {
   final Color? heartDiscColor;
 
   /// Cuore di larghezza 1, centrato sull'origine.
+  /// Corpo con cui si imposta il testo di ogni emoji (poi scalato).
+  static const double _emojiFontSize = 32;
+  static final Map<String, TextPainter> _emojiPainters = {};
+
   static final Path _heartPath = Path()
     ..moveTo(0, 0.42)
     ..cubicTo(-0.12, 0.32, -0.5, 0.08, -0.5, -0.17)
@@ -483,6 +525,8 @@ class _RadarPainter extends CustomPainter {
           _paintHeart(canvas, width, opacity);
         case _GlyphKind.pin:
           _paintPin(canvas, width, opacity);
+        case _GlyphKind.emoji:
+          _paintEmoji(canvas, glyph.emoji!, width, opacity);
       }
       canvas.restore();
     }
@@ -517,6 +561,33 @@ class _RadarPainter extends CustomPainter {
       ..scale(width * 0.62)
       ..drawPath(_heartPath, Paint()..color = heartColor)
       ..restore();
+  }
+
+  /// Le emoji a colori non seguono l'alpha del testo: sfumano insieme in un
+  /// layer, come cuore e disco. Il testo si imposta una volta a corpo fisso
+  /// e si scala, così non si rifà il layout a ogni fotogramma.
+  void _paintEmoji(Canvas canvas, String emoji, double width, double opacity) {
+    final painter = _emojiPainters.putIfAbsent(
+      emoji,
+      () => TextPainter(
+        text: TextSpan(
+          text: emoji,
+          style: const TextStyle(fontSize: _emojiFontSize),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(),
+    );
+    final scale = width / _emojiFontSize;
+    final box = Rect.fromCenter(
+      center: Offset.zero,
+      width: painter.width * scale + 4,
+      height: painter.height * scale + 4,
+    );
+    canvas
+      ..saveLayer(box, Paint()..color = Color.fromRGBO(0, 0, 0, 0.8 * opacity))
+      ..scale(scale);
+    painter.paint(canvas, Offset(-painter.width / 2, -painter.height / 2));
+    canvas.restore();
   }
 
   void _paintPin(Canvas canvas, double width, double opacity) {

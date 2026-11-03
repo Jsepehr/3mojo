@@ -17,6 +17,7 @@ void main() {
       expect(useCase(MeetPlace.bar), [
         EncounterProposal.drink,
         EncounterProposal.chat,
+        EncounterProposal.getToKnow,
       ]);
       expect(useCase(MeetPlace.cafe), [
         EncounterProposal.chat,
@@ -25,15 +26,18 @@ void main() {
       expect(useCase(MeetPlace.club), [
         EncounterProposal.dance,
         EncounterProposal.drink,
+        EncounterProposal.getToKnow,
       ]);
       expect(useCase(MeetPlace.discoPub), useCase(MeetPlace.club));
       expect(useCase(MeetPlace.event), [
         EncounterProposal.dance,
         EncounterProposal.friendship,
+        EncounterProposal.getToKnow,
       ]);
       expect(useCase(MeetPlace.outdoors), [
         EncounterProposal.chat,
         EncounterProposal.friendship,
+        EncounterProposal.getToKnow,
       ]);
       expect(useCase(MeetPlace.other), [
         EncounterProposal.chat,
@@ -47,6 +51,7 @@ void main() {
         'list', () {
       for (final place in MeetPlace.values) {
         expect(useCase(place), isNotEmpty);
+        expect(useCase(place), contains(EncounterProposal.getToKnow));
         expect(useCase(place).toSet(), hasLength(useCase(place).length));
       }
     });

@@ -403,6 +403,7 @@ void main() {
       expect(proEncounters.availableProposals, [
         EncounterProposal.dance,
         EncounterProposal.drink,
+        EncounterProposal.getToKnow,
       ]);
       expect(proEncounters.preselectedProposal, EncounterProposal.dance);
     });

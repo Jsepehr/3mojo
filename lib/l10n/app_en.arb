@@ -8,8 +8,8 @@
   "@meet_people_near_you": {
     "description": "Headline on the home page while offline"
   },
-  "discover_people_within_100_meters_in_real_time": "Discover people within 100 meters (or in the same busy place), in real time.",
-  "@discover_people_within_100_meters_in_real_time": {
+  "discover_people_nearby_in_real_time": "Discover people near you, in real time.",
+  "@discover_people_nearby_in_real_time": {
     "description": "Subtitle on the home page while offline. The server radius is 100 m, widened to 200 m for people in the same detected busy spot (hotspot)"
   },
   "start": "Start",
@@ -84,8 +84,8 @@
   "@request_sent": {
     "description": "Snackbar shown after tapping a nearby person to send an encounter request; also the chip on a Nearby card you already sent a request to"
   },
-  "we_only_show_people_who_stay_put_within_100_meters": "We only show people within 100 meters (or in the same busy place) who've stayed put for at least a minute — not everyone just passing by.",
-  "@we_only_show_people_who_stay_put_within_100_meters": {
+  "we_only_show_people_nearby_who_stay_put": "We only show people near you who've stayed put for at least a minute — not everyone just passing by.",
+  "@we_only_show_people_nearby_who_stay_put": {
     "description": "Waiting/empty-state tip: 100-meter radius (wider inside the same busy spot), and people appear only after staying in one place for at least a minute"
   },
   "you_too_must_stay_put_for_a_minute": "You need to stay in one place for a minute too before you see who's around — and again each time you move somewhere else.",
@@ -1179,7 +1179,7 @@
   "@privacy_data_location_title": {
     "description": "Privacy policy, data item title"
   },
-  "privacy_data_location_body": "To show you people within 100 metres (or in the same busy place) and to show you to them. No one sees it: other people never receive your location or how far you are, they only know you're close enough to appear. On Android you stay visible even with the app in the background, until you tap End (a persistent notification shows this). On iPhone your location is only used while Raen is open on screen.",
+  "privacy_data_location_body": "To show you people within about 100 metres (or in the same busy place) and to show you to them. No one sees it: other people never receive your location or how far you are, they only know you're close enough to appear. On Android you stay visible even with the app in the background, until you tap End (a persistent notification shows this). On iPhone your location is only used while Raen is open on screen.",
   "@privacy_data_location_body": {
     "description": "Privacy policy, data item: why the location is used and who sees it. Platform behaviour: Android keeps it in the background with a persistent notification, iPhone only with the app on screen"
   },
@@ -1424,7 +1424,7 @@
   "@location_disclosure_title": {
     "description": "Title of the full-screen notice shown before the system location permission request (Google Play prominent disclosure)"
   },
-  "location_disclosure_use": "When you tap Start, Raen uses your precise location to show you people within 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are.",
+  "location_disclosure_use": "When you tap Start, Raen uses your precise location to show you people within about 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are.",
   "@location_disclosure_use": {
     "description": "Location notice: what the location is used for. Start is the name of the button"
   },

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '/core/widgets/cmp_radar_background.dart';
+import '/features/encounters/presentation/encounter_proposal_labels.dart';
 import '/l10n/generated/app_localizations.dart';
 
 /// Copre l'intera area di "Vicinanze" nei due momenti in cui non c'è ancora
@@ -98,7 +99,7 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
         Shadow(color: veilColor, blurRadius: blurRadius),
     ];
     final tips = [
-      l10n.we_only_show_people_who_stay_put_within_100_meters,
+      l10n.we_only_show_people_nearby_who_stay_put,
       l10n.you_too_must_stay_put_for_a_minute,
       l10n.the_longer_someone_stays_in_one_place,
       l10n.no_names_no_public_profile,
@@ -107,7 +108,9 @@ class _CmpNearbyWaitingOverlayState extends State<CmpNearbyWaitingOverlay> {
 
     return Stack(
       children: [
-        const Positioned.fill(child: CmpRadarBackground()),
+        Positioned.fill(
+          child: CmpRadarBackground(emojis: EncounterProposalLabels.allEmojis),
+        ),
         // Scorrevole: con testo grande o lingue lunghe (arabo) il velo
         // cresce oltre l'altezza disponibile.
         LayoutBuilder(
