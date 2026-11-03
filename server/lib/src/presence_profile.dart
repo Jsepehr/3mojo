@@ -33,7 +33,15 @@ class PresenceProfile {
   static const event = 'event';
   static const outdoors = 'outdoors';
   static const otherPlace = 'other';
-  static const places = {bar, discoPub, cafe, club, event, outdoors, otherPlace};
+  static const places = {
+    bar,
+    discoPub,
+    cafe,
+    club,
+    event,
+    outdoors,
+    otherPlace,
+  };
   static const maxLanguages = 2;
 
   /// Lista chiusa delle lingue accettate: **la stessa** di

@@ -7,6 +7,8 @@ import 'package:threemojo_server/src/attestation/attestation_gate.dart';
 import 'package:threemojo_server/src/graceful_shutdown.dart';
 import 'package:threemojo_server/src/log.dart';
 import 'package:threemojo_server/src/moderation_records.dart';
+import 'package:threemojo_server/src/paywall_mode.dart';
+import 'package:threemojo_server/src/paywall_store.dart';
 import 'package:threemojo_server/src/payments/payments.dart';
 import 'package:threemojo_server/src/payments/payments_config.dart';
 import 'package:threemojo_server/src/server_environment.dart';
@@ -68,6 +70,7 @@ Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
   }
 
   _checkAttestation();
+  _startPaywall(env);
   await _startModeration();
   await _startPayments();
 
@@ -87,6 +90,23 @@ Future<HttpServer> run(Handler handler, InternetAddress ip, int port) async {
     'production': ServerEnvironment.isProduction(env),
   });
   return server;
+}
+
+/// `PAYWALL_MODE`: `free` = tutte le foto sbloccate per tutti (primi mesi),
+/// scritto nel log così si vede subito in che modalità gira.
+void _startPaywall(Map<String, String> env) {
+  final config = PaywallConfig.fromEnvironment(env);
+  final problem = config.problem;
+  if (problem != null) Log.warn('paywall.config', {'msg': problem});
+  PaywallStore.instance.everyoneUnlocked = config.mode == PaywallMode.free;
+  Log.info('paywall.mode', {'mode': config.mode.name});
+  if (config.mode == PaywallMode.free) {
+    Log.warn('paywall.free', {
+      'msg':
+          'PAYWALL_MODE=free: nessuna foto è bloccata, tutti vedono tutto. '
+          'Per tornare a pagamento togliere la variabile e riavviare.',
+    });
+  }
 }
 
 Future<void> _startModeration() async {

@@ -782,6 +782,24 @@ void main() {
         },
       );
 
+      test('with everyoneUnlocked (PAYWALL_MODE=free) nobody is locked, with '
+          'no token at all', () {
+        placeViewerAndSix();
+        paywall.everyoneUnlocked = true;
+
+        final result = store.nearbyPeople(
+          sessionId: 'a',
+          radiusMeters: 1000,
+          paywallStore: paywall,
+        )!;
+
+        expect(result, hasLength(6));
+        for (final person in result) {
+          expect(person.locked, isFalse);
+          expect(person.selfieBase64, isNotEmpty);
+        }
+      });
+
       test('a viewer with a valid unlock token sees every selfie', () {
         placeViewerAndSix(unlockToken: paywall.issueUnlockToken());
 

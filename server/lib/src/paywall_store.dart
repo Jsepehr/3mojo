@@ -43,6 +43,12 @@ class PaywallStore {
   final Random _random;
   final Map<String, DateTime> _unlockedAtByTokenHash = {};
 
+  /// `true` con `PAYWALL_MODE=free` (impostato all'avvio da `main.dart`):
+  /// chiunque vede ogni foto, anche senza uno sblocco. Cambia **solo** la
+  /// visibilità delle persone vicine: emissione, stato e scadenza degli
+  /// sblocchi restano quelli di sempre.
+  bool everyoneUnlocked = false;
+
   /// Chiamata a ogni cambiamento da salvare (emissione, revoca): la
   /// imposta `UnlockStatePersistence`.
   void Function()? onChanged;

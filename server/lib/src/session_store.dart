@@ -654,7 +654,8 @@ class SessionStore {
       return a.sessionId.compareTo(b.sessionId);
     });
     final isUnlocked =
-        me.unlockToken.isNotEmpty && paywall.isUnlocked(me.unlockToken);
+        paywall.everyoneUnlocked ||
+        (me.unlockToken.isNotEmpty && paywall.isUnlocked(me.unlockToken));
     return _withPaywallVisibility(results, isUnlocked: isUnlocked);
   }
 
