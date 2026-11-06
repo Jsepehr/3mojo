@@ -1,4 +1,4 @@
-# Guida: mettere online il primo server Raen
+# Guida: mettere online il primo server Lemani
 
 Guida passo per passo per un **server vero** (VPS + dominio + HTTPS) con cui provare l'app
 fuori dal Wi-Fi di casa. Il server è già pronto in [`server/deploy/`](../server/deploy/)

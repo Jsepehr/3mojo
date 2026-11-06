@@ -1,4 +1,4 @@
-package com.raen.app
+package com.lemani.app
 
 import android.content.Context
 import com.google.android.play.core.integrity.IntegrityManagerFactory

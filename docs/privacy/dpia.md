@@ -1,4 +1,4 @@
-# Raen: valutazione d'impatto sulla protezione dei dati (art. 35 GDPR)
+# Lemani: valutazione d'impatto sulla protezione dei dati (art. 35 GDPR)
 
 > **Bozza tecnica, non consulenza legale.** L'ha scritta chi conosce il codice, per un consulente legale o un DPO che deve rivederla, completarla e approvarla. Le affermazioni tecniche sono state controllate sul codice del repository alla data indicata sotto. Le qualificazioni giuridiche (basi giuridiche, ruoli di Apple e Google, necessità del DPO) sono proposte da validare.
 
@@ -6,7 +6,7 @@
 |---|---|
 | Titolare del trattamento | **[DA COMPILARE: ragione sociale, sede, P.IVA, contatto privacy]** |
 | DPO | **[DA DECIDERE, vedi §8]** |
-| Prodotto | App "Raen" (Android, iOS), pacchetto `threemojo_app`, bundle/application id `com.raen.app`. Server `threemojo_server` (Dart Frog) |
+| Prodotto | App "Lemani" (Android, iOS), pacchetto `threemojo_app`, bundle/application id `com.lemani.app`. Server `threemojo_server` (Dart Frog) |
 | Stato del codice | Ramo `main`, commit `4f7cae1` (ottobre 2026), più le modifiche della versione 0.2: ML Kit tolto (il volto su Android lo rileva `android.media.FaceDetector` del sistema), firma della release Android con chiavi proprie, pulizia dei membri degli hotspot a fine sessione, informativa privacy in app, avviso in evidenza prima del permesso di posizione, ritiro del consenso immediato da online, consenso al dato sensibile versionato. Pagamenti in-app simulati, verifica del dispositivo spenta (`ATTESTATION_MODE=off`) |
 | Versione del documento | 0.2, bozza del 23/10/2026 (0.1: stessa data, prima della rimozione di ML Kit) |
 | Revisione prevista | Prima del lancio, poi a ogni modifica di ciò che viene raccolto, mostrato o conservato (vedi §9) |
@@ -31,7 +31,7 @@ Da verificare con il consulente: la corrispondenza con le voci dell'elenco del G
 
 ### 2.1 Cosa fa l'app
 
-Raen mostra le persone fisicamente vicine (entro 100 m, o 200 m dentro uno stesso "posto affollato" rilevato dal server) che sono online nello stesso momento, si cercano a vicenda e sono ferme da almeno un minuto. Una persona va online con **Start** (selfie del momento più profilo) e ne esce con **End**. Non esistono account, nomi, email, numeri di telefono o identificativi permanenti. Da una foto si manda una richiesta d'incontro con una proposta scelta da una lista chiusa. Se l'altra persona accetta, nasce un match con chat. Un solo incontro alla volta.
+Lemani mostra le persone fisicamente vicine (entro 100 m, o 200 m dentro uno stesso "posto affollato" rilevato dal server) che sono online nello stesso momento, si cercano a vicenda e sono ferme da almeno un minuto. Una persona va online con **Start** (selfie del momento più profilo) e ne esce con **End**. Non esistono account, nomi, email, numeri di telefono o identificativi permanenti. Da una foto si manda una richiesta d'incontro con una proposta scelta da una lista chiusa. Se l'altra persona accetta, nasce un match con chat. Un solo incontro alla volta.
 
 ### 2.2 Flussi di dati
 
@@ -196,7 +196,7 @@ In RAM ci sono, per chi è online in quel momento: posizione precisa, selfie, ge
 ### 6.7 Terze parti
 - **ML Kit tolto** (versione 0.2): inviava a Google telemetria con un **identificativo per installazione**. Ora su Android il volto lo rileva `android.media.FaceDetector` del sistema operativo, sul dispositivo e senza rete. Il prezzo è la precisione: è un rilevatore più vecchio, meno tollerante con volti girati o inclinati e con poca luce. Un falso negativo impedisce lo Start a chi ha fatto un selfie vero (l'utente rifà la foto); un falso positivo lascia passare una foto senza volto, ma il controllo non è mai stato una verifica d'identità (§6.6). Soglie da regolare dopo le prove su telefoni veri (checklist §6).
 - **Play Billing Library** (Android, `com.android.billingclient:billing`, portata da `in_app_purchase_android`) contiene e usa `com.google.android.datatransport` (sorgente di log `PLAY_BILLING_LIBRARY` nelle sue classi), quindi con ogni probabilità invia a Google diagnostica sul proprio funzionamento. **Da verificare** sulla documentazione di Google (Play SDK Index, guida Data safety per la Billing Library) e, se confermato, da dichiarare (Data safety, informativa). Non è evitabile finché ci sono acquisti in-app su Play.
-- **App Attest / Play Integrity** (quando accese): Apple e Google trattano dati del dispositivo per il verdetto e sanno che quel dispositivo ha chiesto un'attestazione per Raen.
+- **App Attest / Play Integrity** (quando accese): Apple e Google trattano dati del dispositivo per il verdetto e sanno che quel dispositivo ha chiesto un'attestazione per Lemani.
 - **Acquisti in-app**: Apple e Google sanno chi ha comprato (il loro account). Noi no.
 
 ### 6.8 Diritti degli interessati senza account
@@ -224,14 +224,14 @@ Non potendo identificare l'interessato (art. 11 GDPR), i diritti di accesso, ret
 
 ### Da decidere (titolare, con il consulente)
 
-1. **DPO** (art. 37): obbligatorio se le attività principali consistono in trattamenti su larga scala di categorie particolari o in un monitoraggio regolare e sistematico su larga scala. Raen tratta l'orientamento (art. 9) e la posizione in tempo reale come attività principale: se l'uso cresce è probabile che serva. Decidere ora, o fissare una soglia d'uso oltre la quale nominarlo.
+1. **DPO** (art. 37): obbligatorio se le attività principali consistono in trattamenti su larga scala di categorie particolari o in un monitoraggio regolare e sistematico su larga scala. Lemani tratta l'orientamento (art. 9) e la posizione in tempo reale come attività principale: se l'uso cresce è probabile che serva. Decidere ora, o fissare una soglia d'uso oltre la quale nominarlo.
 2. **Rappresentante nell'UE** (art. 27): serve solo se il titolare non è stabilito nell'UE.
 3. **Hosting nell'UE**: raccomandato (nessun trasferimento per il dato più delicato). Scegliere il fornitore, firmare il **contratto art. 28**, verificare i sub-responsabili e la localizzazione dei backup. La cartella dei record di moderazione non deve finire in backup non cifrati né insieme alla `MODERATION_KEY`.
 4. **Apple e Google**: qualificare il ruolo per servizio (distribuzione, pagamenti, App Attest, Play Integrity, eventuale diagnostica della Play Billing Library; la telemetria ML Kit non c'è più): titolari autonomi o responsabili, secondo i rispettivi termini. Per la diagnostica della Billing Library, se confermata, valutare la contitolarità (logica della sentenza CGUE C‑40/17 *Fashion ID*) e l'art. 5(3) ePrivacy / art. 122 Codice privacy (accesso a informazioni sul terminale). Lo stesso vale per l'attestazione: è "strettamente necessaria"?
 5. **Trasferimenti extra UE**: Apple e Google (USA), da verificare l'adesione aggiornata all'EU-U.S. Data Privacy Framework o le clausole contrattuali tipo dei loro termini. Un hosting extra UE richiederebbe una TIA.
 6. **Base giuridica della posizione**: proposta 6(1)(b). In alternativa il consenso, che però renderebbe il servizio condizionato al consenso (art. 7(4)). Decidere e scriverlo nell'informativa.
 7. **Durata dei record di moderazione** (30 giorni) e **procedura** per accesso, cancellazione e ricorso: chi revisiona, entro quanto, come si riconosce l'interessato senza id, cosa si risponde.
-8. **DSA (Reg. UE 2022/2065)**: Raen mostra i selfie a una cerchia potenzialmente ampia di persone, quindi potrebbe rientrare tra le piattaforme online. Valutare gli obblighi (punto di contatto, meccanismo di segnalazione, motivazione delle restrizioni come la chiusura automatica, gestione dei reclami) e le esenzioni per micro e piccole imprese.
+8. **DSA (Reg. UE 2022/2065)**: Lemani mostra i selfie a una cerchia potenzialmente ampia di persone, quindi potrebbe rientrare tra le piattaforme online. Valutare gli obblighi (punto di contatto, meccanismo di segnalazione, motivazione delle restrizioni come la chiusura automatica, gestione dei reclami) e le esenzioni per micro e piccole imprese.
 9. **Minori e verifica dell'età**: basta l'autodichiarazione più la segnalazione `underage`, o servono strumenti di age assurance?
 10. **Conservazione dei log dell'infrastruttura** (reverse proxy, provider): IP e orari di ogni connessione. Raccomandazione: log di accesso spenti o ridotti, ≤ 7 giorni, senza query string.
 11. **Gestione delle violazioni** (artt. 33-34): chi decide, entro 72 ore, con quale modello di notifica.

@@ -1,4 +1,4 @@
-package com.raen.app
+package com.lemani.app
 
 import android.os.Bundle
 import android.view.WindowManager

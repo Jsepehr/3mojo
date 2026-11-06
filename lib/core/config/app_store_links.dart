@@ -18,7 +18,7 @@ class AppStoreLinks {
   static const String androidUrl = String.fromEnvironment(
     'ANDROID_STORE_URL',
     defaultValue:
-        'TODO_REPLACE_https://play.google.com/store/apps/details?id=com.raen.app',
+        'TODO_REPLACE_https://play.google.com/store/apps/details?id=com.lemani.app',
   );
 
   /// Il link dello store della piattaforma corrente, `null` se non

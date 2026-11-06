@@ -1,4 +1,4 @@
-# Raen: registro delle attività di trattamento (art. 30 GDPR)
+# Lemani: registro delle attività di trattamento (art. 30 GDPR)
 
 > **Bozza tecnica, non consulenza legale.** I campi tra parentesi quadre li compila il titolare. Le descrizioni tecniche corrispondono al codice al commit `4f7cae1` più la rimozione di ML Kit, e alla [DPIA](dpia.md) versione 0.2, che riporta anche i file di riferimento.
 

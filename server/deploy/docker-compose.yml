@@ -1,4 +1,4 @@
-# Raen: server + reverse proxy TLS (Caddy).   Dalla cartella server/deploy/:
+# Lemani: server + reverse proxy TLS (Caddy).   Dalla cartella server/deploy/:
 #
 #   cp .env.example .env      # compilare (vedi i commenti nel file)
 #   docker compose up -d --build

@@ -16,7 +16,7 @@
 		<string>ar</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Raen</string>
+	<string>Lemani</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,7 +24,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Raen</string>
+	<string>Lemani</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -39,9 +39,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Raen uses the camera only to take the selfie for your session, which people nearby can see while you are online. The face check happens on your device: no biometric data is saved or sent.</string>
+	<string>Lemani uses the camera only to take the selfie for your session, which people nearby can see while you are online. The face check happens on your device: no biometric data is saved or sent.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Raen uses your precise location only while you are online: it is sent to the server to show you people within 100 metres (or in the same busy place) and to show you to them. When you go offline, it is no longer shared.</string>
+	<string>Lemani uses your precise location only while you are online: it is sent to the server to show you people within 100 metres (or in the same busy place) and to show you to them. When you go offline, it is no longer shared.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

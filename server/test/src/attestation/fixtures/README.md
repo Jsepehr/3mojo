@@ -16,7 +16,7 @@ scaricati il 2026-10-23; impronte SHA-256 dei file uguali a quelle del suo
   `e4ca508153f6619a29d0887eb0ffe19540b9f15c5a6aeccdac26c49affd5f61a`.
 - `termakan-ios27-attestation.json` — un'attestazione vera da un iPhone con
   iOS 27.0.1 (App ID `4L4SS26L9J.com.jewei.termakan`, ambiente production),
-  con lo stesso schema di Raen: `clientDataHash = SHA-256(utf8(challenge))`.
+  con lo stesso schema di Lemani: `clientDataHash = SHA-256(utf8(challenge))`.
   Chiave mai registrata su nessun server. Certificato valido dal 2026-10-11
   al 2026-10-14. SHA-256 del file:
   `c65797c5b0243e68c744aa90edb752bcb320d757887ce36e963c3a19c787d1ad`.

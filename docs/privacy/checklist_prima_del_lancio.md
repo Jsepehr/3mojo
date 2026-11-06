@@ -1,4 +1,4 @@
-# Raen: checklist prima del lancio
+# Lemani: checklist prima del lancio
 
 > **Bozza tecnica, non consulenza legale.** Elenco operativo di ciò che resta da fare prima di pubblicare su App Store e Google Play, ricavato dal codice al commit `4f7cae1` (più la rimozione di ML Kit, la firma della release, l'informativa in app, l'avviso in evidenza sulla posizione, il ritiro del consenso da online e il consenso versionato) e da [dpia.md](dpia.md). Spuntare ogni voce con data e responsabile. Le voci **[B]** sono bloccanti.
 
@@ -40,7 +40,7 @@
 - [x] **Launch screen** blu di marca senza lampo bianco, in chiaro e scuro, iOS e Android (guida §9.3). L'icona resta quella esistente (scelta dell'utente); [ ] strato monocromo per le icone a tema Android 13+ ancora da fare.
 - [x] `ITSAppUsesNonExemptEncryption = false` in `Info.plist` (solo TLS di sistema e Keychain: esenzione); riconfermare se si aggiunge crittografia propria nel client.
 - [ ] Costante dei link degli store in `lib/core/config/app_store_links.dart` (o `IOS_STORE_URL`/`ANDROID_STORE_URL` in `config/release.json`): finché sono segnaposto, "Condividi l'app" manda solo la frase.
-- [ ] `applicationId` / bundle id `com.raen.app`: decisione ancora aperta (cambiarlo dopo la pubblicazione crea un'app diversa).
+- [ ] `applicationId` / bundle id `com.lemani.app` (era `com.raen.app`, cambiato con il nome dell'app): confermarlo prima di registrare l'app negli store, perché dopo la pubblicazione cambiarlo crea un'app diversa.
 - [ ] iOS: capability **App Attest** sull'App ID; entitlement `production` già in `ios/Runner/Runner.entitlements`.
 - [x] **Modalità demo dichiarata** per la revisione con un solo telefono (Apple 2.1), senza profili finti nel servizio vero: link "Come funziona? Prova la demo" sotto Start e nel profilo da compilare, voce "Prova la demo" nel menu (solo da offline). Tutta sul telefono (`DemoScope`, `lib/demo_scope.dart`): datasource finti anche in release, nessun messaggio al server né WebSocket, nessuna posizione, fotocamera, permesso o negozio vero; avatar illustrati generati sul telefono; banner fisso "Demo — persone dimostrative, non reali" e badge "Demo" su ogni persona; all'uscita si azzera tutto (passi di End). Test in `test/features/demo/demo_mode_test.dart`.
 - [ ] Provare la demo su un telefono vero **in release** e in modalità aereo (deve funzionare uguale): ingresso dalla home, dal menu e dal profilo da compilare; richiesta → sì → chat; richiesta in arrivo dopo ~15 s; Blocca/Segnala; sblocco gratuito col timer; Esci dalla demo ed End riportano alla home vera; VoiceOver/TalkBack leggono il banner e "Persona dimostrativa".

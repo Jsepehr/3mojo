@@ -13,7 +13,7 @@
 	Le app distribuite da App Store e TestFlight usano comunque production.
 
 	TODO(attestation): la firma richiede la capability "App Attest" sull'App
-	ID (Developer portal → Identifiers → com.raen.app). Con la firma
+	ID (Developer portal → Identifiers → com.lemani.app). Con la firma
 	automatica Xcode la aggiunge da sé al primo build firmato con il team;
 	con profili manuali vanno rigenerati dopo averla accesa.
 	-->

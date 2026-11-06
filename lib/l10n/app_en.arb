@@ -1,8 +1,8 @@
 {
   "@@locale": "en",
-  "app_title": "Raen",
+  "app_title": "Lemani",
   "@app_title": {
-    "description": "Product name (Raen), shown in the OS task switcher and in the About dialog"
+    "description": "Product name (Lemani), shown in the OS task switcher and in the About dialog"
   },
   "meet_people_near_you": "Meet people near you",
   "@meet_people_near_you": {
@@ -264,7 +264,7 @@
   "@meet_people_nearby_in_real_time": {
     "description": "Short description shown in the About dialog"
   },
-  "check_out_raen_an_app_to_meet_people_nearby_in_real_time": "Check out Raen, an app to meet people nearby in real time!",
+  "check_out_raen_an_app_to_meet_people_nearby_in_real_time": "Check out Lemani, an app to meet people nearby in real time!",
   "@check_out_raen_an_app_to_meet_people_nearby_in_real_time": {
     "description": "Text shared through the native share sheet when the user taps Share app"
   },
@@ -352,7 +352,7 @@
   "@i_confirm_i_am_at_least_18_years_old": {
     "description": "Required age confirmation"
   },
-  "i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet": "I agree that Raen uses my gender and who I want to meet to show me compatible people. It's sent only while I'm online and never shown — but people who can see me may guess who I'm looking for.",
+  "i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet": "I agree that Lemani uses my gender and who I want to meet to show me compatible people. It's sent only while I'm online and never shown — but people who can see me may guess who I'm looking for.",
   "@i_agree_that_raen_uses_my_gender_and_who_i_want_to_meet": {
     "description": "Explicit consent for gender + preference (special category data)"
   },
@@ -500,7 +500,7 @@
   "@start_error_profile_missing": {
     "description": "Shown in the Start flow when the profile has not been filled in yet"
   },
-  "profile_error_adult_required": "Raen is for adults only: confirm you're at least 18.",
+  "profile_error_adult_required": "Lemani is for adults only: confirm you're at least 18.",
   "@profile_error_adult_required": {
     "description": "Profile page error: the 18+ confirmation is missing"
   },
@@ -549,7 +549,7 @@
   "@device_not_verified_title": {
     "description": "Title on the online home when the server refuses the new session because it could not verify (App Attest / Play Integrity) that this is the genuine app on a genuine device"
   },
-  "device_not_verified_body": "To protect the people around you, Raen checks that it's the original app on a real device. The check didn't pass here — for example on an emulator, a modified device or an app not installed from the store. Try again, or end the session.",
+  "device_not_verified_body": "To protect the people around you, Lemani checks that it's the original app on a real device. The check didn't pass here — for example on an emulator, a modified device or an app not installed from the store. Try again, or end the session.",
   "@device_not_verified_body": {
     "description": "Body for the same error: why the check exists, typical causes, and the two ways out (Retry button, End session button)"
   },
@@ -557,7 +557,7 @@
   "@end_and_retake_selfie": {
     "description": "Button when the server rejected the selfie: ends the session and reopens the Start flow"
   },
-  "background_location_notification_title": "Raen is online",
+  "background_location_notification_title": "Lemani is online",
   "@background_location_notification_title": {
     "description": "Android persistent notification title while online with the app in the background"
   },
@@ -718,7 +718,7 @@
   "@block_dialog_title": {
     "description": "Title of the dialog confirming a block. Neutral about the other person's gender"
   },
-  "block_dialog_body": "You won't see each other for the rest of this session: this person disappears from Nearby, requests between you are cancelled and your match, if any, ends. They won't be notified. Raen has no accounts: if they start a new session, you might see them again.",
+  "block_dialog_body": "You won't see each other for the rest of this session: this person disappears from Nearby, requests between you are cancelled and your match, if any, ends. They won't be notified. Lemani has no accounts: if they start a new session, you might see them again.",
   "@block_dialog_body": {
     "description": "Body of the block confirmation: what happens, that the other person is not told, and honestly how long it lasts (only this session: the app has no accounts). Neutral about gender"
   },
@@ -791,7 +791,7 @@
   "@safety_and_reports": {
     "description": "Drawer item and title of the safety page (how to block/report, terms, contact)"
   },
-  "safety_page_intro": "Raen is for meeting people in person, with respect. If someone makes you uncomfortable, you can block or report them at any time.",
+  "safety_page_intro": "Lemani is for meeting people in person, with respect. If someone makes you uncomfortable, you can block or report them at any time.",
   "@safety_page_intro": {
     "description": "Intro of the safety page"
   },
@@ -815,7 +815,7 @@
   "@safety_no_accounts_title": {
     "description": "Section title on the safety page: limits of blocking without accounts"
   },
-  "safety_no_accounts_body": "Raen has no accounts, so a block lasts until you end your session. After a new Start, or if the other person starts again, you might see each other again: block or report again if needed.",
+  "safety_no_accounts_body": "Lemani has no accounts, so a block lasts until you end your session. After a new Start, or if the other person starts again, you might see each other again: block or report again if needed.",
   "@safety_no_accounts_body": {
     "description": "Honest note: without accounts a block lasts until the session ends. \"End\" and \"Start\" are the app buttons (use the same words as those buttons)"
   },
@@ -847,11 +847,11 @@
   "@terms_of_use": {
     "description": "Title of the terms of use (page and acceptance dialog)"
   },
-  "terms_intro": "By using Raen you accept these rules. There is zero tolerance for objectionable content and abusive users.",
+  "terms_intro": "By using Lemani you accept these rules. There is zero tolerance for objectionable content and abusive users.",
   "@terms_intro": {
     "description": "First line of the terms of use: zero tolerance"
   },
-  "terms_rule_adults": "Raen is only for people aged 18 or over. No minors.",
+  "terms_rule_adults": "Lemani is only for people aged 18 or over. No minors.",
   "@terms_rule_adults": {
     "description": "Terms rule: adults only"
   },
@@ -899,7 +899,7 @@
   "@session_closed_after_reports_title": {
     "description": "Title of the dialog shown when the server closed the session after reports from several people"
   },
-  "session_closed_after_reports_body": "Your session was closed after reports from several people. New sessions from this network are paused for a while. Please respect Raen's terms of use.",
+  "session_closed_after_reports_body": "Your session was closed after reports from several people. New sessions from this network are paused for a while. Please respect Lemani's terms of use.",
   "@session_closed_after_reports_body": {
     "description": "Body of the dialog: the session was closed after reports, new sessions from this network are paused for a while"
   },
@@ -907,15 +907,15 @@
   "@session_closed_server_restart_title": {
     "description": "Title of the dialog shown when the server closed the session because it is restarting (deploy/maintenance)"
   },
-  "session_closed_server_restart_body": "Raen's server was restarted for maintenance, so your session ended. Nothing was saved: tap Start to go back online.",
+  "session_closed_server_restart_body": "Lemani's server was restarted for maintenance, so your session ended. Nothing was saved: tap Start to go back online.",
   "@session_closed_server_restart_body": {
     "description": "Body of that dialog: the session ended because the server restarted, nothing was saved, the person can tap Start again"
   },
-  "app_update_required_title": "Update Raen",
+  "app_update_required_title": "Update Lemani",
   "@app_update_required_title": {
     "description": "Title when the server refuses this app version because its protocol is too old: the app must be updated"
   },
-  "app_update_required_body": "This version of Raen is no longer supported by the server. Update the app from the App Store or Google Play to keep using it.",
+  "app_update_required_body": "This version of Lemani is no longer supported by the server. Update the app from the App Store or Google Play to keep using it.",
   "@app_update_required_body": {
     "description": "Body for the same case: update from the store to keep using the app"
   },
@@ -931,9 +931,9 @@
   "@ok": {
     "description": "Generic button closing an informational dialog"
   },
-  "about_legalese": "© {year} Raen",
+  "about_legalese": "© {year} Lemani",
   "@about_legalese": {
-    "description": "Copyright line in the About dialog. {year} is the current year (e.g. 2026); keep the product name Raen",
+    "description": "Copyright line in the About dialog. {year} is the current year (e.g. 2026); keep the product name Lemani",
     "placeholders": {
       "year": {
         "type": "String"
@@ -1155,7 +1155,7 @@
   "@privacy_in_short_title": {
     "description": "Privacy policy section title"
   },
-  "privacy_in_short_no_accounts": "Raen has no accounts: no name, email, phone number or password.",
+  "privacy_in_short_no_accounts": "Lemani has no accounts: no name, email, phone number or password.",
   "@privacy_in_short_no_accounts": {
     "description": "Privacy policy, 'In short' bullet"
   },
@@ -1179,7 +1179,7 @@
   "@privacy_data_location_title": {
     "description": "Privacy policy, data item title"
   },
-  "privacy_data_location_body": "To show you people within about 100 metres (or in the same busy place) and to show you to them. No one sees it: other people never receive your location or how far you are, they only know you're close enough to appear. On Android you stay visible even with the app in the background, until you tap End (a persistent notification shows this). On iPhone your location is only used while Raen is open on screen.",
+  "privacy_data_location_body": "To show you people within about 100 metres (or in the same busy place) and to show you to them. No one sees it: other people never receive your location or how far you are, they only know you're close enough to appear. On Android you stay visible even with the app in the background, until you tap End (a persistent notification shows this). On iPhone your location is only used while Lemani is open on screen.",
   "@privacy_data_location_body": {
     "description": "Privacy policy, data item: why the location is used and who sees it. Platform behaviour: Android keeps it in the background with a persistent notification, iPhone only with the app on screen"
   },
@@ -1283,7 +1283,7 @@
   "@privacy_basis_consent": {
     "description": "Privacy policy: legal basis 'explicit consent', Art. 9(2)(a) GDPR, for gender and who you want to meet. Quotes the 'Prefer not to say' and 'Everyone' options of the profile"
   },
-  "privacy_basis_legitimate": "Legitimate interests (Art. 6(1)(f)): blocks, reports, moderation records, IP limits and the device check, to protect people using Raen. You can object by writing to us.",
+  "privacy_basis_legitimate": "Legitimate interests (Art. 6(1)(f)): blocks, reports, moderation records, IP limits and the device check, to protect people using Lemani. You can object by writing to us.",
   "@privacy_basis_legitimate": {
     "description": "Privacy policy: legal basis 'legitimate interests', Art. 6(1)(f) GDPR"
   },
@@ -1363,7 +1363,7 @@
   "@privacy_rights_title": {
     "description": "Privacy policy section title"
   },
-  "privacy_rights_intro": "You have the right of access, rectification, erasure, restriction, objection and portability, and you can withdraw consent. Because Raen has no accounts and doesn't identify you, you exercise most of these rights yourself, immediately, in the app:",
+  "privacy_rights_intro": "You have the right of access, rectification, erasure, restriction, objection and portability, and you can withdraw consent. Because Lemani has no accounts and doesn't identify you, you exercise most of these rights yourself, immediately, in the app:",
   "@privacy_rights_intro": {
     "description": "Privacy policy, rights: introduction"
   },
@@ -1400,7 +1400,7 @@
   "@privacy_age_title": {
     "description": "Privacy policy section title"
   },
-  "privacy_age_body": "Raen is only for adults (18+). If you think someone is under 18, report them with the reason \"Seems to be under 18\".",
+  "privacy_age_body": "Lemani is only for adults (18+). If you think someone is under 18, report them with the reason \"Seems to be under 18\".",
   "@privacy_age_body": {
     "description": "Privacy policy: 18+ only. Quotes the report reason for minors"
   },
@@ -1424,7 +1424,7 @@
   "@location_disclosure_title": {
     "description": "Title of the full-screen notice shown before the system location permission request (Google Play prominent disclosure)"
   },
-  "location_disclosure_use": "When you tap Start, Raen uses your precise location to show you people within about 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are.",
+  "location_disclosure_use": "When you tap Start, Lemani uses your precise location to show you people within about 100 metres (or in the same busy place) and to show you to them. We never show anyone your location or how far you are.",
   "@location_disclosure_use": {
     "description": "Location notice: what the location is used for. Start is the name of the button"
   },
@@ -1432,7 +1432,7 @@
   "@location_disclosure_background": {
     "description": "Location notice, Android only: the location keeps being used in the background (foreground service with a persistent notification) until End. End is the name of the button"
   },
-  "location_disclosure_foreground_only": "Your location is only used while Raen is open on screen, not in the background: if you leave the app or lock the screen, it stops being updated until you come back.",
+  "location_disclosure_foreground_only": "Your location is only used while Lemani is open on screen, not in the background: if you leave the app or lock the screen, it stops being updated until you come back.",
   "@location_disclosure_foreground_only": {
     "description": "Location notice, iPhone: the location is used only with the app open on screen (no background location on iOS)"
   },
@@ -1476,7 +1476,7 @@
   "@profile_saved_session_ended": {
     "description": "Snackbar after saving a profile change that ended the session"
   },
-  "start_error_consent_required": "To go online, confirm again that Raen can use your gender and who you want to meet.",
+  "start_error_consent_required": "To go online, confirm again that Lemani can use your gender and who you want to meet.",
   "@start_error_consent_required": {
     "description": "Start error: the consent to gender and who you want to meet must be confirmed again (given for an older version of its text)"
   },

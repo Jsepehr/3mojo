@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/config/store_config.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/cmp_splash_intro.dart';
 import 'demo_scope.dart';
 import 'features/chat/data/datasources/chat_remote_data_source.dart';
 import 'features/chat/data/datasources/chat_remote_data_source_fake_impl.dart';
@@ -512,7 +513,7 @@ class App extends StatelessWidget {
           ),
         ),
       ],
-      child: const RaenApp(),
+      child: const RaenApp(showIntro: true),
     );
   }
 }
@@ -525,8 +526,14 @@ class App extends StatelessWidget {
 /// + i provider della demo) sopra il `Navigator`, che resta lo stesso (ha
 /// una `GlobalKey`); la home viene ricreata ([_RaenHome], chiave diversa)
 /// perché gli avvisi si riabbonino ai provider del mondo giusto.
+///
+/// [showIntro] mette sopra la home, all'avvio, l'icona che fa un giro
+/// (`CmpSplashIntro`): la home si costruisce intanto sotto. Solo `App` lo
+/// accende: i test montano `RaenApp` senza (niente attese in più).
 class RaenApp extends StatefulWidget {
-  const RaenApp({super.key});
+  const RaenApp({super.key, this.showIntro = false});
+
+  final bool showIntro;
 
   @override
   State<RaenApp> createState() => _RaenAppState();
@@ -534,6 +541,7 @@ class RaenApp extends StatefulWidget {
 
 class _RaenAppState extends State<RaenApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey();
+  late bool _introVisible = widget.showIntro;
 
   @override
   Widget build(BuildContext context) {
@@ -547,9 +555,21 @@ class _RaenAppState extends State<RaenApp> {
         locale: proSettings.locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        builder: (context, child) => context.watch<ProDemo>().isActive
-            ? DemoScope(navigatorKey: _navigatorKey, child: child!)
-            : child!,
+        builder: (context, child) {
+          final app = context.watch<ProDemo>().isActive
+              ? DemoScope(navigatorKey: _navigatorKey, child: child!)
+              : child!;
+          if (!_introVisible) return app;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              app,
+              CmpSplashIntro(
+                onFinished: () => setState(() => _introVisible = false),
+              ),
+            ],
+          );
+        },
         home: const _RaenHome(),
       ),
     );

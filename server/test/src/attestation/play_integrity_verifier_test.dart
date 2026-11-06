@@ -8,7 +8,7 @@ import 'package:threemojo_server/src/attestation/attestation_verifier.dart';
 import 'package:threemojo_server/src/attestation/play_integrity_api.dart';
 import 'package:threemojo_server/src/attestation/play_integrity_verifier.dart';
 
-const _package = 'com.raen.app';
+const _package = 'com.lemani.app';
 const _nonce = 'nonce-of-this-socket';
 final _now = DateTime.utc(2026, 10, 23, 12);
 

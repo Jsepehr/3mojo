@@ -52,7 +52,7 @@ List<int> _cbor(Object value) => switch (value) {
 };
 
 const _teamId = 'ABCDE12345';
-const _bundleId = 'com.raen.app';
+const _bundleId = 'com.lemani.app';
 const _nonce = 'challenge-nonce-of-this-socket';
 final _now = DateTime.utc(2026, 6, 1);
 
@@ -191,7 +191,7 @@ void main() {
       );
     });
 
-    group('an attestation from a real iPhone, same scheme as Raen', () {
+    group('an attestation from a real iPhone, same scheme as Lemani', () {
       final fixture = _fixture('termakan-ios27-attestation.json');
       final appId = (fixture['appId'] as String).split('.');
       final teamId = appId.first;

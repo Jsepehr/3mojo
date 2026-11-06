@@ -4,7 +4,7 @@
 [![License: MIT][license_badge]][license_link]
 [![Powered by Dart Frog](https://img.shields.io/endpoint?url=https://tinyurl.com/dartfrog-badge)](https://dart-frog.dev)
 
-Backend [Dart Frog](https://dart-frog.dev) dell'app **Raen** (`threemojo_app`,
+Backend [Dart Frog](https://dart-frog.dev) dell'app **Lemani** (`threemojo_app`,
 nella cartella superiore). Tiene **solo in RAM** tutto lo stato di sessione
 (sessioni, richieste d'incontro, chat inoltrate, blocchi, segnalazioni,
 hotspot): riavviarlo lo cancella. **Due eccezioni su disco, entrambe cifrate**:
@@ -351,8 +351,8 @@ Console in [../guida_per_sviluppatori.md](../guida_per_sviluppatori.md)
 # Prova in locale col negozio simulato (il default)
 dart build/bin/server.dart
 # Pagamenti veri, sandbox
-PAYMENTS_MODE=real APPLE_BUNDLE_ID=com.raen.app APPLE_PRODUCT_ID=<id> \
-APPLE_ENVIRONMENT=sandbox GOOGLE_PACKAGE_NAME=com.raen.app \
+PAYMENTS_MODE=real APPLE_BUNDLE_ID=com.lemani.app APPLE_PRODUCT_ID=<id> \
+APPLE_ENVIRONMENT=sandbox GOOGLE_PACKAGE_NAME=com.lemani.app \
 GOOGLE_PRODUCT_ID=<id> GOOGLE_SERVICE_ACCOUNT_JSON_PATH=/etc/raen/play.json \
 dart build/bin/server.dart
 ```

@@ -2,7 +2,7 @@
 
 Questa guida spiega **a livello di codice** come è fatta l'app, con l'obiettivo che chi la legge possa aggiungere o modificare una feature senza dover reverse-engineerare tutto da zero. Le regole architetturali "ufficiali" restano in [CLAUDE.md](CLAUDE.md) (cosa va dove) e [CHECKLIST.md](CHECKLIST.md) (le domande da farsi prima di creare un file) — questa guida le dà per lette e si concentra sul **come funziona davvero**, feature per feature, con nomi di classi e file reali.
 
-Nomi: per l'utente l'app si chiama **Raen**; il repository e i pacchetti Dart si chiamano `threemojo_app` (app) e `threemojo_server` (server).
+Nomi: per l'utente l'app si chiama **Lemani** (prima Raen); bundle/application id `com.lemani.app`; gli altri identificatori tecnici restano `raen` (canali nativi `raen/…`, `RAEN_ENV`, `X-Raen-Protocol`); il repository e i pacchetti Dart si chiamano `threemojo_app` (app) e `threemojo_server` (server).
 
 ---
 
@@ -304,21 +304,21 @@ Gli acquisti rimasti aperti (app chiusa prima della conferma, server muto, pagam
 **Andare in produzione, passo per passo**
 
 *App Store (iOS)*
-1. Apple Developer Program attivo; in App Store Connect l'app con il bundle id (`com.raen.app`); **Accordi, imposte e banking → accordo "App a pagamento" attivo** (senza, i prodotti non si caricano: "Non disponibile").
-2. Funzionalità → Acquisti in-app → nuovo **Consumabile**, ID prodotto (es. `com.raen.app.unlock_2h`), prezzo 0,99/1 €, nome e descrizione localizzati (senza promettere incontri), screenshot per la revisione.
+1. Apple Developer Program attivo; in App Store Connect l'app con il bundle id (`com.lemani.app`); **Accordi, imposte e banking → accordo "App a pagamento" attivo** (senza, i prodotti non si caricano: "Non disponibile").
+2. Funzionalità → Acquisti in-app → nuovo **Consumabile**, ID prodotto (es. `com.lemani.app.unlock_2h`), prezzo 0,99/1 €, nome e descrizione localizzati (senza promettere incontri), screenshot per la revisione.
 3. Utenti e accesso → Sandbox → crea un tester; sul telefono Impostazioni → App Store → Account sandbox.
-4. Server: `PAYMENTS_MODE=real`, `APPLE_BUNDLE_ID=com.raen.app`, `APPLE_PRODUCT_ID=<id>`, `APPLE_ENVIRONMENT=sandbox`. Opzionale: Utenti e accesso → Integrazioni → chiave "Acquisti in-app" (`.p8`) → `APPLE_KEY_ID`, `APPLE_ISSUER_ID`, `APPLE_PRIVATE_KEY_PATH`.
+4. Server: `PAYMENTS_MODE=real`, `APPLE_BUNDLE_ID=com.lemani.app`, `APPLE_PRODUCT_ID=<id>`, `APPLE_ENVIRONMENT=sandbox`. Opzionale: Utenti e accesso → Integrazioni → chiave "Acquisti in-app" (`.p8`) → `APPLE_KEY_ID`, `APPLE_ISSUER_ID`, `APPLE_PRIVATE_KEY_PATH`.
 5. App su un iPhone vero: `flutter run --dart-define=REAL_PAYMENTS=true --dart-define=IOS_UNLOCK_PRODUCT_ID=<id> --dart-define=API_BASE_URL=http://<ip-lan>:8080` (o TestFlight, che usa la sandbox). **Non** usare un file `.storekit` di Xcode per la prova completa: quelle transazioni le firma Xcode, non Apple, e il server le rifiuta (va bene solo per provare la UI).
 6. Prove: acquisto riuscito (chip "Sbloccato"), annullato (nessun messaggio), "Chiedi di acquistare" (sandbox: "in attesa"), server spento durante l'acquisto (poi riacceso: lo sblocco arriva da solo, l'acquisto si completa), secondo acquisto dopo la scadenza.
 7. Notifiche (opzionale): Informazioni sull'app → Notifiche del server App Store → URL sandbox e produzione `https://<server>/paywall/notifications/apple`, versione 2; `APPLE_NOTIFICATIONS_ENABLED=true`. "Request a Test Notification" deve rispondere 200; un rimborso sandbox revoca lo sblocco.
 8. Produzione: `APPLE_ENVIRONMENT=production` (accetta anche le transazioni sandbox di App Review) e build `flutter build ipa --release --dart-define=REAL_PAYMENTS=true --dart-define=IOS_UNLOCK_PRODUCT_ID=<id> --dart-define=API_BASE_URL=https://<server>`. Inviare il prodotto in revisione **insieme** alla build.
 
 *Google Play (Android)*
-1. App in Play Console (`com.raen.app`) con **profilo pagamenti** attivo; caricare una build qualunque (l'AAB contiene già il permesso BILLING del plugin) in un canale di test interno: prima non si possono creare prodotti.
+1. App in Play Console (`com.lemani.app`) con **profilo pagamenti** attivo; caricare una build qualunque (l'AAB contiene già il permesso BILLING del plugin) in un canale di test interno: prima non si possono creare prodotti.
 2. Monetizza → Prodotti → Prodotti in-app → nuovo prodotto (es. `unlock_2h`), prezzo 1 €, **Attivo**.
 3. Impostazioni → Test delle licenze: aggiungere gli account Gmail dei tester (hanno le carte di prova "approva sempre", "rifiuta sempre", e una "lenta" che resta **in attesa** qualche minuto: prova il pendente).
 4. Google Cloud: abilitare "Google Play Android Developer API", creare un service account e la sua chiave JSON; Play Console → Utenti e autorizzazioni → invitare l'email del service account con "Visualizza dati finanziari" e "Gestisci ordini" (può volerci fino a un giorno perché valga).
-5. Server: `PAYMENTS_MODE=real`, `GOOGLE_PACKAGE_NAME=com.raen.app`, `GOOGLE_PRODUCT_ID=<id>`, `GOOGLE_SERVICE_ACCOUNT_JSON_PATH=<file>`.
+5. Server: `PAYMENTS_MODE=real`, `GOOGLE_PACKAGE_NAME=com.lemani.app`, `GOOGLE_PRODUCT_ID=<id>`, `GOOGLE_SERVICE_ACCOUNT_JSON_PATH=<file>`.
 6. App installata dal link del test interno (stesso applicationId e firma di Play): `flutter build appbundle --release --dart-define=REAL_PAYMENTS=true --dart-define=ANDROID_UNLOCK_PRODUCT_ID=<id> --dart-define=API_BASE_URL=https://<server>`.
 7. Stesse prove di iOS, più la carta "lenta" (in attesa → sblocco da solo) e un rimborso da Gestione ordini.
 8. Notifiche (opzionale): Pub/Sub → topic, ruolo "Publisher" a `google-play-developer-notifications@system.gserviceaccount.com`; Play Console → Configurazione della monetizzazione → topic delle notifiche in tempo reale; sottoscrizione **push** verso `https://<server>/paywall/notifications/google?token=<GOOGLE_RTDN_TOKEN>` (`openssl rand -hex 32`). "Invia notifica di prova" → 200.
@@ -371,12 +371,12 @@ Richiesti da Apple (guideline 1.2, contenuti generati dagli utenti) e necessari 
 
 **Server** (`server/lib/src/attestation/`): `AttestationConfig` (variabili d'ambiente), `AttestationChallenge`, `AttestationGate` (la regola delle modalità, limite per IP, esiti e contatori), `PlayIntegrityVerifier` + `PlayIntegrityApi` (`decodeIntegrityToken` con service account via `googleapis_auth`), `AppAttestVerifier` (CBOR con `crypto/cbor.dart`, catena X.509 con `crypto/x509_certificate.dart` fino ad `AppleAppAttestRoot`), `FakeAttestationVerifier`. Le utility crittografiche comuni ai pagamenti stanno in `server/lib/src/crypto/`. I test usano anche l'attestazione d'esempio pubblicata da Apple e una vera di un iPhone (`server/test/src/attestation/fixtures/`).
 
-**Perché solo attestazione, niente assertion (iOS)**: le assertion servono a riusare la stessa chiave nel tempo, e richiedono che il server ricordi chiave pubblica e contatore per `keyId` — un identificativo stabile del dispositivo tra le sessioni, ciò che Raen evita. Con una chiave nuova per sessione e una sola verifica all'`hello` della sessione nuova il server non conserva nulla; le riconnessioni della stessa sessione non si riattestano. Il prezzo: sul telefono restano chiavi App Attest inutilizzate (nel portachiavi di sistema dell'app, cancellate con la disinstallazione), e ogni Start è una chiamata ad Apple (Apple limita il volume di `attestKey` per app: attivare per gradi).
+**Perché solo attestazione, niente assertion (iOS)**: le assertion servono a riusare la stessa chiave nel tempo, e richiedono che il server ricordi chiave pubblica e contatore per `keyId` — un identificativo stabile del dispositivo tra le sessioni, ciò che Lemani evita. Con una chiave nuova per sessione e una sola verifica all'`hello` della sessione nuova il server non conserva nulla; le riconnessioni della stessa sessione non si riattestano. Il prezzo: sul telefono restano chiavi App Attest inutilizzate (nel portachiavi di sistema dell'app, cancellate con la disinstallazione), e ogni Start è una chiamata ad Apple (Apple limita il volume di `attestKey` per app: attivare per gradi).
 
 **Privacy**:
 - nessun id permanente: niente `keyId` salvato (né sul telefono né sul server), niente token conservati; il token Play Integrity non contiene identificativi del dispositivo o dell'account; del verdetto si leggono solo package, `requestHash`, orario, `appRecognitionVerdict`, `deviceRecognitionVerdict`;
 - sul server in RAM restano solo contatori per esito e, per un minuto, gli orari delle attestazioni per IP (limite); il log scrive modalità, piattaforma, esito e motivo, mai IP/token/nonce/keyId;
-- terze parti: Apple (App Attest) e Google (Play Integrity) trattano dati del dispositivo per dare il verdetto e sanno che quel dispositivo ha chiesto un'attestazione per Raen. Va scritto nell'informativa privacy e, per Google, nel Data Safety di Play; nessun nuovo dato raccolto da noi.
+- terze parti: Apple (App Attest) e Google (Play Integrity) trattano dati del dispositivo per dare il verdetto e sanno che quel dispositivo ha chiesto un'attestazione per Lemani. Va scritto nell'informativa privacy e, per Google, nel Data Safety di Play; nessun nuovo dato raccolto da noi.
 
 #### Per attivare la verifica del dispositivo
 
@@ -391,7 +391,7 @@ Ogni punto del codice che dipende da questi passi è marcato `TODO(attestation)`
 6. Data Safety di Play: dichiarare l'uso della Play Integrity API (dati del dispositivo trattati da Google per la sicurezza / prevenzione frodi).
 
 *Apple (iOS)*
-1. Developer portal → Certificates, Identifiers & Profiles → Identifiers → `com.raen.app` → spuntare **App Attest** (con la firma automatica Xcode lo fa da sé al primo build firmato; con profili manuali rigenerarli).
+1. Developer portal → Certificates, Identifiers & Profiles → Identifiers → `com.lemani.app` → spuntare **App Attest** (con la firma automatica Xcode lo fa da sé al primo build firmato; con profili manuali rigenerarli).
 2. Entitlement `com.apple.developer.devicecheck.appattest-environment`: già in `ios/Runner/Runner.entitlements` (`production`) e collegato alle configurazioni **Release e Profile** (`CODE_SIGN_ENTITLEMENTS`). Debug non lo ha (usa l'attestazione finta): per provare App Attest vero in debug su un iPhone, aggiungere `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements` anche alla configurazione Debug (o un file a parte con `development`) e lanciare con `--dart-define=ATTESTATION_NATIVE=true`.
 3. Annotare il **Team ID** (Membership details).
 4. Ambiente: le build App Store / TestFlight usano sempre `production`; il server va configurato con lo stesso ambiente dell'entitlement.
@@ -409,7 +409,7 @@ Ogni punto del codice che dipende da questi passi è marcato `TODO(attestation)`
 
 ### 3.10 `demo/` — la modalità demo dichiarata
 
-**Perché esiste.** Raen mostra solo persone fisicamente vicine: un revisore di App Store / Google Play con un solo telefono vedrebbe una lista vuota (rischio di rifiuto, Apple 2.1). Profili finti mostrati agli utenti veri sono vietati (ingannevoli; Apple e Google li vietano per le app di incontri; pratica scorretta nell'UE): niente bot sul server. La soluzione è una demo **dichiarata**, **tutta sul telefono** e **separata** dal mondo reale.
+**Perché esiste.** Lemani mostra solo persone fisicamente vicine: un revisore di App Store / Google Play con un solo telefono vedrebbe una lista vuota (rischio di rifiuto, Apple 2.1). Profili finti mostrati agli utenti veri sono vietati (ingannevoli; Apple e Google li vietano per le app di incontri; pratica scorretta nell'UE): niente bot sul server. La soluzione è una demo **dichiarata**, **tutta sul telefono** e **separata** dal mondo reale.
 
 **Dove si apre.** Sempre visibile, mai nascosta: link "Come funziona? Prova la demo" sotto Start (`CmpTryDemoLink`) e in cima al profilo da compilare (così si prova anche senza profilo), voce "Prova la demo" nel drawer (solo da offline). Tutti chiamano `enterDemo` (`features/demo/presentation/demo_entry.dart`) → `ProDemo.enter` → `CheckDemoAvailableUseCase`: con una sessione reale in corso `DemoUnavailableDuringSessionFailure` (snackbar `demo_unavailable_online`).
 

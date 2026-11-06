@@ -1,4 +1,4 @@
-# Deploy del server Raen
+# Deploy del server Lemani
 
 Server Dart Frog in un container, dietro Caddy che termina TLS. Tutto con
 Docker Compose, su una macchina Linux con un dominio che punta a lei.

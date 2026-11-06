@@ -153,8 +153,8 @@ void main() {
         tester,
       ) async {
         PackageInfo.setMockInitialValues(
-          appName: 'Raen',
-          packageName: 'com.raen.app',
+          appName: 'Lemani',
+          packageName: 'com.lemani.app',
           version: '1.0.0',
           buildNumber: '1',
           buildSignature: '',

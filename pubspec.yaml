@@ -1,5 +1,5 @@
 name: threemojo_app
-description: "Raen: vedi chi è nelle vicinanze e chiedi un incontro, senza account. Sessione solo in memoria, selfie e profilo che restano sul telefono."
+description: "Lemani: vedi chi è nelle vicinanze e chiedi un incontro, senza account. Sessione solo in memoria, selfie e profilo che restano sul telefono."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -88,6 +88,7 @@ flutter:
   assets:
     - assets/fonts/manrope/OFL.txt
     - assets/licenses/apache-2.0.txt
+    - assets/branding/splash_icon.png
 
   # Manrope incluso nell'app (niente download a runtime da Google Fonts:
   # l'IP dell'utente non va a fonts.gstatic.com). Solo i pesi usati dal tema

@@ -21,7 +21,7 @@ val keystoreProperties = Properties().apply {
 val releaseSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 
 android {
-    namespace = "com.raen.app"
+    namespace = "com.lemani.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -37,7 +37,7 @@ android {
     defaultConfig {
         // Identificativo del pacchetto: resta così finché non si decide quello
         // definitivo (cambiarlo dopo la pubblicazione crea un'app diversa).
-        applicationId = "com.raen.app"
+        applicationId = "com.lemani.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

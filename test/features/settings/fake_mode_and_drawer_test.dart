@@ -188,8 +188,8 @@ void main() {
     testWidgets('"About" has the copyright of this year, terms of use, '
         'safety and the licenses button', (tester) async {
       PackageInfo.setMockInitialValues(
-        appName: 'Raen',
-        packageName: 'com.raen.app',
+        appName: 'Lemani',
+        packageName: 'com.lemani.app',
         version: '1.0.0',
         buildNumber: '1',
         buildSignature: '',
@@ -207,7 +207,7 @@ void main() {
       expect(
         find.descendant(
           of: dialog,
-          matching: find.text('© ${DateTime.now().year} Raen'),
+          matching: find.text('© ${DateTime.now().year} Lemani'),
         ),
         findsOneWidget,
       );

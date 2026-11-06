@@ -1,4 +1,4 @@
-# Raen: bozza di informativa privacy (IT / EN)
+# Lemani: bozza di informativa privacy (IT / EN)
 
 > **Bozza tecnica, non consulenza legale.** Testo da rivedere con un consulente prima della pubblicazione. I campi **[tra parentesi quadre]** li compila il titolare (gli stessi segnaposto `TODO(privacy)` di `lib/core/config/privacy_policy_info.dart`). Ogni affermazione corrisponde al codice attuale (commit `4f7cae1` più le modifiche della [DPIA](dpia.md) 0.2): se il codice cambia, va aggiornata (vedi [dpia.md](dpia.md) §9). Acquisti e verifica del dispositivo sono scritti in forma condizionale ("Se acquisti…", "Quando è attiva…"), come nell'app: il testo resta vero con o senza pagamenti reali e attestazione accesi.
 >
@@ -16,7 +16,7 @@ La trovi anche su **[URL pubblico]**.
 Il titolare del trattamento è **[ragione sociale, sede, P.IVA]**. Per la privacy scrivi a **[privacy@…]**. Per la sicurezza e le segnalazioni scrivi a **[safety@…]**. **[Se nominato: il nostro Responsabile della protezione dei dati è raggiungibile a …]**
 
 ### In breve
-- Raen **non ha account**: niente nome, email, numero di telefono né password.
+- Lemani **non ha account**: niente nome, email, numero di telefono né password.
 - Sei visibile solo **mentre sei online**, tra **Start** e **Termina**.
 - Il nostro server tiene i dati della sessione **solo in memoria** e li dimentica alla fine della sessione. Le uniche eccezioni sono i **record di moderazione** e i **record degli acquisti** (vedi sotto), conservati per un tempo limitato.
 - Non vendiamo dati, non facciamo pubblicità e non usiamo strumenti di analisi o di tracciamento.
@@ -25,7 +25,7 @@ Il titolare del trattamento è **[ragione sociale, sede, P.IVA]**. Per la privac
 
 | Cosa | Perché | Chi lo vede |
 |---|---|---|
-| **Posizione precisa**, mentre sei online | Mostrarti chi è entro circa 100 metri (o nello stesso posto affollato) e mostrare te a loro | **Nessuno**: gli altri non ricevono mai la tua posizione né la distanza da te. Sanno solo che sei abbastanza vicino da comparire. Su Android resti visibile **anche con l'app in background**, finché premi Termina (lo indica una notifica fissa). Su iPhone la posizione si usa **solo mentre Raen è aperta sullo schermo** |
+| **Posizione precisa**, mentre sei online | Mostrarti chi è entro circa 100 metri (o nello stesso posto affollato) e mostrare te a loro | **Nessuno**: gli altri non ricevono mai la tua posizione né la distanza da te. Sanno solo che sei abbastanza vicino da comparire. Su Android resti visibile **anche con l'app in background**, finché premi Termina (lo indica una notifica fissa). Su iPhone la posizione si usa **solo mentre Lemani è aperta sullo schermo** |
 | **Selfie** della sessione | Farti riconoscere di persona | Le persone vicine compatibili, chi riceve o manda una tua richiesta, il tuo match. Togliamo dalla foto i metadati (per esempio il luogo dello scatto) |
 | **Genere e chi vuoi incontrare** | Mostrarti solo persone compatibili, e mostrarti solo a loro (in entrambe le direzioni) | **Chi vuoi incontrare: nessuno.** Il genere solo se attivi "Mostra il mio genere agli altri". **Attenzione**: chi ti vede può intuire che rientra in ciò che cerchi |
 | Luogo (un tipo di luogo scelto allo Start, per esempio bar o parco: mai il nome di un locale; facoltativo), lingue (al massimo 2) | Far sapere più o meno dove sei e che lingua parli; il luogo adatta anche le proposte | Le persone vicine compatibili, le richieste, il match |
@@ -44,7 +44,7 @@ Il **profilo** (genere, chi cerchi, lingue, conferma dei 18 anni) **resta sul te
 ### Su che basi
 - **Contratto** (art. 6(1)(b) GDPR): posizione, selfie, profilo, richieste, chat e acquisti servono a darti il servizio che chiedi premendo Start.
 - **Consenso esplicito** (art. 9(2)(a)): per genere e chi vuoi incontrare, che possono rivelare l'orientamento sessuale. Lo dai nel profilo. Non serve se scegli "Preferisco non dirlo" e "Tutti". Puoi ritirarlo in qualsiasi momento (vedi "I tuoi diritti").
-- **Interesse legittimo** (art. 6(1)(f)): blocchi, segnalazioni, record di moderazione, limiti per IP e verifica del dispositivo, per proteggere chi usa Raen. Puoi opporti scrivendoci.
+- **Interesse legittimo** (art. 6(1)(f)): blocchi, segnalazioni, record di moderazione, limiti per IP e verifica del dispositivo, per proteggere chi usa Lemani. Puoi opporti scrivendoci.
 
 ### Per quanto tempo
 - **Sul nostro server**: per la durata della sessione. Premendo Termina si cancella subito. Se perdi la connessione, la sessione resta nascosta per 45 secondi in attesa che ti riconnetti, poi viene cancellata. Senza segnali dal telefono per 90 secondi viene chiusa.
@@ -63,7 +63,7 @@ Se più persone diverse segnalano la stessa sessione, questa può essere chiusa 
 - **Autorità**, solo se la legge lo impone.
 
 ### I tuoi diritti, e come si esercitano senza un account
-Hai diritto di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità, e puoi ritirare il consenso. Poiché Raen non ha account e non ti identifica, la maggior parte di questi diritti **la eserciti da solo, subito, dall'app**:
+Hai diritto di accesso, rettifica, cancellazione, limitazione, opposizione e portabilità, e puoi ritirare il consenso. Poiché Lemani non ha account e non ti identifica, la maggior parte di questi diritti **la eserciti da solo, subito, dall'app**:
 - **Vedere o correggere il profilo**: Menu → Il mio profilo.
 - **Cancellare i dati dal server**: premi **Termina**. La sessione e tutto ciò che il server sapeva di te spariscono subito.
 - **Ritirare il consenso**: Menu → Il mio profilo, poi scegli "Preferisco non dirlo" e "Tutti", oppure Cancella profilo. Se sei online chiudiamo prima la sessione, così il server smette subito di usare genere e preferenze. Lo stesso succede se da online cambi genere, chi vuoi incontrare o "Mostra il mio genere agli altri". Lingue e cosa cerchi di solito valgono dal prossimo Start.
@@ -74,7 +74,7 @@ Non possiamo darti una copia dei dati di una sessione già chiusa, perché non l
 Puoi anche presentare reclamo al **Garante per la protezione dei dati personali** (www.garanteprivacy.it) o all'autorità del tuo Paese.
 
 ### Età
-Raen è solo per persone **maggiorenni (18+)**. Se pensi che qualcuno abbia meno di 18 anni, segnalalo con il motivo "Sembra minorenne".
+Lemani è solo per persone **maggiorenni (18+)**. Se pensi che qualcuno abbia meno di 18 anni, segnalalo con il motivo "Sembra minorenne".
 
 ### Sicurezza
 Connessioni cifrate (TLS), profilo cifrato sul telefono, record di moderazione cifrati sul server. Su Android l'app blocca screenshot e registrazioni dello schermo; su iPhone nasconde il contenuto nel selettore delle app. Su iPhone gli altri potrebbero comunque fare uno screenshot: condividi solo ciò che sei disposto a far vedere.
@@ -94,7 +94,7 @@ You can also read it at **[public URL]**.
 The data controller is **[company name, address, VAT number]**. For privacy matters write to **[privacy@…]**. For safety and reports write to **[safety@…]**. **[If appointed: our Data Protection Officer can be reached at …]**
 
 ### In short
-- Raen **has no accounts**: no name, email, phone number or password.
+- Lemani **has no accounts**: no name, email, phone number or password.
 - You are visible only **while you are online**, between **Start** and **End**.
 - Our server keeps session data **in memory only** and forgets it when the session ends. The only exception is **moderation records** (see below), kept for at most 30 days.
 - We don't sell data, show ads or use analytics or tracking tools.
@@ -103,7 +103,7 @@ The data controller is **[company name, address, VAT number]**. For privacy matt
 
 | What | Why | Who sees it |
 |---|---|---|
-| **Precise location**, while you are online | To show you people within about 100 metres (or in the same busy place) and to show you to them | **No one**: other people never receive your location or how far you are. They only know you are close enough to appear. On Android you stay visible **even with the app in the background**, until you tap End (a persistent notification shows this). On iPhone your location is **only used while Raen is open on screen** |
+| **Precise location**, while you are online | To show you people within about 100 metres (or in the same busy place) and to show you to them | **No one**: other people never receive your location or how far you are. They only know you are close enough to appear. On Android you stay visible **even with the app in the background**, until you tap End (a persistent notification shows this). On iPhone your location is **only used while Lemani is open on screen** |
 | Session **selfie** | So people can recognise you in person | Compatible people nearby, people you send a request to or receive one from, your match. We remove the photo's metadata (such as where it was taken) |
 | **Gender and who you want to meet** | To show you only compatible people, and to show you only to them (both ways) | **Who you want to meet: no one.** Your gender only if you turn on "Show my gender to others". **Note**: people who can see you may guess that they fit what you're looking for |
 | Place (a type of place chosen at Start, such as bar or park: never a venue's name; optional), languages (up to 2) | To say roughly where you are and which languages you speak; the place also adapts the proposals | Compatible people nearby, requests, your match |
@@ -122,7 +122,7 @@ Your **profile** (gender, who you want to meet, languages, 18+ confirmation) **s
 ### Legal bases
 - **Contract** (Art. 6(1)(b) GDPR): location, selfie, profile, requests, chat and purchases are needed to provide the service you ask for when you tap Start.
 - **Explicit consent** (Art. 9(2)(a)): for gender and who you want to meet, which may reveal your sexual orientation. You give it in your profile. It isn't needed if you choose "Prefer not to say" and "Everyone". You can withdraw it at any time (see "Your rights").
-- **Legitimate interests** (Art. 6(1)(f)): blocks, reports, moderation records, IP limits and the device check, to protect people using Raen. You can object by writing to us.
+- **Legitimate interests** (Art. 6(1)(f)): blocks, reports, moderation records, IP limits and the device check, to protect people using Lemani. You can object by writing to us.
 
 ### How long we keep it
 - **On our server**: for the length of the session. Tapping End deletes it immediately. If you lose your connection, the session stays hidden for 45 seconds in case you reconnect, then it is deleted. After 90 seconds with no signal from your phone it is closed.
@@ -141,7 +141,7 @@ If several different people report the same session, it may be closed automatica
 - **Authorities**, only where the law requires it.
 
 ### Your rights, and how to use them without an account
-You have the right of access, rectification, erasure, restriction, objection and portability, and you can withdraw consent. Because Raen has no accounts and doesn't identify you, you exercise most of these rights **yourself, immediately, in the app**:
+You have the right of access, rectification, erasure, restriction, objection and portability, and you can withdraw consent. Because Lemani has no accounts and doesn't identify you, you exercise most of these rights **yourself, immediately, in the app**:
 - **See or correct your profile**: Menu → My profile.
 - **Delete your data from the server**: tap **End**. Your session and everything the server knew about you are gone immediately.
 - **Withdraw consent**: Menu → My profile, then choose "Prefer not to say" and "Everyone", or Delete profile. If you're online we end your session first, so the server stops using your gender and preferences right away. The same happens if you change your gender, who you want to meet or "Show my gender to others" while online. Languages and what you're usually looking for apply from your next Start.
@@ -152,7 +152,7 @@ We can't give you a copy of the data from a session that has ended, because we n
 You can also lodge a complaint with a supervisory authority, such as the Italian **Garante per la protezione dei dati personali** (www.garanteprivacy.it) or the authority in your country.
 
 ### Age
-Raen is only for **adults (18+)**. If you think someone is under 18, report them with the reason "Seems to be under 18".
+Lemani is only for **adults (18+)**. If you think someone is under 18, report them with the reason "Seems to be under 18".
 
 ### Security
 Encrypted connections (TLS), encrypted profile on your phone, encrypted moderation records on the server. On Android the app blocks screenshots and screen recording; on iPhone it hides its content in the app switcher. On iPhone other people could still take a screenshot: only share what you're comfortable showing.

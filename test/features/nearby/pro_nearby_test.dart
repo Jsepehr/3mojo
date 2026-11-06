@@ -77,7 +77,7 @@ class _FakeLocationRepository implements LocationRepository {
 }
 
 const _notice = BackgroundLocationNotice(
-  title: 'Raen is online',
+  title: 'Lemani is online',
   body: 'People nearby can see you',
   channelName: 'Online presence',
 );
@@ -213,7 +213,7 @@ void main() {
   test('the translated background notice set by the UI reaches the next '
       'listening', () async {
     const notice = BackgroundLocationNotice(
-      title: 'Raen è online',
+      title: 'Lemani è online',
       body: 'Stai comparendo a chi ti è vicino',
       channelName: 'Presenza online',
     );

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build di release di Raen (iOS e/o Android) con configurazione verificata.
+# Build di release di Lemani (iOS e/o Android) con configurazione verificata.
 #
 #   scripts/build_release.sh [ios|android|all] [--check] [--config <file>]
 #

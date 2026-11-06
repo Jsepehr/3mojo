@@ -208,7 +208,7 @@ void main() {
     test('hands the translated background notice down to the position '
         'watch', () async {
       const notice = BackgroundLocationNotice(
-        title: 'Raen ist online',
+        title: 'Lemani ist online',
         body: 'Leute in deiner Nähe sehen dich',
         channelName: 'Online-Präsenz',
       );
@@ -226,7 +226,7 @@ void main() {
 }
 
 const _notice = BackgroundLocationNotice(
-  title: 'Raen is online',
+  title: 'Lemani is online',
   body: 'People nearby can see you',
   channelName: 'Online presence',
 );

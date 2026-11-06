@@ -4,7 +4,7 @@ import '/core/demo/demo_mode.dart';
 import '/l10n/generated/app_localizations.dart';
 
 /// Chiede conferma prima di bloccare: cosa succede, e — onestamente — fino
-/// a quando (il resto di questa sessione: Raen non ha account). `true` solo
+/// a quando (il resto di questa sessione: Lemani non ha account). `true` solo
 /// se si conferma.
 Future<bool> showBlockConfirmDialog(BuildContext context) async {
   final confirmed = await showDialog<bool>(
